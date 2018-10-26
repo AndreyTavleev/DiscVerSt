@@ -165,7 +165,7 @@ def main():
     M = 2e33
     r = 1e10
     alpha = 1
-    F = 5e+34
+    F = 5e+33
 
     vs = vertical_structure(M, alpha, r, F)
     t = np.r_[0:1:101j]  # np.linspace(0, 1, 101)
