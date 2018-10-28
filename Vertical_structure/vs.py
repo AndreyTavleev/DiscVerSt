@@ -66,12 +66,17 @@ class VerticalStructure:
     def opacity_ff(rho, T):
         return xi0_ff * (rho ** zeta_ff) * (T ** gamma_ff)
 
-    def law_of_opacity(self, rho, T):
+    @staticmethod
+    def opacity_kram(rho, T):
+        return xi0_kram * (rho ** zeta_kram) * (T ** gamma_kram)
+
+    def law_of_opacity(self, rho, T, kram=True):
+        if kram:
+            return self.opacity_kram(rho, T)
         if self.opacity_h(rho, T) < self.opacity_ff(rho, T):
             return self.opacity_h(rho, T)
         else:
             return self.opacity_ff(rho, T)
-        # return xi0_kram * (rho ** zeta_kram) * (T ** gamma_kram)
 
     def viscosity(self, y):
         return self.law_of_viscosity(y[Vars.P] * self.P_norm)
@@ -126,10 +131,30 @@ class VerticalStructure:
         y = self.integrate([0, 1])
         return y[0][:, -1]
 
+    def Pi_finder(self):
+        Sigma0 = self.y_c()[Vars.S] * self.sigma_norm
+        T_C = self.y_c()[Vars.T] * self.T_norm
+        P_C = self.y_c()[Vars.P] * self.P_norm
+        rho_C = self.law_of_rho(P_C, T_C)
+        xi_C = self.law_of_opacity(rho_C, T_C)
+
+        tau0 = (Sigma0 * xi_C) / 2
+        Pi_table = FindPi(tau0).getPi()
+
+        Pi_1 = (self.omegaK ** 2 * self.z0 ** 2 * self.mu) / (R * T_C)
+        Pi_2 = Sigma0 / (2 * self.z0 * rho_C)
+        Pi_3 = (3 / 4) * (self.alpha * self.omegaK * R * T_C * Sigma0) / (self.Q0 * self.mu)
+        Pi_4 = (3 / 32) * (self.Teff / T_C) ** 4 * (Sigma0 * xi_C)
+
+        Pi_deviations = abs(Pi_1 - Pi_table[0]), abs(Pi_2 - Pi_table[1]), abs(Pi_3 - Pi_table[2]), \
+                        abs(Pi_4 - Pi_table[3])
+
+        return Pi_deviations
+
 
 def vertical_structure(Mx, alpha, r, F):
     z0_init = r * 2.86e-7 * F ** (3 / 20) * (Mx / cnst.M_sun.cgs.value) ** (-12 / 35) * alpha ** (-1 / 10) * (
-                r / 1e10) ** (
+            r / 1e10) ** (
                       1 / 20)
 
     def dq(z0r):
@@ -138,8 +163,8 @@ def vertical_structure(Mx, alpha, r, F):
         return q_c ** 2
 
     result = minimize(dq, z0_init / r)
-    print(result.message)
-    print(result.fun)
+    # print(result.message)
+    # print(result.fun)
     # assert result.success
     # assert result.fun < 1e-3
     z0 = result.x * r
@@ -150,7 +175,7 @@ def S_curve(F_min, F_max, M, alpha, r):
     porridge = []
     eggplant = []
     i = 0
-    h = (cnst.G.cgs.value * M * r) ** (1/2)
+    h = (cnst.G.cgs.value * M * r) ** (1 / 2)
     for F in np.r_[F_min:F_max:1000j]:
         vs = vertical_structure(M, alpha, r, F)
         porridge.append(F / h)
@@ -165,7 +190,7 @@ def main():
     M = 2e33
     r = 1e10
     alpha = 1
-    F = 5e+33
+    F = 5e+34
 
     vs = vertical_structure(M, alpha, r, F)
     t = np.r_[0:1:101j]  # np.linspace(0, 1, 101)
@@ -178,7 +203,9 @@ def main():
     plt.grid()
     plt.legend()
     plt.show()
-    S_curve(3.4e+34, 5e+35, M, alpha, r)
+    # S_curve(3.4e+34, 5e+35, M, alpha, r)
+
+    print(vs.Pi_finder())
 
 
 if __name__ == '__main__':
