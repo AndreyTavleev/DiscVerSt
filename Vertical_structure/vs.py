@@ -138,18 +138,17 @@ class VerticalStructure:
         rho_C = self.law_of_rho(P_C, T_C)
         xi_C = self.law_of_opacity(rho_C, T_C)
 
-        tau0 = (Sigma0 * xi_C) / 2
-        Pi_table = FindPi(tau0).getPi()
+        # tau0 = (Sigma0 * xi_C) / 2
+        # Pi_table = FindPi(tau0).getPi()
 
         Pi_1 = (self.omegaK ** 2 * self.z0 ** 2 * self.mu) / (R * T_C)
         Pi_2 = Sigma0 / (2 * self.z0 * rho_C)
         Pi_3 = (3 / 4) * (self.alpha * self.omegaK * R * T_C * Sigma0) / (self.Q0 * self.mu)
         Pi_4 = (3 / 32) * (self.Teff / T_C) ** 4 * (Sigma0 * xi_C)
 
-        Pi_deviations = abs(Pi_1 - Pi_table[0]), abs(Pi_2 - Pi_table[1]), abs(Pi_3 - Pi_table[2]), \
-                        abs(Pi_4 - Pi_table[3])
+        Pi_real = [Pi_1, Pi_2, Pi_3, Pi_4]
 
-        return Pi_deviations
+        return Pi_real
 
 
 def vertical_structure(Mx, alpha, r, F):
