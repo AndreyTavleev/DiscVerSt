@@ -117,7 +117,7 @@ class VerticalStructure:
         dy[Vars.S] = rho * 2 * self.z0 / self.sigma_norm
         dy[Vars.P] = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
         dy[Vars.Q] = -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm
-        dy[Vars.T] = ((y[Vars.Q] / abs(y[Vars.T]) ** 3)
+        dy[Vars.T] = ((y[Vars.Q] / y[Vars.T] ** 3)
                       * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
         return dy
 
