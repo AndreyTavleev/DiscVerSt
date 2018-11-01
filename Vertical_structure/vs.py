@@ -70,7 +70,7 @@ class VerticalStructure:
     def opacity_kram(rho, T):
         return xi0_kram * (rho ** zeta_kram) * (T ** gamma_kram)
 
-    def law_of_opacity(self, rho, T, kram=True):
+    def law_of_opacity(self, rho, T, kram=False):
         if kram:
             return self.opacity_kram(rho, T)
         if self.opacity_h(rho, T) < self.opacity_ff(rho, T):
@@ -98,7 +98,7 @@ class VerticalStructure:
             [0, 2 / 3],
             [1e-8]
         )
-        assert solution.success
+        # assert solution.success
         # integral = quad(lambda x: (1 + 3 * x / 2) ** (9 / 8), 0, 2 / 3)[0]
         # A = math.sqrt(omegaK ** 2 * z0 * R * integral * Teff ** (9 / 2) / (xi0_kram * mu * 2 ** (1 / 8))) / P0
         # A = root(lambda P1: 3 * P0 * P1 / 2 - wqe(3 / 2, P0 * P1, z0), [0.5]).x[0]
@@ -117,7 +117,7 @@ class VerticalStructure:
         dy[Vars.S] = rho * 2 * self.z0 / self.sigma_norm
         dy[Vars.P] = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
         dy[Vars.Q] = -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm
-        dy[Vars.T] = ((y[Vars.Q] / y[Vars.T] ** 3)
+        dy[Vars.T] = ((y[Vars.Q] / abs(y[Vars.T]) ** 3)
                       * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
         return dy
 
@@ -153,20 +153,27 @@ class VerticalStructure:
 
 def vertical_structure(Mx, alpha, r, F):
     z0_init = r * 2.86e-7 * F ** (3 / 20) * (Mx / cnst.M_sun.cgs.value) ** (-12 / 35) * alpha ** (-1 / 10) * (
-            r / 1e10) ** (
-                      1 / 20)
+                r / 1e10) ** (1 / 20)
 
     def dq(z0r):
         vs = VerticalStructure(Mx, alpha, r, F, z0r * r)
         q_c = vs.y_c()[Vars.Q]
-        return q_c ** 2
+        return q_c
 
-    result = minimize(dq, z0_init / r)
+    # result = newton(dq, z0_init / r)
+
+    result = fsolve(dq, z0_init / r, full_output=True)
+    print(result[3])
+    print(result[1]['fvec'])
+
+    # result = minimize(dq, z0_init / r)
     # print(result.message)
     # print(result.fun)
+
     # assert result.success
     # assert result.fun < 1e-3
-    z0 = result.x * r
+
+    z0 = result[0] * r
     return VerticalStructure(Mx, alpha, r, F, z0)
 
 
@@ -174,13 +181,14 @@ def S_curve(F_min, F_max, M, alpha, r):
     porridge = []
     eggplant = []
     i = 0
-    h = (cnst.G.cgs.value * M * r) ** (1 / 2)
-    for F in np.r_[F_min:F_max:1000j]:
-        vs = vertical_structure(M, alpha, r, F)
-        porridge.append(F / h)
-        eggplant.append(math.log10(vs.y_c()[Vars.S]))
+    h = (G * M * r) ** (1 / 2)
+    for F in np.r_[F_max:F_min:100j]:
         i += 1
         print(i)
+        print(F)
+        vs = vertical_structure(M, alpha, r, F)
+        porridge.append(F / h)
+        eggplant.append(vs.y_c()[Vars.S] * vs.sigma_norm)
     plt.plot(eggplant, porridge, label='F')
     plt.show()
 
@@ -189,7 +197,7 @@ def main():
     M = 2e33
     r = 1e10
     alpha = 1
-    F = 5e+34
+    F = 5e33
 
     vs = vertical_structure(M, alpha, r, F)
     t = np.r_[0:1:101j]  # np.linspace(0, 1, 101)
@@ -202,9 +210,10 @@ def main():
     plt.grid()
     plt.legend()
     plt.show()
-    # S_curve(3.4e+34, 5e+35, M, alpha, r)
 
-    print(vs.Pi_finder())
+    S_curve(4.34e+33, 4.34e+34, M, alpha, r)
+
+    # print(vs.Pi_finder())
 
 
 if __name__ == '__main__':
