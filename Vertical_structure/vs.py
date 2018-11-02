@@ -1,11 +1,10 @@
+from enum import IntEnum
+
+import numpy as np
 from scipy.integrate import solve_ivp, quad
 from scipy.optimize import minimize, root, newton, fsolve
 from matplotlib import pyplot as plt
-import numpy as np
 from astropy import constants as cnst
-import math
-from enum import IntEnum
-from Verstr import FindPi
 from matplotlib import rcParams
 
 rcParams['text.usetex'] = True
@@ -45,7 +44,7 @@ class VerticalStructure:
         self.z0 = z0
         self.omegaK = np.sqrt(self.GM / self.r ** 3)
 
-        self.Q_norm = self.Q0 = (3 / 8 * np.pi) * F * self.omegaK / self.r ** 2
+        self.Q_norm = self.Q0 = (3 / (8 * np.pi)) * F * self.omegaK / self.r ** 2
         self.P_norm = (4 / 3) * self.Q_norm / (self.alpha * self.z0 * self.omegaK)
         self.T_norm = self.omegaK ** 2 * self.mu * self.z0 ** 2 / R
         self.sigma_norm = 16 * self.Q_norm / (3 * self.alpha * self.z0 ** 2 * self.omegaK ** 3)
@@ -117,7 +116,7 @@ class VerticalStructure:
         dy[Vars.S] = rho * 2 * self.z0 / self.sigma_norm
         dy[Vars.P] = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
         dy[Vars.Q] = -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm
-        dy[Vars.T] = ((y[Vars.Q] / y[Vars.T] ** 3)
+        dy[Vars.T] = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
                       * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
         return dy
 
@@ -163,8 +162,9 @@ def vertical_structure(Mx, alpha, r, F):
     # result = newton(dq, z0_init / r)
 
     result = fsolve(dq, z0_init / r, full_output=True)
-    print(result[3])
-    print(result[1]['fvec'])
+    if not result[2] or abs(result[1]['fvec']) > 1e-3:
+        print(result[3])
+        print(result[1]['fvec'])
 
     # result = minimize(dq, z0_init / r)
     # print(result.message)
@@ -177,41 +177,29 @@ def vertical_structure(Mx, alpha, r, F):
     return VerticalStructure(Mx, alpha, r, F, z0)
 
 
-def S_curve(F_min, F_max, M, alpha, r):
+def S_curve(Teff_min, Teff_max, M, alpha, r):
     porridge = []
     eggplant = []
-    i = 0
     h = (G * M * r) ** (1 / 2)
-    for F in np.r_[F_max:F_min:100j]:
-        i += 1
-        print(i)
-        print(F)
+    plt.xscale('log')
+    plt.yscale('log')
+    for i, Teff in enumerate(np.r_[Teff_max:Teff_min:100j]):
+        F = 8 * np.pi / 3 * h**7 / (G*M)**4 * sigmaSB * Teff**4
+        print(i+1)
+        # print(F)
         vs = vertical_structure(M, alpha, r, F)
-        porridge.append(F / h)
+        porridge.append(Teff)
         eggplant.append(vs.y_c()[Vars.S] * vs.sigma_norm)
-    plt.plot(eggplant, porridge, label='F')
+    plt.plot(eggplant, porridge, 'x', label='F')
     plt.show()
 
 
 def main():
-    M = 2e33
-    r = 1e10
-    alpha = 1
-    F = 5e33
+    M = 6 * 2e33
+    r = 1e11
+    alpha = 0.5
 
-    vs = vertical_structure(M, alpha, r, F)
-    t = np.r_[0:1:101j]  # np.linspace(0, 1, 101)
-    y = vs.integrate(t)
-    print(y[1])
-    plt.plot(1 - t, y[0][Vars.T], label='T')
-    plt.plot(1 - t, y[0][Vars.P], label='P')
-    plt.plot(1 - t, y[0][Vars.Q], label='Q')
-    plt.plot(1 - t, y[0][Vars.S], label='S')
-    plt.grid()
-    plt.legend()
-    plt.show()
-
-    S_curve(4.34e+33, 4.34e+34, M, alpha, r)
+    S_curve(2.3e3, 1e4, M, alpha, r)
 
     # print(vs.Pi_finder())
 
