@@ -5,7 +5,7 @@ import numpy as np
 from astropy import constants as cnst
 import math
 from enum import IntEnum
-from Verstr import FindPi
+from vertstr import FindPi
 from matplotlib import rcParams
 
 rcParams['text.usetex'] = True
