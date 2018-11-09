@@ -1,0 +1,5 @@
+numpy
+scipy
+matplotlib
+astropy
+git+https://github.com/hombit/convinstab/

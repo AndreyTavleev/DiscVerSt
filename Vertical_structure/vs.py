@@ -1,10 +1,11 @@
-from enum import IntEnum
-
-import numpy as np
 from scipy.integrate import solve_ivp, quad
 from scipy.optimize import minimize, root, newton, fsolve
 from matplotlib import pyplot as plt
+import numpy as np
 from astropy import constants as cnst
+import math
+from enum import IntEnum
+from Verstr import FindPi
 from matplotlib import rcParams
 
 rcParams['text.usetex'] = True
