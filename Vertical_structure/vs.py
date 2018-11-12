@@ -1,15 +1,19 @@
 from scipy.integrate import solve_ivp, quad
 from scipy.optimize import minimize, root, newton, fsolve
+import matplotlib
+matplotlib.use("Agg")
 from matplotlib import pyplot as plt
 import numpy as np
 from astropy import constants as cnst
 import math
 from enum import IntEnum
-from Verstr import FindPi
+# from Verstr import FindPi
+from vertstr import FindPi
 from matplotlib import rcParams
+from opacity import Opac
 
-rcParams['text.usetex'] = True
-rcParams['font.size'] = 14
+# rcParams['text.usetex'] = True
+# rcParams['font.size'] = 14
 
 sigmaSB = cnst.sigma_sb.cgs.value
 R = cnst.R.cgs.value
@@ -24,6 +28,8 @@ gamma_ff = - 5 / 2
 xi0_h = 1.0e-36  # H-scattering
 zeta_h = 1 / 3
 gamma_h = 10
+
+opacity = Opac(mesa_dir='/mesa')
 
 
 class Vars(IntEnum):
@@ -55,8 +61,10 @@ class VerticalStructure:
     def law_of_viscosity(self, P):
         return self.alpha * P
 
-    def law_of_rho(self, P, T):
-        return P * self.mu / (R * T)
+    @staticmethod
+    def law_of_rho(P, T):
+        return opacity.rho(P, T)
+        # return P * self.mu / (R * T)
 
     @staticmethod
     def opacity_h(rho, T):
@@ -70,13 +78,15 @@ class VerticalStructure:
     def opacity_kram(rho, T):
         return xi0_kram * (rho ** zeta_kram) * (T ** gamma_kram)
 
-    def law_of_opacity(self, rho, T, kram=False):
-        if kram:
-            return self.opacity_kram(rho, T)
-        if self.opacity_h(rho, T) < self.opacity_ff(rho, T):
-            return self.opacity_h(rho, T)
-        else:
-            return self.opacity_ff(rho, T)
+    @staticmethod
+    def law_of_opacity(rho, T, kram=False):
+        return opacity.kappa(rho, T)
+        # if kram:
+        #     return self.opacity_kram(rho, T)
+        # if self.opacity_h(rho, T) < self.opacity_ff(rho, T):
+        #     return self.opacity_h(rho, T)
+        # else:
+        #     return self.opacity_ff(rho, T)
 
     def viscosity(self, y):
         return self.law_of_viscosity(y[Vars.P] * self.P_norm)
@@ -192,7 +202,8 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
         porridge.append(Teff)
         eggplant.append(vs.y_c()[Vars.S] * vs.sigma_norm)
     plt.plot(eggplant, porridge, 'x', label='F')
-    plt.show()
+    plt.savefig('s-curve.pdf')
+    # plt.show()
 
 
 def main():
@@ -202,7 +213,10 @@ def main():
 
     S_curve(2.3e3, 1e4, M, alpha, r)
 
-    # print(vs.Pi_finder())
+    F = 3e34
+    vs = vertical_structure(M, alpha, r, F)
+
+    print(vs.Pi_finder())
 
 
 if __name__ == '__main__':
