@@ -6,4 +6,7 @@ RUN pip install -r /requirements.txt
 COPY Vertical_structure /app
 WORKDIR /app
 
+RUN mkdir -pv /app/fig
+VOLUME /app/fig
+
 CMD ["python", "vs.py"]

@@ -202,7 +202,7 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
         porridge.append(Teff)
         eggplant.append(vs.y_c()[Vars.S] * vs.sigma_norm)
     plt.plot(eggplant, porridge, 'x', label='F')
-    plt.savefig('s-curve.pdf')
+    plt.savefig('fig/s-curve.pdf')
     # plt.show()
 
 
