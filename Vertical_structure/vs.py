@@ -42,21 +42,28 @@ class Vars(IntEnum):
 class VerticalStructure:
     mu = 0.6
 
-    def __init__(self, Mx, alpha, r, F, z0):
+    def __init__(self, Mx, alpha, r, F):
         self.Mx = Mx
         self.GM = G * Mx
         self.alpha = alpha
         self.r = r
         self.F = F
-        self.z0 = z0
         self.omegaK = np.sqrt(self.GM / self.r ** 3)
 
         self.Q_norm = self.Q0 = (3 / (8 * np.pi)) * F * self.omegaK / self.r ** 2
-        self.P_norm = (4 / 3) * self.Q_norm / (self.alpha * self.z0 * self.omegaK)
-        self.T_norm = self.omegaK ** 2 * self.mu * self.z0 ** 2 / R
-        self.sigma_norm = 16 * self.Q_norm / (3 * self.alpha * self.z0 ** 2 * self.omegaK ** 3)
-
         self.Teff = (self.Q0 / sigmaSB) ** (1 / 4)
+        self.z0 = self.z0_init()
+
+    @property
+    def z0(self):
+        return self.__z0
+
+    @z0.setter
+    def z0(self, z0):
+        self.__z0 = z0
+        self.P_norm = (4 / 3) * self.Q_norm / (self.alpha * z0 * self.omegaK)
+        self.T_norm = self.omegaK ** 2 * self.mu * z0 ** 2 / R
+        self.sigma_norm = 16 * self.Q_norm / (3 * self.alpha * z0 ** 2 * self.omegaK ** 3)
 
     def law_of_viscosity(self, P):
         return self.alpha * P
@@ -160,32 +167,18 @@ class VerticalStructure:
 
         return Pi_real
 
+    def z0_init(self):
+        return (self.r * 2.86e-7 * self.F ** (3 / 20) * (self.Mx / cnst.M_sun.cgs.value) ** (-12 / 35)
+                * self.alpha ** (-1 / 10) * (self.r / 1e10) ** (1 / 20))
 
-def vertical_structure(Mx, alpha, r, F):
-    z0_init = r * 2.86e-7 * F ** (3 / 20) * (Mx / cnst.M_sun.cgs.value) ** (-12 / 35) * alpha ** (-1 / 10) * (
-                r / 1e10) ** (1 / 20)
+    def fit(self):
+        def dq(z0r):
+            self.z0 = z0r * self.r
+            q_c = self.y_c()[Vars.Q]
+            return q_c
 
-    def dq(z0r):
-        vs = VerticalStructure(Mx, alpha, r, F, z0r * r)
-        q_c = vs.y_c()[Vars.Q]
-        return q_c
-
-    # result = newton(dq, z0_init / r)
-
-    result = fsolve(dq, z0_init / r, full_output=True)
-    if not result[2] or abs(result[1]['fvec']) > 1e-3:
-        print(result[3])
-        print(result[1]['fvec'])
-
-    # result = minimize(dq, z0_init / r)
-    # print(result.message)
-    # print(result.fun)
-
-    # assert result.success
-    # assert result.fun < 1e-3
-
-    z0 = result[0] * r
-    return VerticalStructure(Mx, alpha, r, F, z0)
+        result = fsolve(dq, self.z0 / self.r, full_output=True)
+        return result
 
 
 def S_curve(Teff_min, Teff_max, M, alpha, r):
@@ -198,7 +191,11 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
         F = 8 * np.pi / 3 * h**7 / (G*M)**4 * sigmaSB * Teff**4
         print(i+1)
         # print(F)
-        vs = vertical_structure(M, alpha, r, F)
+        vs = VerticalStructure(M, alpha, r, F)
+        result = vs.fit()
+        if not result[2] or abs(result[1]['fvec']) > 1e-3:
+            print(result[3])
+            print(result[1]['fvec'])
         porridge.append(Teff)
         eggplant.append(vs.y_c()[Vars.S] * vs.sigma_norm)
     plt.plot(eggplant, porridge, 'x', label='F')
@@ -213,10 +210,9 @@ def main():
 
     S_curve(2.3e3, 1e4, M, alpha, r)
 
-    F = 3e34
-    vs = vertical_structure(M, alpha, r, F)
-
-    print(vs.Pi_finder())
+    # F = 3e34
+    # vs = vertical_structure(M, alpha, r, F)
+    # print(vs.Pi_finder())
 
 
 if __name__ == '__main__':
