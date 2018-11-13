@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from scipy.integrate import solve_ivp, quad
 from scipy.optimize import minimize, root, newton, fsolve
 import matplotlib
@@ -5,12 +7,16 @@ matplotlib.use("Agg")
 from matplotlib import pyplot as plt
 import numpy as np
 from astropy import constants as cnst
-import math
 from enum import IntEnum
-# from Verstr import FindPi
-from vertstr import FindPi
 from matplotlib import rcParams
-from opacity import Opac
+try:
+    from opacity import Opac
+    opacity = Opac(mesa_dir='/mesa')
+except ImportError:
+    class HasAnyAttr:
+        def __getattr__(self, item):
+            return None
+    opacity = HasAnyAttr()
 
 # rcParams['text.usetex'] = True
 # rcParams['font.size'] = 14
@@ -18,18 +24,6 @@ from opacity import Opac
 sigmaSB = cnst.sigma_sb.cgs.value
 R = cnst.R.cgs.value
 G = cnst.G.cgs.value
-
-xi0_kram = 5e24
-zeta_kram = 1
-gamma_kram = - 7 / 2
-xi0_ff = 1.5e20  # BB AND FF, OPAL
-zeta_ff = 1
-gamma_ff = - 5 / 2
-xi0_h = 1.0e-36  # H-scattering
-zeta_h = 1 / 3
-gamma_h = 10
-
-opacity = Opac(mesa_dir='/mesa')
 
 
 class Vars(IntEnum):
@@ -39,7 +33,7 @@ class Vars(IntEnum):
     T = 3
 
 
-class VerticalStructure:
+class BaseVerticalStructure:
     mu = 0.6
 
     def __init__(self, Mx, alpha, r, F):
@@ -68,32 +62,11 @@ class VerticalStructure:
     def law_of_viscosity(self, P):
         return self.alpha * P
 
-    @staticmethod
-    def law_of_rho(P, T):
-        return opacity.rho(P, T)
-        # return P * self.mu / (R * T)
+    def law_of_rho(self, P, T):
+        raise NotImplementedError
 
-    @staticmethod
-    def opacity_h(rho, T):
-        return xi0_h * (rho ** zeta_h) * (T ** gamma_h)
-
-    @staticmethod
-    def opacity_ff(rho, T):
-        return xi0_ff * (rho ** zeta_ff) * (T ** gamma_ff)
-
-    @staticmethod
-    def opacity_kram(rho, T):
-        return xi0_kram * (rho ** zeta_kram) * (T ** gamma_kram)
-
-    @staticmethod
-    def law_of_opacity(rho, T, kram=False):
-        return opacity.kappa(rho, T)
-        # if kram:
-        #     return self.opacity_kram(rho, T)
-        # if self.opacity_h(rho, T) < self.opacity_ff(rho, T):
-        #     return self.opacity_h(rho, T)
-        # else:
-        #     return self.opacity_ff(rho, T)
+    def law_of_opacity(self, rho, T):
+        raise NotImplementedError
 
     def viscosity(self, y):
         return self.law_of_viscosity(y[Vars.P] * self.P_norm)
@@ -148,22 +121,29 @@ class VerticalStructure:
         y = self.integrate([0, 1])
         return y[0][:, -1]
 
+    def tau0(self):
+        y_c = self.y_c()
+        Sigma0 = y_c[Vars.S] * self.sigma_norm
+        T_C = y_c[Vars.T] * self.T_norm
+        P_C = y_c[Vars.P] * self.P_norm
+        rho_C = self.law_of_rho(P_C, T_C)
+        xi_C = self.law_of_opacity(rho_C, T_C)
+        return Sigma0 * xi_C / 2
+
     def Pi_finder(self):
-        Sigma0 = self.y_c()[Vars.S] * self.sigma_norm
-        T_C = self.y_c()[Vars.T] * self.T_norm
-        P_C = self.y_c()[Vars.P] * self.P_norm
+        y_c = self.y_c()
+        Sigma0 = y_c[Vars.S] * self.sigma_norm
+        T_C = y_c[Vars.T] * self.T_norm
+        P_C = y_c[Vars.P] * self.P_norm
         rho_C = self.law_of_rho(P_C, T_C)
         xi_C = self.law_of_opacity(rho_C, T_C)
 
-        # tau0 = (Sigma0 * xi_C) / 2
-        # Pi_table = FindPi(tau0).getPi()
-
-        Pi_1 = (self.omegaK ** 2 * self.z0 ** 2 * self.mu) / (R * T_C)
+        Pi_1 = (self.omegaK ** 2 * self.z0 ** 2 * rho_C) / P_C
         Pi_2 = Sigma0 / (2 * self.z0 * rho_C)
-        Pi_3 = (3 / 4) * (self.alpha * self.omegaK * R * T_C * Sigma0) / (self.Q0 * self.mu)
+        Pi_3 = (3 / 4) * (self.alpha * self.omegaK * P_C * Sigma0) / (self.Q0 * rho_C)
         Pi_4 = (3 / 32) * (self.Teff / T_C) ** 4 * (Sigma0 * xi_C)
 
-        Pi_real = [Pi_1, Pi_2, Pi_3, Pi_4]
+        Pi_real = np.array([Pi_1, Pi_2, Pi_3, Pi_4])
 
         return Pi_real
 
@@ -173,12 +153,62 @@ class VerticalStructure:
 
     def fit(self):
         def dq(z0r):
-            self.z0 = z0r * self.r
+            self.z0 = z0r[0] * self.r
             q_c = self.y_c()[Vars.Q]
             return q_c
 
         result = fsolve(dq, self.z0 / self.r, full_output=True)
         return result
+
+
+class IdealGasMixin:
+    mu = 0.6
+
+    def law_of_rho(self, P, T):
+        return P * self.mu / (R * T)
+
+
+class MesaGasMixin:
+    law_of_rho = opacity.rho
+
+
+class KramersOpacityMixin:
+    xi0 = 5e24
+    zeta = 1
+    gamma = -7 / 2
+
+    def law_of_opacity(self, rho, T):
+        return self.xi0 * (rho ** self.zeta) * (T ** self.gamma)
+
+
+class BellLin1994TwoComponentOpacityMixin:
+    xi0_ff = 1.5e20  # BB AND FF, OPAL
+    zeta_ff = 1
+    gamma_ff = - 5 / 2
+    xi0_h = 1.0e-36  # H-scattering
+    zeta_h = 1 / 3
+    gamma_h = 10
+
+    def opacity_h(self, rho, T):
+        return self.xi0_h * (rho ** self.zeta_h) * (T ** self.gamma_h)
+
+    def opacity_ff(self, rho, T):
+        return self.xi0_ff * (rho ** self.zeta_ff) * (T ** self.gamma_ff)
+
+    def law_of_opacity(self, rho, T):
+        return np.minimum(self.opacity_h(rho, T), self.opacity_ff(rho, T))
+
+
+class MesaOpacityMixin:
+    law_of_opacity = opacity.kappa
+
+
+class IdealKramersVerticalStructure(IdealGasMixin, KramersOpacityMixin, BaseVerticalStructure):
+    pass
+
+
+class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, BaseVerticalStructure):
+    pass
 
 
 def S_curve(Teff_min, Teff_max, M, alpha, r):
@@ -187,11 +217,11 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
     h = (G * M * r) ** (1 / 2)
     plt.xscale('log')
     plt.yscale('log')
-    for i, Teff in enumerate(np.r_[Teff_max:Teff_min:100j]):
+    for i, Teff in enumerate(np.r_[Teff_max:Teff_min:10j]):
         F = 8 * np.pi / 3 * h**7 / (G*M)**4 * sigmaSB * Teff**4
         print(i+1)
         # print(F)
-        vs = VerticalStructure(M, alpha, r, F)
+        vs = MesaVerticalStructure(M, alpha, r, F)
         result = vs.fit()
         if not result[2] or abs(result[1]['fvec']) > 1e-3:
             print(result[3])
