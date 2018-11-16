@@ -3,7 +3,7 @@
 from enum import IntEnum
 
 from scipy.integrate import solve_ivp
-from scipy.optimize import fsolve
+from scipy.optimize import fsolve, brentq
 import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
@@ -156,11 +156,23 @@ class BaseVerticalStructure:
 
     def fit(self):
         def dq(z0r):
-            self.z0 = z0r[0] * self.r
+            self.z0 = z0r * self.r
             q_c = self.y_c()[Vars.Q]
             return q_c
 
-        result = fsolve(dq, self.z0 / self.r, full_output=True)
+        z0r = self.z0 / self.r
+        sign_dq = dq(z0r)
+        if sign_dq > 0:
+            factor = 2
+        else:
+            factor = 0.5
+
+        while True:
+            z0r *= factor
+            if sign_dq * dq(z0r) < 0:
+                break
+
+        z0r, result = brentq(dq, z0r, z0r / factor, full_output=True)
         return result
 
     def kappa_C(self):
@@ -250,7 +262,7 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
     h = (G * M * r) ** (1 / 2)
     plt.xscale('log')
     plt.yscale('log')
-    for i, Teff in enumerate(np.r_[Teff_max:Teff_min:1000j]):
+    for i, Teff in enumerate(np.r_[Teff_max:Teff_min:100j]):
         F = 8 * np.pi / 3 * h**7 / (G*M)**4 * sigmaSB * Teff**4
         print(i+1)
         # print(F)
@@ -263,9 +275,8 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
         graph_T_C.append(vs.kappa_C()[2])
         graph_P_C.append(vs.kappa_C()[3])
         x_graph.append(i)
-        if not result[2] or abs(result[1]['fvec']) > 1e-3:
-            print(result[3])
-            print(result[1]['fvec'])
+        if not result.converged:
+            print(result)
             porridge.pop()
             eggplant.pop()
             graph_opacity.pop()
