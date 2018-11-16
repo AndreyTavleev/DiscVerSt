@@ -3,7 +3,7 @@
 from enum import IntEnum
 
 from scipy.integrate import solve_ivp
-from scipy.optimize import fsolve, brentq
+from scipy.optimize import brentq
 import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
@@ -19,7 +19,7 @@ except ImportError:
             return None
     opacity = HasAnyAttr()
 
-matplotlib.use("Agg")
+# matplotlib.use("Agg")
 
 # rcParams['text.usetex'] = True
 # rcParams['font.size'] = 14
@@ -60,7 +60,7 @@ class BaseVerticalStructure:
         self.__z0 = z0
         self.P_norm = (4 / 3) * self.Q_norm / (self.alpha * z0 * self.omegaK)
         self.T_norm = self.omegaK ** 2 * self.mu * z0 ** 2 / R
-        self.sigma_norm = 16 * self.Q_norm / (3 * self.alpha * z0 ** 2 * self.omegaK ** 3)
+        self.sigma_norm = 28 * self.Q_norm / (3 * self.alpha * z0 ** 2 * self.omegaK ** 3)
 
     def law_of_viscosity(self, P):
         return self.alpha * P
@@ -124,27 +124,28 @@ class BaseVerticalStructure:
         y = self.integrate([0, 1])
         return y[0][:, -1]
 
-    def tau0(self):
+    def parameters_C(self):
         y_c = self.y_c()
         Sigma0 = y_c[Vars.S] * self.sigma_norm
         T_C = y_c[Vars.T] * self.T_norm
         P_C = y_c[Vars.P] * self.P_norm
         rho_C = self.law_of_rho(P_C, T_C)
-        xi_C = self.law_of_opacity(rho_C, T_C)
-        return Sigma0 * xi_C / 2
+        kappa_C = self.law_of_opacity(rho_C, T_C)
+        return kappa_C, rho_C, T_C, P_C, Sigma0
+
+    def tau0(self):
+        y = self.parameters_C()
+        Sigma0 = y[4]
+        kappa_C = y[0]
+        return Sigma0 * kappa_C / 2
 
     def Pi_finder(self):
-        y_c = self.y_c()
-        Sigma0 = y_c[Vars.S] * self.sigma_norm
-        T_C = y_c[Vars.T] * self.T_norm
-        P_C = y_c[Vars.P] * self.P_norm
-        rho_C = self.law_of_rho(P_C, T_C)
-        xi_C = self.law_of_opacity(rho_C, T_C)
+        kappa_C, rho_C, T_C, P_C, Sigma0 = self.parameters_C()
 
         Pi_1 = (self.omegaK ** 2 * self.z0 ** 2 * rho_C) / P_C
         Pi_2 = Sigma0 / (2 * self.z0 * rho_C)
         Pi_3 = (3 / 4) * (self.alpha * self.omegaK * P_C * Sigma0) / (self.Q0 * rho_C)
-        Pi_4 = (3 / 32) * (self.Teff / T_C) ** 4 * (Sigma0 * xi_C)
+        Pi_4 = (3 / 32) * (self.Teff / T_C) ** 4 * (Sigma0 * kappa_C)
 
         Pi_real = np.array([Pi_1, Pi_2, Pi_3, Pi_4])
 
@@ -175,13 +176,19 @@ class BaseVerticalStructure:
         z0r, result = brentq(dq, z0r, z0r / factor, full_output=True)
         return result
 
-    def kappa_C(self):
-        y_c = self.y_c()
-        T_C = y_c[Vars.T] * self.T_norm
-        P_C = y_c[Vars.P] * self.P_norm
-        rho_C = self.law_of_rho(P_C, T_C)
-        kappa_C = self.law_of_opacity(rho_C, T_C)
-        return kappa_C, rho_C, T_C, P_C
+    def plot(self):
+        self.fit()
+        t = np.linspace(0, 1, 100)
+        S, P, Q, T = self.integrate(t)[0]
+        plt.plot(t, S, label='Sigma')
+        plt.plot(t, P, label='P')
+        plt.plot(t, Q, label='Q')
+        plt.plot(t, T, label='T')
+        plt.grid()
+        plt.legend()
+        plt.xlabel('z / z0')
+        plt.title('Vertical Structure')
+        plt.show()
 
 
 class IdealGasMixin:
@@ -270,10 +277,10 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
         result = vs.fit()
         porridge.append(Teff)
         eggplant.append(vs.y_c()[Vars.S] * vs.sigma_norm)
-        graph_opacity.append(vs.kappa_C()[0])
-        graph_rho_C.append(vs.kappa_C()[1])
-        graph_T_C.append(vs.kappa_C()[2])
-        graph_P_C.append(vs.kappa_C()[3])
+        graph_opacity.append(vs.parameters_C()[0])
+        graph_rho_C.append(vs.parameters_C()[1])
+        graph_T_C.append(vs.parameters_C()[2])
+        graph_P_C.append(vs.parameters_C()[3])
         x_graph.append(i)
         if not result.converged:
             print(result)
@@ -288,16 +295,16 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
             porridge_except.append(Teff)
             eggplant_except.append(vs.y_c()[Vars.S] * vs.sigma_norm)
 
-            graph_opacity_except.append(vs.kappa_C()[0])
-            graph_rho_C_except.append(vs.kappa_C()[1])
-            graph_T_C_except.append(vs.kappa_C()[2])
-            graph_P_C_except.append(vs.kappa_C()[3])
+            graph_opacity_except.append(vs.parameters_C()[0])
+            graph_rho_C_except.append(vs.parameters_C()[1])
+            graph_T_C_except.append(vs.parameters_C()[2])
+            graph_P_C_except.append(vs.parameters_C()[3])
 
             x_graph_except.append(i)
-            print('kappa = ', vs.kappa_C()[0])
-            print('rho_C = ', vs.kappa_C()[1])
-            print('T_C = ', vs.kappa_C()[2])
-            print('P_C = ', vs.kappa_C()[3])
+            print('kappa = ', vs.parameters_C()[0])
+            print('rho_C = ', vs.parameters_C()[1])
+            print('T_C = ', vs.parameters_C()[2])
+            print('P_C = ', vs.parameters_C()[3])
 
     plt.plot(eggplant, porridge, 'x', label='T_eff')
     plt.plot(eggplant_except, porridge_except, 'mx', label='T_eff')
@@ -345,11 +352,13 @@ def main():
     r = 1e11
     alpha = 0.5
 
-    S_curve(2.3e3, 1e4, M, alpha, r)
+    # S_curve(2.3e3, 1e4, M, alpha, r)
 
-    # F = 3e34
-    # vs = vertical_structure(M, alpha, r, F)
-    # print(vs.Pi_finder())
+    for i, Teff in enumerate(np.r_[2.3e3:1e4:10j]):
+        h = (G * M * r) ** (1 / 2)
+        F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
+        vs = IdealKramersVerticalStructure(M, alpha, r, F)
+        vs.plot()
 
 
 if __name__ == '__main__':
