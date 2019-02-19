@@ -21,8 +21,10 @@ except ImportError:
 
 # matplotlib.use("Agg")
 
-# rcParams['text.usetex'] = True
-# rcParams['font.size'] = 14
+rcParams['text.usetex'] = True
+rcParams['font.size'] = 14
+rcParams['text.latex.preamble'] = [r'\usepackage[utf8]{inputenc}', r'\usepackage{amsfonts, amsmath, amsthm, amssymb}']
+# r'\usepackage[english,russian]{babel}'
 
 sigmaSB = cnst.sigma_sb.cgs.value
 R = cnst.R.cgs.value
@@ -130,22 +132,22 @@ class BaseVerticalStructure:
         T_C = y_c[Vars.T] * self.T_norm
         P_C = y_c[Vars.P] * self.P_norm
         rho_C = self.law_of_rho(P_C, T_C)
-        kappa_C = self.law_of_opacity(rho_C, T_C)
-        return kappa_C, rho_C, T_C, P_C, Sigma0
+        varkappa_C = self.law_of_opacity(rho_C, T_C)
+        return varkappa_C, rho_C, T_C, P_C, Sigma0
 
     def tau0(self):
         y = self.parameters_C()
         Sigma0 = y[4]
-        kappa_C = y[0]
-        return Sigma0 * kappa_C / 2
+        varkappa_C = y[0]
+        return Sigma0 * varkappa_C / 2
 
     def Pi_finder(self):
-        kappa_C, rho_C, T_C, P_C, Sigma0 = self.parameters_C()
+        varkappa_C, rho_C, T_C, P_C, Sigma0 = self.parameters_C()
 
         Pi_1 = (self.omegaK ** 2 * self.z0 ** 2 * rho_C) / P_C
         Pi_2 = Sigma0 / (2 * self.z0 * rho_C)
         Pi_3 = (3 / 4) * (self.alpha * self.omegaK * P_C * Sigma0) / (self.Q0 * rho_C)
-        Pi_4 = (3 / 32) * (self.Teff / T_C) ** 4 * (Sigma0 * kappa_C)
+        Pi_4 = (3 / 32) * (self.Teff / T_C) ** 4 * (Sigma0 * varkappa_C)
 
         Pi_real = np.array([Pi_1, Pi_2, Pi_3, Pi_4])
 
@@ -174,21 +176,21 @@ class BaseVerticalStructure:
                 break
 
         z0r, result = brentq(dq, z0r, z0r / factor, full_output=True)
-        return result
+        return z0r, result
 
     def plot(self):
         self.fit()
         t = np.linspace(0, 1, 100)
         S, P, Q, T = self.integrate(t)[0]
-        plt.plot(t, S, label='Sigma')
-        plt.plot(t, P, label='P')
-        plt.plot(t, Q, label='Q')
-        plt.plot(t, T, label='T')
+        plt.plot(1 - t, S, label='$\Sigma$')
+        plt.plot(1 - t, P, label='$P$')
+        plt.plot(1 - t, Q, label='$Q$')
+        plt.plot(1 - t, T, label='$T$')
         plt.grid()
         plt.legend()
-        plt.xlabel('z / z0')
-        plt.title('Vertical Structure')
-        plt.show()
+        plt.xlabel('$z / z_0$')
+        plt.title('Vertical structure')
+        plt.savefig('fig/vs.pdf')
 
 
 class IdealGasMixin:
@@ -250,97 +252,189 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
     eggplant = []
     porridge_except = []
     eggplant_except = []
+    porridge_except2 = []
+    eggplant_except2 = []
 
     x_graph = []
     x_graph_except = []
+    x_graph_except2 = []
 
     graph_opacity = []
     graph_opacity_except = []
+    graph_opacity_except2 = []
 
     graph_rho_C = []
     graph_rho_C_except = []
+    graph_rho_C_except2 = []
 
     graph_T_C = []
     graph_T_C_except = []
+    graph_T_C_except2 = []
 
     graph_P_C = []
     graph_P_C_except = []
+    graph_P_C_except2 = []
 
     h = (G * M * r) ** (1 / 2)
-    plt.xscale('log')
-    plt.yscale('log')
-    for i, Teff in enumerate(np.r_[Teff_max:Teff_min:100j]):
-        F = 8 * np.pi / 3 * h**7 / (G*M)**4 * sigmaSB * Teff**4
-        print(i+1)
+
+    T_C_1 = 0
+    T_C_2 = 0
+
+    q = 1
+
+    Sigma_1 = np.infty
+    Sigma_2 = 0
+
+    Teff_1 = 0
+    Teff_2 = 0
+
+    for i, Teff in enumerate(np.r_[Teff_max:Teff_min:1000j]):
+        F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
+        print(i + 1)
         # print(F)
         vs = MesaVerticalStructure(M, alpha, r, F)
-        result = vs.fit()
+        vs.fit()
+
+        # Sigma_2 = vs.y_c()[Vars.S] * vs.sigma_norm
+        #
+        # if q == 1 and Sigma_2 > Sigma_1:
+        #     q += 1
+        #     Teff_1 = Teff
+        #     T_C_1 = vs.parameters_C()[2]
+        #
+        # if q == 2 and Sigma_2 < Sigma_1:
+        #     q += 1
+        #     Teff_2 = Teff
+        #     T_C_2 = vs.parameters_C()[2]
+        #
+        # Sigma_1 = Sigma_2
+
         porridge.append(Teff)
         eggplant.append(vs.y_c()[Vars.S] * vs.sigma_norm)
-        graph_opacity.append(vs.parameters_C()[0])
-        graph_rho_C.append(vs.parameters_C()[1])
-        graph_T_C.append(vs.parameters_C()[2])
-        graph_P_C.append(vs.parameters_C()[3])
+        par = vs.parameters_C()
+        graph_opacity.append(par[0])
+        graph_rho_C.append(par[1])
+        graph_T_C.append(par[2])
+        graph_P_C.append(par[3])
         x_graph.append(i)
-        if not result.converged:
-            print(result)
-            porridge.pop()
-            eggplant.pop()
-            graph_opacity.pop()
-            graph_rho_C.pop()
-            graph_T_C.pop()
-            graph_P_C.pop()
-            x_graph.pop()
 
-            porridge_except.append(Teff)
-            eggplant_except.append(vs.y_c()[Vars.S] * vs.sigma_norm)
+        Teff_1 = 5.4e3
+        # Teff_1 = 5.5e3
+        Teff_2 = 4.2e3
+        # Teff_2 = 4.7e3
 
-            graph_opacity_except.append(vs.parameters_C()[0])
-            graph_rho_C_except.append(vs.parameters_C()[1])
-            graph_T_C_except.append(vs.parameters_C()[2])
-            graph_P_C_except.append(vs.parameters_C()[3])
+        # if Teff > 5.4e3:
+        #     porridge.append(Teff)
+        #     eggplant.append(vs.y_c()[Vars.S] * vs.sigma_norm)
+        #     graph_opacity.append(vs.parameters_C()[0])
+        #     graph_rho_C.append(vs.parameters_C()[1])
+        #     graph_T_C.append(vs.parameters_C()[2])
+        #     graph_P_C.append(vs.parameters_C()[3])
+        #     x_graph.append(i)
+        #
+        # elif Teff >= 4.2e3 and Teff <= 5.4e3:
+        #     porridge_except.append(Teff)
+        #     eggplant_except.append(vs.y_c()[Vars.S] * vs.sigma_norm)
+        #     graph_opacity_except.append(vs.parameters_C()[0])
+        #     graph_rho_C_except.append(vs.parameters_C()[1])
+        #     graph_T_C_except.append(vs.parameters_C()[2])
+        #     graph_P_C_except.append(vs.parameters_C()[3])
+        #     x_graph_except.append(i)
+        #
+        # else:
+        #     porridge_except2.append(Teff)
+        #     eggplant_except2.append(vs.y_c()[Vars.S] * vs.sigma_norm)
+        #     graph_opacity_except2.append(vs.parameters_C()[0])
+        #     graph_rho_C_except2.append(vs.parameters_C()[1])
+        #     graph_T_C_except2.append(vs.parameters_C()[2])
+        #     graph_P_C_except2.append(vs.parameters_C()[3])
+        #     x_graph_except2.append(i)
 
-            x_graph_except.append(i)
-            print('kappa = ', vs.parameters_C()[0])
-            print('rho_C = ', vs.parameters_C()[1])
-            print('T_C = ', vs.parameters_C()[2])
-            print('P_C = ', vs.parameters_C()[3])
+    # print(Teff_1, Teff_2, T_C_1, T_C_2)
+    porridge = np.array(porridge)
+    supper = np.ma.masked_where(porridge <= Teff_1, porridge)
+    slower = np.ma.masked_where(porridge >= Teff_2, porridge)
+    smiddle = np.ma.masked_where(np.logical_or(porridge <= Teff_2, porridge >= Teff_1), porridge)
+    fig, ax = plt.subplots()
+    # fig.set_size_inches(6.4, 9.6)
 
-    plt.plot(eggplant, porridge, 'x', label='T_eff')
-    plt.plot(eggplant_except, porridge_except, 'mx', label='T_eff')
-    plt.legend()
+    ax.plot(eggplant, supper, 'g', eggplant, slower, 'b', eggplant, smiddle, 'c--')
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_xlabel(r'$\Sigma_0, g/cm^2$')
+    ax.set_ylabel(r'$T_{\rm eff}, K$')
+    ax.set_title('S-curve')
+    ax.grid(True, which='both', ls='-')
+    # plt.plot(eggplant, porridge, 'g-')
+    # plt.plot(eggplant_except, porridge_except, 'c--')
+    # plt.plot(eggplant_except2, porridge_except2, 'b-')
+    plt.tight_layout()
     plt.savefig('fig/s-curve.pdf')
     plt.close()
 
-    plt.plot(x_graph, graph_opacity, 'bo', label='Opacity')
-    plt.plot(x_graph_except, graph_opacity_except, 'mo', label='Opacity')
-    plt.legend()
-    plt.savefig('fig/opacity.pdf')
+    graph_opacity = np.array(graph_opacity)
+    graph_T_C = np.array(graph_T_C)
+    # supper = np.ma.masked_where(graph_T_C < T_C_1, graph_opacity)
+    # slower = np.ma.masked_where(graph_T_C > T_C_2, graph_opacity)
+    # smiddle = np.ma.masked_where(np.logical_or(graph_T_C <= T_C_2, graph_T_C >= T_C_1), graph_opacity)
+    supper = np.ma.masked_where(porridge <= Teff_1, graph_opacity)
+    slower = np.ma.masked_where(porridge >= Teff_2, graph_opacity)
+    smiddle = np.ma.masked_where(np.logical_or(porridge <= Teff_2, porridge >= Teff_1), graph_opacity)
+    fig, ax = plt.subplots()
+    ax.plot(graph_T_C, supper, 'g', graph_T_C, slower, 'b', graph_T_C, smiddle, 'c--')
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_xlabel('$T_C, K$')
+    ax.set_ylabel(r'$\varkappa, cm^2/g$')
+    ax.set_title('MESA opacity')
+    ax.grid(True, which='both', ls='-')
+    # plt.plot(graph_T_C, graph_opacity, 'g-')
+    # plt.plot(graph_T_C_except, graph_opacity_except, 'c--')
+    # plt.plot(graph_T_C_except2, graph_opacity_except2, 'b-')
+    # plt.axvspan(T_C_1, T_C_2, color='grey', alpha=0.5)
+    plt.savefig('fig/T_C-opacity.pdf')
     plt.close()
 
-    plt.plot(x_graph, graph_rho_C, 'bo', label='rho_C')
-    plt.plot(x_graph_except, graph_rho_C_except, 'mo', label='rho_C')
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel(r'$\rho_C$')
+    plt.ylabel('Opacity')
+    plt.grid()
+    plt.plot(graph_rho_C, graph_opacity, 'bo')
+    plt.plot(graph_rho_C_except, graph_opacity_except, 'mo')
+    plt.plot(graph_rho_C_except2, graph_opacity_except2, 'bo')
+    plt.savefig('fig/rho_C-opacity.pdf')
+    plt.close()
+
+    plt.plot(x_graph, graph_rho_C, 'bo', label='$rho_C$')
+    plt.plot(x_graph_except, graph_rho_C_except, 'mo', label='$rho_C$')
+    plt.plot(x_graph_except2, graph_rho_C_except2, 'bo', label='$rho_C$')
     plt.legend()
     plt.savefig('fig/rho_C.pdf')
     plt.close()
 
-    plt.plot(x_graph, graph_T_C, 'bo', label='T_C')
-    plt.plot(x_graph_except, graph_T_C_except, 'mo', label='T_C')
+    plt.plot(x_graph, graph_T_C, 'bo', label='$T_C$')
+    plt.plot(x_graph_except, graph_T_C_except, 'mo', label='$T_C$')
+    plt.plot(x_graph_except2, graph_T_C_except2, 'bo', label='$T_C$')
     plt.legend()
     plt.savefig('fig/T_C.pdf')
     plt.close()
 
-    plt.plot(x_graph, graph_P_C, 'bo', label='P_C')
-    plt.plot(x_graph_except, graph_P_C_except, 'mo', label='P_C')
+    plt.plot(x_graph, graph_P_C, 'bo', label='$P_C$')
+    plt.plot(x_graph_except, graph_P_C_except, 'mo', label='$P_C$')
+    plt.plot(x_graph_except2, graph_P_C_except2, 'bo', label='$P_C$')
     plt.legend()
     plt.savefig('fig/P_C.pdf')
     plt.close()
 
     plt.xscale('log')
     plt.yscale('log')
-    plt.plot(eggplant, graph_opacity, 'bo', label='Opacity')
-    plt.plot(eggplant_except, graph_opacity_except, 'mo', label='Opacity')
-    plt.legend()
+    plt.xlabel('Sigma0')
+    plt.ylabel('Opacity')
+    plt.grid()
+    plt.plot(eggplant, graph_opacity, 'bo')
+    plt.plot(eggplant_except, graph_opacity_except, 'mo')
+    plt.plot(eggplant_except2, graph_opacity_except2, 'bo')
     plt.savefig('fig/sigma-opacity.pdf')
     plt.close()
 
@@ -348,17 +442,18 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
 
 
 def main():
-    M = 6 * 2e33
+    M = 6 * cnst.M_sun.cgs.value
     r = 1e11
     alpha = 0.5
 
-    # S_curve(2.3e3, 1e4, M, alpha, r)
+    S_curve(2.3e3, 1e4, M, alpha, r)
 
-    for i, Teff in enumerate(np.r_[2.3e3:1e4:10j]):
-        h = (G * M * r) ** (1 / 2)
-        F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
-        vs = IdealKramersVerticalStructure(M, alpha, r, F)
-        vs.plot()
+    Teff = 1e4
+    h = (G * M * r) ** (1 / 2)
+    F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
+    print(F)
+    vs = MesaVerticalStructure(M, alpha, r, F)
+    vs.plot()
 
 
 if __name__ == '__main__':

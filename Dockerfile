@@ -1,5 +1,9 @@
 FROM mesa2py
 
+RUN apt-get update && \
+    apt-get install -y texlive-full && \ 
+    apt-get clean -y
+
 COPY /requirements.txt /requirements.txt
 RUN pip install -r /requirements.txt
 
