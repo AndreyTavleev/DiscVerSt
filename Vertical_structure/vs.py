@@ -4,7 +4,7 @@ from enum import IntEnum
 
 from scipy.integrate import solve_ivp
 from scipy.optimize import brentq
-import matplotlib
+from scipy.interpolate import splrep, splev
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
 import numpy as np
@@ -182,7 +182,7 @@ class BaseVerticalStructure:
         self.fit()
         t = np.linspace(0, 1, 100)
         S, P, Q, T = self.integrate(t)[0]
-        plt.plot(1 - t, S, label='$\Sigma$')
+        plt.plot(1 - t, S, label=r'$\Sigma$')
         plt.plot(1 - t, P, label='$P$')
         plt.plot(1 - t, Q, label='$Q$')
         plt.plot(1 - t, T, label='$T$')
@@ -191,6 +191,31 @@ class BaseVerticalStructure:
         plt.xlabel('$z / z_0$')
         plt.title('Vertical structure')
         plt.savefig('fig/vs.pdf')
+
+    def TempGrad(self):
+        self.fit()
+        n = 1000
+        t = np.linspace(0, 1, n)
+        S, P, Q, T = self.integrate(t)[0]
+        spline = splrep(np.log(P * self.P_norm), np.log(T * self.T_norm), k=3)
+        Grad_plot = splev(np.log(P * self.P_norm), spline, der=1)
+        MESA_Grad_plot = []
+        ion = []
+        for i in range(n):
+            rho, eos = opacity.rho(P[i] * self.P_norm, T[i] * self.T_norm, True)
+            MESA_Grad_plot.append(eos.grad_ad)
+            ion.append(np.exp(eos.lnfree_e))
+        plt.plot(1 - t, Grad_plot, label='splev, k = %d' % 3)
+        plt.plot(1 - t, MESA_Grad_plot, label='MESA')
+        plt.plot(1 - t, T, label='T')
+        plt.plot(1 - t, ion, label='free-e')
+        plt.legend()
+        plt.xlabel('$z / z_0$')
+        plt.title(r'$\frac{d(lnT)}{d(lnP)}, \text{Teff} = %d$' % self.Teff)
+        plt.hlines(0.4, *plt.xlim(), linestyles='--')
+        plt.grid()
+        plt.savefig('fig/TempGrad%d.pdf' % self.Teff)
+        plt.close()
 
 
 class IdealGasMixin:
@@ -255,6 +280,8 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
     porridge_except2 = []
     eggplant_except2 = []
 
+    Mdot_graph = []
+
     x_graph = []
     x_graph_except = []
     x_graph_except2 = []
@@ -288,8 +315,9 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
     Teff_1 = 0
     Teff_2 = 0
 
-    for i, Teff in enumerate(np.r_[Teff_max:Teff_min:1000j]):
+    for i, Teff in enumerate(np.r_[Teff_max:Teff_min:100j]):
         F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
+        Mdot = F / h
         print(i + 1)
         # print(F)
         vs = MesaVerticalStructure(M, alpha, r, F)
@@ -310,6 +338,7 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
         # Sigma_1 = Sigma_2
 
         porridge.append(Teff)
+        Mdot_graph.append(Mdot)
         eggplant.append(vs.y_c()[Vars.S] * vs.sigma_norm)
         par = vs.parameters_C()
         graph_opacity.append(par[0])
@@ -350,110 +379,137 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
         #     graph_P_C_except2.append(vs.parameters_C()[3])
         #     x_graph_except2.append(i)
 
-    # print(Teff_1, Teff_2, T_C_1, T_C_2)
-    porridge = np.array(porridge)
-    supper = np.ma.masked_where(porridge <= Teff_1, porridge)
-    slower = np.ma.masked_where(porridge >= Teff_2, porridge)
-    smiddle = np.ma.masked_where(np.logical_or(porridge <= Teff_2, porridge >= Teff_1), porridge)
-    fig, ax = plt.subplots()
-    # fig.set_size_inches(6.4, 9.6)
+    # # print(Teff_1, Teff_2, T_C_1, T_C_2)
+    # porridge = np.array(porridge)
+    # supper = np.ma.masked_where(porridge <= Teff_1, Mdot_graph)
+    # slower = np.ma.masked_where(porridge >= Teff_2, Mdot_graph)
+    # smiddle = np.ma.masked_where(np.logical_or(porridge <= Teff_2, porridge >= Teff_1), Mdot_graph)
+    # fig, ax = plt.subplots()
+    # # fig.set_size_inches(6.4, 9.6)
+    #
+    # ax.plot(eggplant, supper, 'g', eggplant, slower, 'b', eggplant, smiddle, 'c--')
+    # ax.set_xscale('log')
+    # ax.set_yscale('log')
+    # ax.set_xlabel(r'$\Sigma_0, g/cm^2$')
+    # # ax.set_ylabel(r'$T_{\rm eff}, K$')
+    # ax.set_ylabel(r'$M$')
+    # ax.set_title('S-curve')
+    # ax.grid(True, which='both', ls='-')
+    # # plt.plot(eggplant, porridge, 'g-')
+    # # plt.plot(eggplant_except, porridge_except, 'c--')
+    # # plt.plot(eggplant_except2, porridge_except2, 'b-')
+    # plt.tight_layout()
+    # plt.savefig('fig/s-curve.pdf')
+    # plt.close()
+    #
+    # graph_opacity = np.array(graph_opacity)
+    # graph_T_C = np.array(graph_T_C)
+    # # supper = np.ma.masked_where(graph_T_C < T_C_1, graph_opacity)
+    # # slower = np.ma.masked_where(graph_T_C > T_C_2, graph_opacity)
+    # # smiddle = np.ma.masked_where(np.logical_or(graph_T_C <= T_C_2, graph_T_C >= T_C_1), graph_opacity)
+    # supper = np.ma.masked_where(porridge <= Teff_1, graph_opacity)
+    # slower = np.ma.masked_where(porridge >= Teff_2, graph_opacity)
+    # smiddle = np.ma.masked_where(np.logical_or(porridge <= Teff_2, porridge >= Teff_1), graph_opacity)
+    # fig, ax = plt.subplots()
+    # ax.plot(graph_T_C, supper, 'g', graph_T_C, slower, 'b', graph_T_C, smiddle, 'c--')
+    # ax.set_xscale('log')
+    # ax.set_yscale('log')
+    # ax.set_xlabel('$T_C, K$')
+    # ax.set_ylabel(r'$\varkappa, cm^2/g$')
+    # ax.set_title('MESA opacity')
+    # ax.grid(True, which='both', ls='-')
+    # # plt.plot(graph_T_C, graph_opacity, 'g-')
+    # # plt.plot(graph_T_C_except, graph_opacity_except, 'c--')
+    # # plt.plot(graph_T_C_except2, graph_opacity_except2, 'b-')
+    # # plt.axvspan(T_C_1, T_C_2, color='grey', alpha=0.5)
+    # plt.savefig('fig/T_C-opacity.pdf')
+    # plt.close()
+    #
+    # plt.xscale('log')
+    # plt.yscale('log')
+    # plt.xlabel(r'$\rho_C$')
+    # plt.ylabel('Opacity')
+    # plt.grid()
+    # plt.plot(graph_rho_C, graph_opacity, 'bo')
+    # plt.plot(graph_rho_C_except, graph_opacity_except, 'mo')
+    # plt.plot(graph_rho_C_except2, graph_opacity_except2, 'bo')
+    # plt.savefig('fig/rho_C-opacity.pdf')
+    # plt.close()
+    #
+    # plt.plot(x_graph, graph_rho_C, 'bo', label='$rho_C$')
+    # plt.plot(x_graph_except, graph_rho_C_except, 'mo', label='$rho_C$')
+    # plt.plot(x_graph_except2, graph_rho_C_except2, 'bo', label='$rho_C$')
+    # plt.legend()
+    # plt.savefig('fig/rho_C.pdf')
+    # plt.close()
+    #
+    # plt.plot(x_graph, graph_T_C, 'bo', label='$T_C$')
+    # plt.plot(x_graph_except, graph_T_C_except, 'mo', label='$T_C$')
+    # plt.plot(x_graph_except2, graph_T_C_except2, 'bo', label='$T_C$')
+    # plt.legend()
+    # plt.savefig('fig/T_C.pdf')
+    # plt.close()
+    #
+    # plt.plot(x_graph, graph_P_C, 'bo', label='$P_C$')
+    # plt.plot(x_graph_except, graph_P_C_except, 'mo', label='$P_C$')
+    # plt.plot(x_graph_except2, graph_P_C_except2, 'bo', label='$P_C$')
+    # plt.legend()
+    # plt.savefig('fig/P_C.pdf')
+    # plt.close()
+    #
+    # plt.xscale('log')
+    # plt.yscale('log')
+    # plt.xlabel('Sigma0')
+    # plt.ylabel('Opacity')
+    # plt.grid()
+    # plt.plot(eggplant, graph_opacity, 'bo')
+    # plt.plot(eggplant_except, graph_opacity_except, 'mo')
+    # plt.plot(eggplant_except2, graph_opacity_except2, 'bo')
+    # plt.savefig('fig/sigma-opacity.pdf')
+    # plt.close()
 
-    ax.plot(eggplant, supper, 'g', eggplant, slower, 'b', eggplant, smiddle, 'c--')
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    ax.set_xlabel(r'$\Sigma_0, g/cm^2$')
-    ax.set_ylabel(r'$T_{\rm eff}, K$')
-    ax.set_title('S-curve')
-    ax.grid(True, which='both', ls='-')
+    # plt.show()
+
+    # fig, axs = plt.subplots(1, 3, sharey=True)
+
+    # plt.grid(True)
+    plt.plot(eggplant, Mdot_graph, label=r'{:g} cm'.format(r))
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel(r'$\Sigma_0, g/cm^2$')
+    # ax.set_ylabel(r'$T_{\rm eff}, K$')
+    plt.ylabel(r'$\dot{M}, g/s$')
+    # ax.set_title('S-curve')
     # plt.plot(eggplant, porridge, 'g-')
     # plt.plot(eggplant_except, porridge_except, 'c--')
     # plt.plot(eggplant_except2, porridge_except2, 'b-')
-    plt.tight_layout()
-    plt.savefig('fig/s-curve.pdf')
-    plt.close()
-
-    graph_opacity = np.array(graph_opacity)
-    graph_T_C = np.array(graph_T_C)
-    # supper = np.ma.masked_where(graph_T_C < T_C_1, graph_opacity)
-    # slower = np.ma.masked_where(graph_T_C > T_C_2, graph_opacity)
-    # smiddle = np.ma.masked_where(np.logical_or(graph_T_C <= T_C_2, graph_T_C >= T_C_1), graph_opacity)
-    supper = np.ma.masked_where(porridge <= Teff_1, graph_opacity)
-    slower = np.ma.masked_where(porridge >= Teff_2, graph_opacity)
-    smiddle = np.ma.masked_where(np.logical_or(porridge <= Teff_2, porridge >= Teff_1), graph_opacity)
-    fig, ax = plt.subplots()
-    ax.plot(graph_T_C, supper, 'g', graph_T_C, slower, 'b', graph_T_C, smiddle, 'c--')
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    ax.set_xlabel('$T_C, K$')
-    ax.set_ylabel(r'$\varkappa, cm^2/g$')
-    ax.set_title('MESA opacity')
-    ax.grid(True, which='both', ls='-')
-    # plt.plot(graph_T_C, graph_opacity, 'g-')
-    # plt.plot(graph_T_C_except, graph_opacity_except, 'c--')
-    # plt.plot(graph_T_C_except2, graph_opacity_except2, 'b-')
-    # plt.axvspan(T_C_1, T_C_2, color='grey', alpha=0.5)
-    plt.savefig('fig/T_C-opacity.pdf')
-    plt.close()
-
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.xlabel(r'$\rho_C$')
-    plt.ylabel('Opacity')
-    plt.grid()
-    plt.plot(graph_rho_C, graph_opacity, 'bo')
-    plt.plot(graph_rho_C_except, graph_opacity_except, 'mo')
-    plt.plot(graph_rho_C_except2, graph_opacity_except2, 'bo')
-    plt.savefig('fig/rho_C-opacity.pdf')
-    plt.close()
-
-    plt.plot(x_graph, graph_rho_C, 'bo', label='$rho_C$')
-    plt.plot(x_graph_except, graph_rho_C_except, 'mo', label='$rho_C$')
-    plt.plot(x_graph_except2, graph_rho_C_except2, 'bo', label='$rho_C$')
-    plt.legend()
-    plt.savefig('fig/rho_C.pdf')
-    plt.close()
-
-    plt.plot(x_graph, graph_T_C, 'bo', label='$T_C$')
-    plt.plot(x_graph_except, graph_T_C_except, 'mo', label='$T_C$')
-    plt.plot(x_graph_except2, graph_T_C_except2, 'bo', label='$T_C$')
-    plt.legend()
-    plt.savefig('fig/T_C.pdf')
-    plt.close()
-
-    plt.plot(x_graph, graph_P_C, 'bo', label='$P_C$')
-    plt.plot(x_graph_except, graph_P_C_except, 'mo', label='$P_C$')
-    plt.plot(x_graph_except2, graph_P_C_except2, 'bo', label='$P_C$')
-    plt.legend()
-    plt.savefig('fig/P_C.pdf')
-    plt.close()
-
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.xlabel('Sigma0')
-    plt.ylabel('Opacity')
-    plt.grid()
-    plt.plot(eggplant, graph_opacity, 'bo')
-    plt.plot(eggplant_except, graph_opacity_except, 'mo')
-    plt.plot(eggplant_except2, graph_opacity_except2, 'bo')
-    plt.savefig('fig/sigma-opacity.pdf')
-    plt.close()
-
-    # plt.show()
+    # plt.tight_layout()
 
 
 def main():
     M = 6 * cnst.M_sun.cgs.value
-    r = 1e11
+    r = 8e10
     alpha = 0.5
 
-    S_curve(2.3e3, 1e4, M, alpha, r)
+    # for r in [5.5e10, 6.75e10, 8e10]:
+    #     S_curve(2.3e3, 1e4, M, alpha, r)
+    #
+    # plt.hlines(1e17, *plt.xlim(),linestyles='--')
+    # plt.grid(True, which='both', ls='-')
+    # plt.legend()
+    # plt.title('S-curve')
+    # plt.savefig('fig/s-curve2.pdf')
+    # plt.close()
 
-    Teff = 1e4
-    h = (G * M * r) ** (1 / 2)
-    F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
-    print(F)
-    vs = MesaVerticalStructure(M, alpha, r, F)
-    vs.plot()
+    for Teff in np.linspace(2.3e4, 6e4, 5):
+        h = (G * M * r) ** (1 / 2)
+        F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
+        # print(F / h)
+        vs = MesaVerticalStructure(M, alpha, r, F)
+        # vs.plot()
+        vs.TempGrad()
+        print('Teff = %d' % vs.Teff)
+        print('tau = %d' % vs.tau0())
 
 
 if __name__ == '__main__':
