@@ -4,7 +4,7 @@ from enum import IntEnum
 
 from scipy.integrate import solve_ivp
 from scipy.optimize import brentq
-from scipy.interpolate import splrep, splev
+from scipy.interpolate import CubicSpline
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
 import numpy as np
@@ -196,19 +196,17 @@ class BaseVerticalStructure:
         self.fit()
         n = 1000
         t = np.linspace(0, 1, n)
-        S, P, Q, T = self.integrate(t)[0]
-        spline = splrep(np.log(P * self.P_norm), np.log(T * self.T_norm), k=3)
-        Grad_plot = splev(np.log(P * self.P_norm), spline, der=1)
-        MESA_Grad_plot = []
-        ion = []
-        for i in range(n):
-            rho, eos = opacity.rho(P[i] * self.P_norm, T[i] * self.T_norm, True)
-            MESA_Grad_plot.append(eos.grad_ad)
-            ion.append(np.exp(eos.lnfree_e))
-        plt.plot(1 - t, Grad_plot, label='splev, k = %d' % 3)
-        plt.plot(1 - t, MESA_Grad_plot, label='MESA')
-        plt.plot(1 - t, T, label='T')
-        plt.plot(1 - t, ion, label='free-e')
+        y = self.integrate(t)[0]
+        S, P, Q, T = y
+        Grad_plot = CubicSpline(np.log(P), np.log(T)).derivative()(np.log(P))
+        rho, eos = opacity.rho(P * self.P_norm, T * self.T_norm, True)
+        ion = np.exp(eos.lnfree_e)
+        kappa = self.opacity(y)
+        plt.plot(1 - t, Grad_plot, label=r'$\nabla_{rad}$')
+        plt.plot(1 - t, eos.grad_ad, label=r'$\nabla_{ad}$')
+        plt.plot(1 - t, T * self.T_norm / 1e5, label='T / 1e5K')
+        plt.plot(1 - t, ion, label='free e')
+        plt.plot(1 - t, kappa / kappa[-1], label=r'$\kappa / \kappa_C$')
         plt.legend()
         plt.xlabel('$z / z_0$')
         plt.title(r'$\frac{d(lnT)}{d(lnP)}, \text{Teff} = %d$' % self.Teff)
