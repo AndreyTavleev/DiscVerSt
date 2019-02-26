@@ -4,7 +4,7 @@ from enum import IntEnum
 
 from scipy.integrate import solve_ivp
 from scipy.optimize import brentq
-from scipy.interpolate import CubicSpline
+from scipy.interpolate import InterpolatedUnivariateSpline
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
 import numpy as np
@@ -12,11 +12,14 @@ from astropy import constants as cnst
 
 try:
     from opacity import Opac
+
     opacity = Opac(mesa_dir='/mesa')
 except ImportError:
     class HasAnyAttr:
         def __getattr__(self, item):
             return None
+
+
     opacity = HasAnyAttr()
 
 # matplotlib.use("Agg")
@@ -95,7 +98,7 @@ class BaseVerticalStructure:
         )
         # assert solution.success
         # integral = quad(lambda x: (1 + 3 * x / 2) ** (9 / 8), 0, 2 / 3)[0]
-        # A = math.sqrt(omegaK ** 2 * z0 * R * integral * Teff ** (9 / 2) / (xi0_kram * mu * 2 ** (1 / 8))) / P0
+        # A = np.sqrt(self.omegaK ** 2 * self.z0 * R * integral * self.Teff ** (9 / 2) / (5e24 * self.mu * 2 ** (1 / 8)))
         # A = root(lambda P1: 3 * P0 * P1 / 2 - wqe(3 / 2, P0 * P1, z0), [0.5]).x[0]
         y = np.empty(4, dtype=np.float)
         y[Vars.S] = 0
@@ -132,7 +135,7 @@ class BaseVerticalStructure:
         T_C = y_c[Vars.T] * self.T_norm
         P_C = y_c[Vars.P] * self.P_norm
         rho_C = self.law_of_rho(P_C, T_C)
-        varkappa_C = self.law_of_opacity(rho_C, T_C)
+        varkappa_C = self.opacity(y_c)
         return varkappa_C, rho_C, T_C, P_C, Sigma0
 
     def tau0(self):
@@ -198,18 +201,18 @@ class BaseVerticalStructure:
         t = np.linspace(0, 1, n)
         y = self.integrate(t)[0]
         S, P, Q, T = y
-        Grad_plot = CubicSpline(np.log(P), np.log(T)).derivative()(np.log(P))
+        grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
         rho, eos = opacity.rho(P * self.P_norm, T * self.T_norm, True)
         ion = np.exp(eos.lnfree_e)
         kappa = self.opacity(y)
-        plt.plot(1 - t, Grad_plot, label=r'$\nabla_{rad}$')
+        plt.plot(1 - t, grad_plot(np.log(P)), label=r'$\nabla_{rad}$')
         plt.plot(1 - t, eos.grad_ad, label=r'$\nabla_{ad}$')
-        plt.plot(1 - t, T * self.T_norm / 1e5, label='T / 1e5K')
+        plt.plot(1 - t, T * self.T_norm / 2e5, label='T / 2e5K')
         plt.plot(1 - t, ion, label='free e')
         plt.plot(1 - t, kappa / kappa[-1], label=r'$\kappa / \kappa_C$')
         plt.legend()
         plt.xlabel('$z / z_0$')
-        plt.title(r'$\frac{d(lnT)}{d(lnP)}, \text{Teff} = %d$' % self.Teff)
+        plt.title(r'$\frac{d(lnT)}{d(lnP)}, T_{\rm eff} = %d$' % self.Teff)
         plt.hlines(0.4, *plt.xlim(), linestyles='--')
         plt.grid()
         plt.savefig('fig/TempGrad%d.pdf' % self.Teff)
@@ -471,17 +474,17 @@ def S_curve(Teff_min, Teff_max, M, alpha, r):
     # fig, axs = plt.subplots(1, 3, sharey=True)
 
     # plt.grid(True)
-    plt.plot(eggplant, Mdot_graph, label=r'{:g} cm'.format(r))
+    plt.plot(eggplant, porridge, label=r'{:g} cm'.format(r))
     plt.xscale('log')
     plt.yscale('log')
     plt.xlabel(r'$\Sigma_0, g/cm^2$')
-    # ax.set_ylabel(r'$T_{\rm eff}, K$')
-    plt.ylabel(r'$\dot{M}, g/s$')
-    # ax.set_title('S-curve')
+    plt.ylabel(r'$T_{\rm eff}, K$')
+    # plt.ylabel(r'$\dot{M}, g/s$')
+    plt.title('S-curve')
     # plt.plot(eggplant, porridge, 'g-')
     # plt.plot(eggplant_except, porridge_except, 'c--')
     # plt.plot(eggplant_except2, porridge_except2, 'b-')
-    # plt.tight_layout()
+    plt.tight_layout()
 
 
 def main():
