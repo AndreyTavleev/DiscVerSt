@@ -1,7 +1,7 @@
 import unittest
 
 from numpy.testing import assert_allclose
-from Verstr import FindPi
+from vertstr import FindPi
 import numpy as np
 from astropy import constants as cnst
 
