@@ -107,6 +107,16 @@ class BaseVerticalStructure:
         dy[Vars.Q] = -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm
         dy[Vars.T] = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
                       * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
+
+        # dTdz_Rad = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
+        #               * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
+        #
+        # rho_ad, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
+        #
+        # if y[Vars.P]/y[Vars.T]*dTdz_Rad/dy[Vars.T] < eos.grad_ad:
+        #     dy[Vars.T] = dTdz_Rad
+        # else:
+        #     dy[Vars.T] = eos.grad_ad * y[Vars.T]/y[Vars.P]*dy[Vars.P]
         return dy
 
     def integrate(self, t):

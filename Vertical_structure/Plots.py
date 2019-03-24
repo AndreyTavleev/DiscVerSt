@@ -25,7 +25,6 @@ rcParams['text.latex.preamble'] = [r'\usepackage[utf8]{inputenc}', r'\usepackage
 # r'\usepackage[english,russian]{babel}'
 
 sigmaSB = cnst.sigma_sb.cgs.value
-R = cnst.R.cgs.value
 G = cnst.G.cgs.value
 
 
@@ -50,6 +49,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff'):
 
     vs = MesaVerticalStructure(M, alpha, r, F)
     vs.fit()
+    print('Teff = ', vs.Teff)
     t = np.linspace(0, 1, 100)
     S, P, Q, T = vs.integrate(t)[0]
     plt.plot(1 - t, S, label=r'$\Sigma$')
@@ -59,7 +59,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff'):
     plt.grid()
     plt.legend()
     plt.xlabel('$z / z_0$')
-    plt.title('Vertical structure')
+    plt.title('Vertical structure, Teff = %d' % vs.Teff)
     plt.savefig('fig/vs.pdf')
     plt.close()
 
@@ -148,8 +148,15 @@ def main():
     r = 8e10
     alpha = 0.5
 
-    Structure_Plot(M, alpha, r, 1e17, input='Mdot')
-    # S_curve(2e3, 1e4, M, alpha, r, input='Teff', output='Mdot')
+    # M = 1e8 * cnst.M_sun.cgs.value
+    # c = cnst.c.cgs.value
+    # rg = 2 * G * M / c ** 2
+    # r = 30 * rg
+    # alpha = 0.5
+    #
+    # S_curve(1e25, 1e27, M, alpha, r, input='Mdot', output='Teff')
+
+    # Structure_Plot(M, alpha, r, 2e4, input='Teff')
 
     # for r in [5.5e10, 6e10, 6.75e10]:
     #     S_curve(2.3e3, 1e4, M, alpha, r, output='Mdot')
@@ -160,7 +167,8 @@ def main():
     # plt.title('S-curve')
     # plt.show()
 
-    # for Teff in np.linspace(2.3e3, 6e4, 5):
+    # for Teff in [8880.842903876623, 11077.844009861414]:
+    # for Teff in np.linspace(2e3, 5e4, 20):
     #     h = (G * M * r) ** (1 / 2)
     #     F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
     #     # print(F / h)
@@ -168,6 +176,36 @@ def main():
     #     TempGrad_Plot(vs)
     #     print('Teff = %d' % vs.Teff)
     #     print('tau = %d' % vs.tau0())
+
+    # S_curve(1e17, 1e19, M, alpha, r, input='Mdot', output='Mdot')
+
+    # Sigma_up = 589 * (alpha / 0.1) ** (-0.78) * (r / 1e10) ** 1.07 * (M / cnst.M_sun.cgs.value) ** (-0.36)
+    # Teff_up = 13100 * (alpha / 0.1) ** (-0.01) * (r / 1e10) ** (-0.08) * (M / cnst.M_sun.cgs.value) ** 0.03
+    # Mdot_up = 1.05e17 * (alpha / 0.1) ** (-0.05) * (r / 1e10) ** 2.69 * (M / cnst.M_sun.cgs.value) ** (-0.9)
+    # Sigma_down = 1770 * (alpha / 0.1) ** (-0.83) * (r / 1e10) ** 1.2 * (M / cnst.M_sun.cgs.value) ** (-0.4)
+    # Teff_down = 9700 * (r / 1e10) ** (-0.09) * (M / cnst.M_sun.cgs.value) ** 0.03
+    # Mdot_down = 3.18e16 * (alpha / 0.1) ** (-0.01) * (r / 1e10) ** 2.65 * (M / cnst.M_sun.cgs.value) ** (-0.88)
+    #
+    # Mdot_down_another = 5.9e16 * (alpha / 0.1) ** (-0.41) * (r / 1e10) ** 2.62 * (M / cnst.M_sun.cgs.value) ** (-0.87)
+    #
+    # print(Sigma_up, Mdot_up)
+    # print(Sigma_down, Mdot_down)
+    #
+    # plt.scatter(Sigma_down, Mdot_down)
+    # plt.scatter(Sigma_up, Mdot_up)
+    # plt.scatter(Sigma_down, Mdot_down_another, marker='*')
+    #
+    # plt.savefig('fig/S-curve.pdf')
+    # plt.close()
+
+    # Opacity_Plot(1e3, 3e4, M, alpha, r)
+
+    Teff = 11077.0
+    h = (G * M * r) ** (1 / 2)
+    F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
+    vs = MesaVerticalStructure(M, alpha, r, F)
+    TempGrad_Plot(vs)
+    Structure_Plot(M, alpha, r, Teff, input='Teff')
 
 
 if __name__ == '__main__':
