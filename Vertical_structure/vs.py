@@ -10,7 +10,7 @@ from astropy import constants as cnst
 try:
     from opacity import Opac
 
-    opacity = Opac(mesa_dir='/mesa')
+    opacity = Opac({b'he4': 0.25, b'h1': 0.75}, mesa_dir='/mesa')
 except ImportError:
     class HasAnyAttr:
         def __getattr__(self, item):
@@ -84,7 +84,7 @@ class BaseVerticalStructure:
         solution = solve_ivp(
             self.photospheric_pressure_equation,
             [0, 2 / 3],
-            [1e-8]
+            [1e-8 * self.P_norm]
         )
         # assert solution.success
         # integral = quad(lambda x: (1 + 3 * x / 2) ** (9 / 8), 0, 2 / 3)[0]
