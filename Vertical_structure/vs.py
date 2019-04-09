@@ -105,18 +105,18 @@ class BaseVerticalStructure:
         dy[Vars.S] = rho * 2 * self.z0 / self.sigma_norm
         dy[Vars.P] = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
         dy[Vars.Q] = -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm
-        dy[Vars.T] = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
+        # dy[Vars.T] = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
+        #               * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
+
+        dTdz_Rad = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
                       * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
 
-        # dTdz_Rad = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
-        #               * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
-        #
-        # rho_ad, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
-        #
-        # if y[Vars.P]/y[Vars.T]*dTdz_Rad/dy[Vars.T] < eos.grad_ad:
-        #     dy[Vars.T] = dTdz_Rad
-        # else:
-        #     dy[Vars.T] = eos.grad_ad * y[Vars.T]/y[Vars.P]*dy[Vars.P]
+        rho_ad, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
+
+        if y[Vars.P]/y[Vars.T]*dTdz_Rad/dy[Vars.T] < eos.grad_ad:
+            dy[Vars.T] = dTdz_Rad
+        else:
+            dy[Vars.T] = eos.grad_ad * y[Vars.T]/y[Vars.P]*dy[Vars.P]
         return dy
 
     def integrate(self, t):
@@ -169,7 +169,7 @@ class BaseVerticalStructure:
         z0r = self.z0 / self.r
         sign_dq = dq(z0r)
         if sign_dq > 0:
-            factor = 2
+            factor = 2.0
         else:
             factor = 0.5
 
