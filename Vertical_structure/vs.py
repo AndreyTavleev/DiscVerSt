@@ -10,7 +10,7 @@ from astropy import constants as cnst
 try:
     from opacity import Opac
 
-    opacity = Opac({b'he4': 0.25, b'h1': 0.75}, mesa_dir='/mesa')
+    opacity = Opac({b'he4': 1.0}, mesa_dir='/mesa')
 except ImportError:
     class HasAnyAttr:
         def __getattr__(self, item):
@@ -99,26 +99,30 @@ class BaseVerticalStructure:
         y[Vars.T] = self.Teff / self.T_norm
         return y
 
+    def dlnTdlnP(self, y, t):
+        raise NotImplementedError
+
     def dydt(self, t, y):
         dy = np.empty(4)
         rho = self.rho(y)
-        w_r_phi = self.viscosity(y)
         xi = self.opacity(y)
+        w_r_phi = self.viscosity(y)
         dy[Vars.S] = rho * 2 * self.z0 / self.sigma_norm
         dy[Vars.P] = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
         dy[Vars.Q] = -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm
+        # Coef = self.dlnTdlnP(y, t)
+        # dy[Vars.T] = Coef * dy[Vars.P] * y[Vars.T] / y[Vars.P]
         dy[Vars.T] = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
                       * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
 
         # dTdz_Rad = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
-        #               * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
-        #
+        #             * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
         # rho_ad, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
         #
-        # if y[Vars.P]/y[Vars.T]*dTdz_Rad/dy[Vars.T] < eos.grad_ad:
-        #     dy[Vars.T] = dTdz_Rad
+        # if y[Vars.P] / y[Vars.T] * dTdz_Rad / dy[Vars.P] < eos.grad_ad:
+        #     dy[Vars.T] = y[Vars.P] / y[Vars.T] * dTdz_Rad / dy[Vars.P]
         # else:
-        #     dy[Vars.T] = eos.grad_ad * y[Vars.T]/y[Vars.P]*dy[Vars.P]
+        #     dy[Vars.T] = eos.grad_ad * dy[Vars.P] * y[Vars.T] / y[Vars.P]
         return dy
 
     def integrate(self, t):
@@ -184,6 +188,38 @@ class BaseVerticalStructure:
         return z0r, result
 
 
+class RadiativeTempGradient:
+    def dlnTdlnP(self, y, t):
+        rho = self.rho(y)
+        xi = self.opacity(y)
+        dTdz_Rad = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
+                    * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
+        dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
+        return y[Vars.P] / y[Vars.T] * dTdz_Rad / dPdz
+
+
+class AdiabaticTempGradient:
+    def dlnTdlnP(self, y, t):
+        rho_ad, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
+        return eos.grad_ad
+
+
+class FirstAssumptionRadiativeConvectiveGradient:
+    def dlnTdlnP(self, y, t):
+        rho = self.rho(y)
+        xi = self.opacity(y)
+        dTdz_Rad = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
+                    * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
+        dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
+
+        rho_ad, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
+
+        if y[Vars.P] / y[Vars.T] * dTdz_Rad / dPdz < eos.grad_ad:
+            return y[Vars.P] / y[Vars.T] * dTdz_Rad / dPdz
+        else:
+            return eos.grad_ad
+
+
 class IdealGasMixin:
     mu = 0.6
 
@@ -226,15 +262,16 @@ class MesaOpacityMixin:
     law_of_opacity = opacity.kappa
 
 
-class IdealKramersVerticalStructure(IdealGasMixin, KramersOpacityMixin, BaseVerticalStructure):
+class IdealKramersVerticalStructure(IdealGasMixin, KramersOpacityMixin, RadiativeTempGradient, BaseVerticalStructure):
     pass
 
 
-class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, BaseVerticalStructure):
+class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseVerticalStructure):
     pass
 
 
-class IdealBellLin1994VerticalStructure(IdealGasMixin, BellLin1994TwoComponentOpacityMixin, BaseVerticalStructure):
+class IdealBellLin1994VerticalStructure(IdealGasMixin, BellLin1994TwoComponentOpacityMixin, RadiativeTempGradient,
+                                        BaseVerticalStructure):
     pass
 
 

@@ -26,9 +26,6 @@ class PiTestCase(unittest.TestCase):
         vs.fit()
         tau0 = vs.tau0()
         fp = FindPi(tau0)
-        # print(vs.Pi_finder())
-        # print(fp.getPi())
-        # print(np.array(vs.Pi_finder())-np.array(fp.getPi()))
 
         actual = vs.Pi_finder()
         desired = fp.getPi()
