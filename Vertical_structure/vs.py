@@ -34,7 +34,7 @@ class Vars(IntEnum):
 class BaseVerticalStructure:
     mu = 0.6
 
-    def __init__(self, Mx, alpha, r, F):
+    def __init__(self, Mx, alpha, r, F, eps=1e-4):
         self.Mx = Mx
         self.GM = G * Mx
         self.alpha = alpha
@@ -45,6 +45,8 @@ class BaseVerticalStructure:
         self.Q_norm = self.Q0 = (3 / (8 * np.pi)) * F * self.omegaK / self.r ** 2
         self.Teff = (self.Q0 / sigmaSB) ** (1 / 4)
         self.z0 = self.z0_init()
+
+        self.eps = eps
 
     @property
     def z0(self):
@@ -84,7 +86,7 @@ class BaseVerticalStructure:
         solution = solve_ivp(
             self.photospheric_pressure_equation,
             [0, 2 / 3],
-            [1e-8 * self.P_norm]
+            [1e-8 * self.P_norm], rtol=self.eps
         )
         # assert solution.success
         # integral = quad(lambda x: (1 + 3 * x / 2) ** (9 / 8), 0, 2 / 3)[0]
@@ -121,7 +123,7 @@ class BaseVerticalStructure:
 
     def integrate(self, t):
         assert t[0] == 0
-        solution = solve_ivp(self.dydt, (t[0], t[-1]), self.initial(), t_eval=t)
+        solution = solve_ivp(self.dydt, (t[0], t[-1]), self.initial(), t_eval=t, rtol=self.eps)
         # assert solution.success
         return [solution.y, solution.message]
 

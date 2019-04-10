@@ -17,18 +17,22 @@ class PiTestCase(unittest.TestCase):
 
         sigmaSB = cnst.sigma_sb.cgs.value
         G = cnst.G.cgs.value
-        Teff = 2.3e3
+        Teff = 2.3e4
         h = (G * M * r) ** (1 / 2)
         F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
-        print(F)
+        # print(F)
 
         vs = IdealKramersVerticalStructure(M, alpha, r, F)
         vs.fit()
         tau0 = vs.tau0()
         fp = FindPi(tau0)
-        print(vs.Pi_finder())
-        print(fp.getPi())
-        print(np.array(vs.Pi_finder())-np.array(fp.getPi()))
+        # print(vs.Pi_finder())
+        # print(fp.getPi())
+        # print(np.array(vs.Pi_finder())-np.array(fp.getPi()))
 
-        assert_allclose(vs.Pi_finder(), fp.getPi(), rtol=1e-3, atol=1e-3,
-                        err_msg='tau0={}'.format(tau0))
+        actual = vs.Pi_finder()
+        desired = fp.getPi()
+        assert_allclose(actual[0], desired[0], atol=1e-2,
+                        err_msg='Pi1, tau0={}'.format(tau0))
+        assert_allclose(actual[1:], desired[1:], atol=1e-3,
+                        err_msg='Pi2..4, tau0={}'.format(tau0))

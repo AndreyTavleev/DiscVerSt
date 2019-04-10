@@ -201,10 +201,14 @@ def main():
     # print('{:g}'.format(A/r))
 
     # for M in [6 * M_sun, 1e2 * M_sun, 1e3 * M_sun, 1e4 * M_sun, 1e5 * M_sun, 1e7 * M_sun, 1e8 * M_sun]:
-    for M in [6e2 * M_sun]:
-        c = cnst.c.cgs.value
-        rg = 2 * G * M / c ** 2
-        r = A * rg
+    # for M in [6e2 * M_sun]:
+    M = 1e8
+    c = cnst.c.cgs.value
+    rg = 2 * G * M / c ** 2
+    for r in[10*rg, 100*rg, 200*rg, 300*rg]:
+        # c = cnst.c.cgs.value
+        # rg = 2 * G * M / c ** 2
+        # r = A * rg
         print('{:g}'.format(r))
         print('{:g}'.format(M))
         alpha = 0.5
