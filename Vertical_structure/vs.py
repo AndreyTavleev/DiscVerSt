@@ -175,7 +175,7 @@ class BaseVerticalStructure:
         z0r = self.z0 / self.r
         sign_dq = dq(z0r)
         if sign_dq > 0:
-            factor = 2
+            factor = 2.0
         else:
             factor = 0.5
 
