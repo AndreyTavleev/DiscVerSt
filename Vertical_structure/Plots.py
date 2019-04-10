@@ -66,7 +66,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff'):
     plt.close()
 
 
-def S_curve(Par_min, Par_max, M, alpha, r, n=100, input='Teff', output='Mdot', save=True):
+def S_curve(Par_min, Par_max, M, alpha, r, n=100, input='Teff', output='Mdot', save=True, path='fig/S-curve.pdf'):
     Sigma_plot = []
     Plot = []
 
@@ -99,11 +99,13 @@ def S_curve(Par_min, Par_max, M, alpha, r, n=100, input='Teff', output='Mdot', s
         if output == 'Teff':
             Plot.append(Teff)
         elif output == 'Mdot':
+            Plot.append(Mdot)
+        elif output == 'Mdot/Mdot_edd':
             Plot.append(Mdot / Mdot_edd)
         elif output == 'F':
             Plot.append(F)
         else:
-            raise IOError('Incorrect output, try Teff, Mdot of F')
+            raise IOError('Incorrect output, try Teff, Mdot, Mdot/Mdot_edd of F')
         print(i + 1)
 
     plt.xscale('log')
@@ -114,6 +116,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, n=100, input='Teff', output='Mdot', s
         plt.ylabel(r'$T_{\rm eff}, \, K$')
     elif output == 'Mdot':
         plt.ylabel(r'$\dot{M}, \, g/s$')
+    elif output == 'Mdot/Mdot_edd':
+        plt.ylabel(r'$\dot{M}/\dot{M}_{edd} $')
     elif output == 'F':
         plt.ylabel(r'$F, \, g~cm^2$')
     plt.grid(True, which='both', ls='-')
@@ -121,7 +125,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, n=100, input='Teff', output='Mdot', s
     plt.title('S-curve')
     plt.tight_layout()
     if save:
-        plt.savefig('fig/S-curve.pdf')
+        plt.savefig(path)
         plt.close()
 
 
