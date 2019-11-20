@@ -1,17 +1,20 @@
 from enum import IntEnum
 
-from vs import IdealKramersVerticalStructure, IdealBellLin1994VerticalStructure, MesaVerticalStructure
+from vs import IdealKramersVerticalStructure, IdealBellLin1994VerticalStructure, MesaVerticalStructure, \
+    MesaIdealVerticalStructure, MesaVerticalStructureAdiabatic, MesaVerticalStructureFirstAssumption
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
 import numpy as np
-from astropy import constants as cnst
+from astropy import constants as const
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.integrate import simps
 
 try:
     from opacity import Opac
 
-    opacity = Opac({b'he4': 1.0}, mesa_dir='/mesa')
+    opacity = Opac('solar', mesa_dir='/mesa')
+    # opacity = Opac({b'he4': 0.25, b'h1': 0.75}, mesa_dir='/mesa')
+    # opacity = Opac({b'h1': 1.0}, mesa_dir='/mesa')
 except ImportError:
     class HasAnyAttr:
         def __getattr__(self, item):
@@ -22,13 +25,13 @@ except ImportError:
 
 rcParams['text.usetex'] = True
 rcParams['font.size'] = 14
-rcParams['text.latex.preamble'] = [r'\usepackage[utf8]{inputenc}', r'\usepackage{amsfonts, amsmath, amsthm, amssymb}']
-# r'\usepackage[english,russian]{babel}'
+rcParams['text.latex.preamble'] = [r'\usepackage[utf8]{inputenc}', r'\usepackage{amsfonts, amsmath, amsthm, amssymb}',
+                                   r'\usepackage[english]{babel}']
 
-sigmaSB = cnst.sigma_sb.cgs.value
-G = cnst.G.cgs.value
-c = cnst.c.cgs.value
-M_sun = cnst.M_sun.cgs.value
+sigmaSB = const.sigma_sb.cgs.value
+G = const.G.cgs.value
+c = const.c.cgs.value
+M_sun = const.M_sun.cgs.value
 
 
 class Vars(IntEnum):
@@ -38,7 +41,7 @@ class Vars(IntEnum):
     T = 3
 
 
-def Structure_Plot(M, alpha, r, Par, input='Teff'):
+def Structure_Plot(M, alpha, r, Par, input='Teff', structure='Mesa', title=True):
     h = (G * M * r) ** (1 / 2)
 
     if input == 'F':
@@ -50,7 +53,15 @@ def Structure_Plot(M, alpha, r, Par, input='Teff'):
     else:
         raise IOError('Incorrect input, try Teff, Mdot of F')
 
-    vs = IdealKramersVerticalStructure(M, alpha, r, F)
+    if structure == 'Mesa':
+        vs = MesaVerticalStructure(M, alpha, r, F)
+    elif structure == 'Kramers':
+        vs = IdealKramersVerticalStructure(M, alpha, r, F)
+    elif structure == 'BellLin':
+        vs = IdealBellLin1994VerticalStructure(M, alpha, r, F)
+    else:
+        raise IOError('Incorrect structure, try Mesa, MesaIdeal, Kramers or BellLin')
+
     vs.fit()
     print('Teff = ', vs.Teff)
     t = np.linspace(0, 1, 100)
@@ -62,14 +73,21 @@ def Structure_Plot(M, alpha, r, Par, input='Teff'):
     plt.grid()
     plt.legend()
     plt.xlabel('$z / z_0$')
-    plt.title('Vertical structure, Teff = %d' % vs.Teff)
+    if title:
+        plt.title('Vertical structure, Teff = %d K' % vs.Teff)
     plt.savefig('fig/vs%d.pdf' % vs.Teff)
     plt.close()
 
 
-def S_curve(Par_min, Par_max, M, alpha, r, n=100, input='Teff', output='Mdot', save=True, path='fig/S-curve.pdf'):
+def S_curve(Par_min, Par_max, M, alpha, r, structure='Mesa', n=100, input='Teff', output='Mdot', save=True,
+            path='fig/S-curve.pdf', mu=0.6, title=True):
     Sigma_plot = []
     Plot = []
+    Add_Plot = np.empty(n)
+    k = 1
+    a = 0
+    b = 0
+    deltaS = 0
 
     h = (G * M * r) ** (1 / 2)
 
@@ -93,7 +111,16 @@ def S_curve(Par_min, Par_max, M, alpha, r, n=100, input='Teff', output='Mdot', s
         else:
             raise IOError('Incorrect input, try Teff, Mdot of F')
 
-        vs = MesaVerticalStructure(M, alpha, r, F)
+        if structure == 'Mesa':
+            vs = MesaVerticalStructure(M, alpha, r, F)
+        elif structure == 'MesaIdeal':
+            vs = MesaIdealVerticalStructure(M, alpha, r, F, mu=mu)
+        elif structure == 'Kramers':
+            vs = IdealKramersVerticalStructure(M, alpha, r, F, mu=mu)
+        elif structure == 'BellLin':
+            vs = IdealBellLin1994VerticalStructure(M, alpha, r, F, mu=mu)
+        else:
+            raise IOError('Incorrect structure, try Mesa, MesaIdeal, Kramers or BellLin')
         vs.fit()
         Sigma_plot.append(vs.y_c()[Vars.S] * vs.sigma_norm)
 
@@ -107,12 +134,67 @@ def S_curve(Par_min, Par_max, M, alpha, r, n=100, input='Teff', output='Mdot', s
             Plot.append(F)
         else:
             raise IOError('Incorrect output, try Teff, Mdot, Mdot/Mdot_edd of F')
+
+        y = vs.parameters_C()
+        delta = y[3] - 4 * sigmaSB / (3 * c) * y[2] ** 4
+        delta = delta / y[3]
+        if delta < 0: Add_Plot[i] = delta
+
+        if i == 0:
+            Sigma0 = vs.y_c()[Vars.S] * vs.sigma_norm
+        else:
+            Sigma = vs.y_c()[Vars.S] * vs.sigma_norm
+            deltaS = Sigma0 - Sigma
+            Sigma0 = Sigma
+
+        if deltaS < 0 and k == 1:
+            print('QWERTY_in')
+            a = i
+            k = 0
+        if deltaS > 0 and k == 0:
+            print('QWERTY')
+            b = i
+            k = 1
+
         print(i + 1)
+
+    print(Add_Plot.min())
 
     plt.xscale('log')
     plt.yscale('log')
     plt.xlabel(r'$\Sigma_0, \, g/cm^2$')
-    plt.plot(Sigma_plot, Plot, label=r'M = {:g} Msun, r = {:g} rg'.format(M / M_sun, r / rg))
+    plt.plot(Sigma_plot, Plot, label=r'M = {:g} Msun, r = {:g} cm'.format(M / M_sun, r))
+
+    np.savetxt('fig/Sigma_0.txt', Sigma_plot)
+    np.savetxt('fig/T_eff.txt', Plot)
+    # plt.plot(Sigma_plot[Add_Plot.argmin():], Plot[Add_Plot.argmin():],
+    #          label=r'M = {:g} Msun, r = {:g} rg'.format(M / M_sun, r / rg))
+
+    # plt.text(2e4, 3.7e3, 'BC', rotation=-11, wrap=True)
+
+    ### plt.plot(Sigma_plot[:a], Plot[:a], 'g-', label='BC')
+    ### plt.plot(Sigma_plot[a:b], Plot[a:b], 'c--', label='Partial ionization, instability')
+    ### plt.plot(Sigma_plot[b:], Plot[b:], 'b-', label='Cold disc')
+
+    # if structure == 'MesaIdeal':
+    #      structure = r'Mesa + ideal gas, $\mu$ = %g' % mu
+    # elif structure == 'Kramers':
+    #     structure = r'Kramers + ideal gas, $\mu$ = %g' % mu
+    # plt.plot(Sigma_plot, Plot, label=structure)
+
+    Mdot_up_A = 2545454545454.5454 * 1.0 * r / Mdot_edd
+    Sigma_up_A = 1.4e19 * (M / M_sun) * alpha ** (-1) * (r / rg) ** (3 / 2) / (Mdot_up_A * Mdot_edd)
+    # Teff_up_A = (3 / (8 * np.pi ) * (G * M) ** 4 * Mdot_up_A * Mdot_edd / (sigmaSB * h ** 6)) ** (1 / 4)
+
+    # plt.plot([Sigma_plot[Add_Plot.argmin()], Sigma_up_A], [Plot[Add_Plot.argmin()], Mdot_up_A], '--')
+
+    Mdot_up_AA = 2 * np.pi * alpha * h * 100 * Sigma_up_A / Mdot_edd
+    # Teff_up_AA = (3 / (8 * np.pi) * (G * M) ** 4 * Mdot_up_AA * Mdot_edd / (sigmaSB * h ** 6)) ** (1 / 4)
+
+    # plt.plot([Sigma_up_A, 100 * Sigma_up_A], [Mdot_up_A, Mdot_up_AA], '--')
+    #
+    # plt.scatter(Sigma_plot[Add_Plot.argmin()], Plot[Add_Plot.argmin()])
+
     if output == 'Teff':
         plt.ylabel(r'$T_{\rm eff}, \, K$')
     elif output == 'Mdot':
@@ -123,14 +205,15 @@ def S_curve(Par_min, Par_max, M, alpha, r, n=100, input='Teff', output='Mdot', s
         plt.ylabel(r'$F, \, g~cm^2$')
     plt.grid(True, which='both', ls='-')
     plt.legend()
-    plt.title('S-curve')
+    if title:
+        plt.title('S-curve')
     plt.tight_layout()
     if save:
         plt.savefig(path)
         plt.close()
 
 
-def TempGrad_Plot(vs):
+def TempGrad_Plot(vs, title=True):
     vs.fit()
     n = 1000
     t = np.linspace(0, 1, n)
@@ -144,22 +227,30 @@ def TempGrad_Plot(vs):
     plt.plot(1 - t, eos.grad_ad, label=r'$\nabla_{ad}$')
     plt.plot(1 - t, T * vs.T_norm / 2e5, label='T / 2e5K')
     plt.plot(1 - t, ion, label='free e')
-    plt.plot(1 - t, kappa / kappa[-1], label=r'$\kappa / \kappa_C$')
+    plt.plot(1 - t, kappa / (3 * kappa[-1]), label=r'$\varkappa / 3\varkappa_C$')
     plt.legend()
     plt.xlabel('$z / z_0$')
-    plt.title(r'$\frac{d(lnT)}{d(lnP)}, T_{\rm eff} = %d$' % vs.Teff)
-    plt.hlines(0.4, *plt.xlim(), linestyles='--')
+    if title:
+        plt.title(r'$\frac{d(lnT)}{d(lnP)}, T_{\rm eff} = %d K$' % vs.Teff)
+    # plt.hlines(0.4, *plt.xlim(), linestyles='--')
     plt.grid()
     plt.savefig('fig/TempGrad%d.pdf' % vs.Teff)
     plt.close()
     conv_param_sigma = simps(2 * rho * (grad_plot(np.log(P)) > eos.grad_ad), t * vs.z0) / (S[-1] * vs.sigma_norm)
     conv_param_z0 = simps(grad_plot(np.log(P)) > eos.grad_ad, t * vs.z0) / vs.z0
-    print(conv_param_sigma, '\n', conv_param_z0)
+    print('Convective parameter (sigma) = ', conv_param_sigma)
+    print('Convective parameter (z_0) = ', conv_param_z0)
+    return conv_param_z0
 
 
-def Opacity_Plot(Par_min, Par_max, M, alpha, r, n=100, input='Teff'):
+def Opacity_Plot(Par_min, Par_max, M, alpha, r, structure='Mesa', n=100, input='Teff', save=True,
+                 path='fig/Opacity.pdf', title=True):
     T_C_plot = []
     Opacity_Plot = []
+    k = 1
+    kk = 1
+    a = 0
+    b = 0
 
     h = (G * M * r) ** (1 / 2)
 
@@ -168,220 +259,85 @@ def Opacity_Plot(Par_min, Par_max, M, alpha, r, n=100, input='Teff'):
         if input == 'Teff':
             Teff = Par
             F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Par ** 4
+            Mdot = F / h
         elif input == 'Mdot':
             Mdot = Par
             F = Par * h
+            Teff = (3 / (8 * np.pi) * (G * M) ** 4 * F / (sigmaSB * h ** 7)) ** (1 / 4)
         elif input == 'F':
             F = Par
+            Mdot = Par / h
+            Teff = (3 / (8 * np.pi) * (G * M) ** 4 * Par / (sigmaSB * h ** 7)) ** (1 / 4)
         else:
             raise IOError('Incorrect input, try Teff, Mdot of F')
 
-        vs = MesaVerticalStructure(M, alpha, r, F)
+        if structure == 'Mesa':
+            vs = MesaVerticalStructure(M, alpha, r, F)
+        elif structure == 'Kramers':
+            vs = IdealKramersVerticalStructure(M, alpha, r, F)
+        elif structure == 'BellLin':
+            vs = IdealBellLin1994VerticalStructure(M, alpha, r, F)
+        else:
+            raise IOError('Incorrect structure, try Mesa, Kramers or BellLin')
         vs.fit()
-        y = vs.parameters_C()
-        T_C_plot.append(y[2])
-        Opacity_Plot.append(y[0])
+        # y = vs.parameters_C()
+        # T_C_plot.append(y[2])
+        # Opacity_Plot.append(y[0])
+
+        T_C_plot.append(Par)
+        rho = 1e-8
+        Opacity_Plot.append(vs.law_of_opacity(rho, Par))
+
+        if Teff < 5.6e3 and k == 1:
+            a = i
+            k = 0
+        if Teff < 4.5e3 and kk == 1:
+            b = i
+            kk = 0
+
         print(i + 1)
 
     plt.xscale('log')
     plt.yscale('log')
-    plt.xlabel(r'$T_C, K$')
+    plt.xlabel(r'$T, K$')
     plt.ylabel(r'$\varkappa_C, cm^2/g$')
-    plt.plot(T_C_plot, Opacity_Plot)
+    plt.plot(T_C_plot, Opacity_Plot, label=structure)
+
+    # plt.plot(T_C_plot[:a], Opacity_Plot[:a], 'g-')
+    # plt.plot(T_C_plot[a:b], Opacity_Plot[a:b], 'c--')
+    # plt.plot(T_C_plot[b:], Opacity_Plot[b:], 'b-')
+
     plt.grid(True, which='both', ls='-')
-    plt.title('Opacity')
+    if title:
+        plt.title('Opacity')
     plt.tight_layout()
-    plt.savefig('fig/Opacity.pdf')
-    plt.close()
+    if save:
+        plt.savefig(path)
+        plt.close()
 
 
 def main():
-    c = cnst.c.cgs.value
-    M = 6 * M_sun
+    M = 1.5 * M_sun
     rg = 2 * G * M / c ** 2
-    alpha = 0.5
-    r = 8e10
-    #
-    # h = (G * M * r) ** (1 / 2)
-    # F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * 1e4 ** 4
-    # vs = MesaVerticalStructure(M, alpha, r, F)
-    # TempGrad_Plot(vs)
+    alpha = 0.1
+    r = 1e9
 
-    A = (1.7e18 * 3 * c ** 6 / (64 * np.pi * G ** 2)) ** (1 / 3) * (M * M_sun * sigmaSB * 1e16) ** (-1 / 3)
+    # Structure_Plot(M, alpha, r, 1e4, structure='Mesa')
 
-    # B = 3 / (64 * np.pi) * 1.7e18 * c ** 6 * 1e-2 / (G ** 2 * sigmaSB * 1e16)
-    # A = (B / M) ** (1 / 3)
-    # print('{:g}'.format(A*rg))
-    # print('{:g}'.format((1.7e18*c**6/G**2)**(1/3) * (M*M_sun)**(-1/3)))
-    # print('{:g}'.format(A/r))
+    h = (G * M * r) ** (1 / 2)
 
-    # for M in [6 * M_sun, 1e2 * M_sun, 1e3 * M_sun, 1e4 * M_sun, 1e5 * M_sun, 1e7 * M_sun, 1e8 * M_sun]:
-    # for M in [6*M_sun, 60*M_sun, 600 * M_sun]:
-    # c = cnst.c.cgs.value
-    M = 1e8 * M_sun
-    rg = 2 * G * M / c ** 2
-    for r in [30 * rg, 60 * rg, 100 * rg, 200 * rg, 300 * rg]:
-        # c = cnst.c.cgs.value
-        # rg = 2 * G * M / c ** 2
-        # A = (1.7e18 * 3 * c ** 6 / (64 * np.pi * G ** 2)) ** (1 / 3) * (M * M_sun * sigmaSB * 1e16) ** (-1 / 3)
-        # r = A * rg
-        print('{:g}'.format(r))
-        print('{:g}'.format(M))
-        alpha = 0.5
-        Mdot_edd = 1.7e18 * M / M_sun
-        S_curve(Mdot_edd * 1e-4, 2 * Mdot_edd, M, alpha, r, 1000, input='Mdot', output='Mdot', save=False)
+    S_curve(2e3, 2e4, M, alpha, r, structure='Mesa', n=300, input='Teff', output='Mdot', save=False, path='fig/S-curve-Ab.pdf')
 
-    plt.savefig('fig/S-curve-big1.pdf')
-    plt.close()
-    #
-    #
-    # for M in [6000*M_sun, 6e5*M_sun, 6e6 * M_sun]:
-    #     c = cnst.c.cgs.value
-    #     rg = 2 * G * M / c ** 2
-    #     A = (1.7e18 * 3 * c ** 6 / (64 * np.pi * G ** 2)) ** (1 / 3) * (M * M_sun * sigmaSB * 1e16) ** (-1 / 3)
-    #     r = A * rg
-    #     print('{:g}'.format(r))
-    #     print('{:g}'.format(M))
-    #     alpha = 0.5
-    #     Mdot_edd = 1.7e18 * M / M_sun
-    #     S_curve(Mdot_edd * 1e-4, 2 * Mdot_edd, M, alpha, r, input='Mdot', output='Mdot')
-    #
-    # plt.savefig('fig/S-curve-big2.pdf')
-    # plt.close()
-    #
-    # for M in [6e7*M_sun, 6e8*M_sun, 6e9 * M_sun]:
-    #     c = cnst.c.cgs.value
-    #     rg = 2 * G * M / c ** 2
-    #     A = (1.7e18 * 3 * c ** 6 / (64 * np.pi * G ** 2)) ** (1 / 3) * (M * M_sun * sigmaSB * 1e16) ** (-1 / 3)
-    #     r = A * rg
-    #     print('{:g}'.format(r))
-    #     print('{:g}'.format(M))
-    #     alpha = 0.5
-    #     Mdot_edd = 1.7e18 * M / M_sun
-    #     S_curve(Mdot_edd * 1e-4, 2 * Mdot_edd, M, alpha, r, input='Mdot', output='Mdot')
-    #
-    # plt.savefig('fig/S-curve-big3.pdf')
-    # plt.close()
-    #
-    #
-    #
-    #
-    # for M in [6 * M_sun, 60 * M_sun, 600 * M_sun]:
-    #     c = cnst.c.cgs.value
-    #     rg = 2 * G * M / c ** 2
-    #     A = (1.7e18 * 3 * c ** 6 / (64 * np.pi * G ** 2)) ** (1 / 3) * (M * M_sun * sigmaSB * 1e16) ** (-1 / 3)
-    #     r = A * rg
-    #     print('{:g}'.format(r))
-    #     print('{:g}'.format(M))
-    #     alpha = 0.5
-    #     Mdot_edd = 1.7e18 * M / M_sun
-    #     S_curve(Mdot_edd * 1e-4, 2 * Mdot_edd, M, alpha, r, input='Mdot', output='Teff')
-    #
-    # plt.savefig('fig/S-curve-big4.pdf')
-    # plt.close()
-    #
-    # for M in [6000 * M_sun, 6e5 * M_sun, 6e6 * M_sun]:
-    #     c = cnst.c.cgs.value
-    #     rg = 2 * G * M / c ** 2
-    #     A = (1.7e18 * 3 * c ** 6 / (64 * np.pi * G ** 2)) ** (1 / 3) * (M * M_sun * sigmaSB * 1e16) ** (-1 / 3)
-    #     r = A * rg
-    #     print('{:g}'.format(r))
-    #     print('{:g}'.format(M))
-    #     alpha = 0.5
-    #     Mdot_edd = 1.7e18 * M / M_sun
-    #     S_curve(Mdot_edd * 1e-4, 2 * Mdot_edd, M, alpha, r, input='Mdot', output='Teff')
-    #
-    # plt.savefig('fig/S-curve-big5.pdf')
-    # plt.close()
-    #
-    # for M in [6e7 * M_sun, 6e8 * M_sun, 6e9 * M_sun]:
-    #     c = cnst.c.cgs.value
-    #     rg = 2 * G * M / c ** 2
-    #     A = (1.7e18 * 3 * c ** 6 / (64 * np.pi * G ** 2)) ** (1 / 3) * (M * M_sun * sigmaSB * 1e16) ** (-1 / 3)
-    #     r = A * rg
-    #     print('{:g}'.format(r))
-    #     print('{:g}'.format(M))
-    #     alpha = 0.5
-    #     Mdot_edd = 1.7e18 * M / M_sun
-    #     S_curve(Mdot_edd * 1e-4, 2 * Mdot_edd, M, alpha, r, input='Mdot', output='Teff')
-    #
-    # plt.savefig('fig/S-curve-big6.pdf')
-    # plt.close()
+    sigma_down = 74.6 * (alpha / 0.1) ** (-0.83) * (r / 1e10) ** 1.18 * (M / M_sun) ** (-0.4)
+    sigma_up = 39.9 * (alpha / 0.1) ** (-0.8) * (r / 1e10) ** 1.11 * (M / M_sun) ** (-0.37)
 
-    # Opacity_Plot(1e21, 1e27, M, alpha, r, input='Mdot')
+    mdot_down = 2.64e15 * (alpha / 0.1) ** 0.01 * (r / 1e10) ** 2.58 * (M / M_sun) ** (-0.85)
+    mdot_up = 8.07e15 * (alpha / 0.1) ** (-0.01) * (r / 1e10) ** 2.64 * (M / M_sun) ** (-0.89)
 
-    # plot = []
-    # plot_t = []
-    # for i, Mdot in enumerate(np.r_[1e21:1e27:200j]):
-    #     print(i + 1)
-    #     h = (G * M * r) ** (1 / 2)
-    #     F = Mdot * h
-    #     vs = MesaVerticalStructure(M, alpha, r, F)
-    #     vs.fit()
-    #     print(vs.parameters_C()[1])
-    #     oplya = opacity.kappa(3e-7, vs.parameters_C()[2])
-    #     plot.append(oplya)
-    #     plot_t.append(vs.parameters_C()[2])
-    #
-    # plt.xscale('log')
-    # # plt.yscale('log')
-    # plt.plot(plot_t, plot)
-    # plt.savefig('fig/oplya.pdf')
+    plt.scatter(sigma_down, mdot_down)
+    plt.scatter(sigma_up, mdot_up)
 
-    # for Mdot in np.linspace(1e21, 1e27, 20):
-    #     Structure_Plot(M, alpha, r, Mdot, input='Mdot')
-
-    # Structure_Plot(M, alpha, r, 2e4, input='Teff')
-
-    # for r in [5.5e10, 6e10, 6.75e10]:
-    #     S_curve(2.3e3, 1e4, M, alpha, r, output='Mdot')
-    #
-    # plt.hlines(1e17, *plt.xlim(), linestyles='--')
-    # plt.grid(True, which='both', ls='-')
-    # plt.legend()
-    # plt.title('S-curve')
-    # plt.show()
-
-    # for Teff in np.linspace(2e3, 5e4, 20):
-    # for Mdot in np.linspace(1e18, 1e19, 20):
-    #     h = (G * M * r) ** (1 / 2)
-    #     # F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
-    #     F = Mdot * h
-    #     vs = MesaVerticalStructure(M, alpha, r, F)
-    #     TempGrad_Plot(vs)
-    #     print('Teff = %d' % vs.Teff)
-    #     print('tau = %d' % vs.tau0())
-
-    # S_curve(1e17, 1e20, M, alpha, r, 1000, input='Mdot', output='Mdot', save=False)
-
-    # Sigma_up = 589 * (alpha / 0.1) ** (-0.78) * (r / 1e10) ** 1.07 * (M / M_sun) ** (-0.36)
-    # Teff_up = 13100 * (alpha / 0.1) ** (-0.01) * (r / 1e10) ** (-0.08) * (M / M_sun) ** 0.03
-    # Mdot_up = 1.05e17 * (alpha / 0.1) ** (-0.05) * (r / 1e10) ** 2.69 * (M / M_sun) ** (-0.9)
-    # Sigma_down = 1770 * (alpha / 0.1) ** (-0.83) * (r / 1e10) ** 1.2 * (M / M_sun) ** (-0.4)
-    # Teff_down = 9700 * (r / 1e10) ** (-0.09) * (M / M_sun) ** 0.03
-    # Mdot_down = 3.18e16 * (alpha / 0.1) ** (-0.01) * (r / 1e10) ** 2.65 * (M / M_sun) ** (-0.88)
-    #
-    # Mdot_down_another = 5.9e16 * (alpha / 0.1) ** (-0.41) * (r / 1e10) ** 2.62 * (M / M_sun) ** (-0.87)
-    #
-    # print(Sigma_up, Mdot_up)
-    # print(Sigma_down, Mdot_down)
-    #
-    # plt.scatter(Sigma_down, Mdot_down)
-    # plt.scatter(Sigma_up, Mdot_up)
-    # plt.scatter(Sigma_down, Mdot_down_another, marker='*')
-    #
-    # plt.savefig('fig/Helium-S-curve.pdf')
-    # plt.close()
-
-    # Opacity_Plot(1e3, 3e4, M, alpha, r)
-
-    # Teff = 11077.0
-    # h = (G * M * r) ** (1 / 2)
-    # F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
-    # vs = MesaVerticalStructure(M, alpha, r, F)
-    # TempGrad_Plot(vs)
-    Structure_Plot(M, alpha, r, 1e4, input='Teff')
-
+    plt.savefig('fig/S-curve-Ab.pdf')
 
 if __name__ == '__main__':
     main()

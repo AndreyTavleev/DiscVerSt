@@ -10,7 +10,9 @@ from astropy import constants as cnst
 try:
     from opacity import Opac
 
-    opacity = Opac({b'he4': 1.0}, mesa_dir='/mesa')
+    # opacity = Opac({b'he4': 0.25, b'h1': 0.75}, mesa_dir='/mesa')
+    opacity = Opac('solar', mesa_dir='/mesa')
+    # opacity = Opac({b'he4': 1.0}, mesa_dir='/mesa')
 except ImportError:
     class HasAnyAttr:
         def __getattr__(self, item):
@@ -22,6 +24,7 @@ except ImportError:
 sigmaSB = cnst.sigma_sb.cgs.value
 R = cnst.R.cgs.value
 G = cnst.G.cgs.value
+M_sun = cnst.M_sun.cgs.value
 
 
 class Vars(IntEnum):
@@ -32,9 +35,10 @@ class Vars(IntEnum):
 
 
 class BaseVerticalStructure:
-    mu = 0.6
+    # mu = 0.6
 
-    def __init__(self, Mx, alpha, r, F, eps=1e-4):
+    def __init__(self, Mx, alpha, r, F, eps=1e-4, mu=0.6):
+        self.mu = mu
         self.Mx = Mx
         self.GM = G * Mx
         self.alpha = alpha
@@ -110,19 +114,18 @@ class BaseVerticalStructure:
         dy[Vars.S] = rho * 2 * self.z0 / self.sigma_norm
         dy[Vars.P] = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
         dy[Vars.Q] = -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm
-        # Coef = self.dlnTdlnP(y, t)
-        # dy[Vars.T] = Coef * dy[Vars.P] * y[Vars.T] / y[Vars.P]
-        dy[Vars.T] = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
-                      * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
+        # dy[Vars.T] = self.dlnTdlnP(y, t) * dy[Vars.P] * y[Vars.T] / y[Vars.P]
+        # dy[Vars.T] = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
+        #               * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
 
-        # dTdz_Rad = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
-        #             * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
-        # rho_ad, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
-        #
-        # if y[Vars.P] / y[Vars.T] * dTdz_Rad / dy[Vars.P] < eos.grad_ad:
-        #     dy[Vars.T] = y[Vars.P] / y[Vars.T] * dTdz_Rad / dy[Vars.P]
-        # else:
-        #     dy[Vars.T] = eos.grad_ad * dy[Vars.P] * y[Vars.T] / y[Vars.P]
+        dTdz_Rad = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
+                    * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
+        rho_ad, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
+
+        if (y[Vars.P] / y[Vars.T]) * (dTdz_Rad / dy[Vars.P]) < eos.grad_ad:
+            dy[Vars.T] = (y[Vars.P] / y[Vars.T]) * (dTdz_Rad / dy[Vars.P])
+        else:
+            dy[Vars.T] = eos.grad_ad * dy[Vars.P] * y[Vars.T] / y[Vars.P]
         return dy
 
     def integrate(self, t):
@@ -163,7 +166,7 @@ class BaseVerticalStructure:
         return Pi_real
 
     def z0_init(self):
-        return (self.r * 2.86e-7 * self.F ** (3 / 20) * (self.Mx / cnst.M_sun.cgs.value) ** (-12 / 35)
+        return (self.r * 2.86e-7 * self.F ** (3 / 20) * (self.Mx / M_sun) ** (-12 / 35)
                 * self.alpha ** (-1 / 10) * (self.r / 1e10) ** (1 / 20))
 
     def fit(self):
@@ -195,7 +198,7 @@ class RadiativeTempGradient:
         dTdz_Rad = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
                     * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
         dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
-        return y[Vars.P] / y[Vars.T] * dTdz_Rad / dPdz
+        return (y[Vars.P] / y[Vars.T]) * (dTdz_Rad / dPdz)
 
 
 class AdiabaticTempGradient:
@@ -214,14 +217,13 @@ class FirstAssumptionRadiativeConvectiveGradient:
 
         rho_ad, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
 
-        if y[Vars.P] / y[Vars.T] * dTdz_Rad / dPdz < eos.grad_ad:
-            return y[Vars.P] / y[Vars.T] * dTdz_Rad / dPdz
+        if (y[Vars.P] / y[Vars.T]) * (dTdz_Rad / dPdz) < eos.grad_ad:
+            return (y[Vars.P] / y[Vars.T]) * (dTdz_Rad / dPdz)
         else:
             return eos.grad_ad
 
 
 class IdealGasMixin:
-    mu = 0.6
 
     def law_of_rho(self, P, T):
         return P * self.mu / (R * T)
@@ -275,16 +277,28 @@ class IdealBellLin1994VerticalStructure(IdealGasMixin, BellLin1994TwoComponentOp
     pass
 
 
+class MesaIdealVerticalStructure(IdealGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseVerticalStructure):
+    pass
+
+
+class MesaVerticalStructureAdiabatic(MesaGasMixin, MesaOpacityMixin, AdiabaticTempGradient, BaseVerticalStructure):
+    pass
+
+
+class MesaVerticalStructureFirstAssumption(MesaGasMixin, MesaOpacityMixin, FirstAssumptionRadiativeConvectiveGradient, BaseVerticalStructure):
+    pass
+
+
 def main():
-    M = 6 * cnst.M_sun.cgs.value
+    M = 600 * M_sun
     r = 8e10
     alpha = 0.5
 
-    for Teff in np.linspace(2.3e4, 6e4, 5):
+    for Teff in np.linspace(2e4, 1e5, 5):
         h = (G * M * r) ** (1 / 2)
         F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
-        print('Mdot = %d' % F / h)
-        vs = MesaVerticalStructure(M, alpha, r, F)
+        print('Mdot = %d' % (F / h))
+        vs = MesaVerticalStructureFirstAssumption(M, alpha, r, F)
         print('Teff = %d' % vs.Teff)
         print('tau = %d' % vs.tau0())
 
