@@ -13,4 +13,4 @@ WORKDIR /app
 RUN mkdir -pv /app/fig
 VOLUME /app/fig
 
-CMD ["python", "Plots.py"]
+CMD ["python", "MAIN.py"]

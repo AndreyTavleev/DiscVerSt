@@ -1,33 +1,33 @@
-#!/usr/bin/env python3
-
 from enum import IntEnum
 
 from scipy.integrate import solve_ivp
 from scipy.optimize import brentq
 import numpy as np
-from astropy import constants as cnst
+from astropy import constants as const
 
-try:
-    from opacity import Opac
-
-    # opacity = Opac({b'he4': 0.25, b'h1': 0.75}, mesa_dir='/mesa')
-    opacity = Opac('solar', mesa_dir='/mesa')
-    # opacity = Opac({b'he4': 1.0}, mesa_dir='/mesa')
-except ImportError:
-    class HasAnyAttr:
-        def __getattr__(self, item):
-            return None
-
-
-    opacity = HasAnyAttr()
-
-sigmaSB = cnst.sigma_sb.cgs.value
-R = cnst.R.cgs.value
-G = cnst.G.cgs.value
-M_sun = cnst.M_sun.cgs.value
+sigmaSB = const.sigma_sb.cgs.value
+R = const.R.cgs.value
+G = const.G.cgs.value
+M_sun = const.M_sun.cgs.value
 
 
 class Vars(IntEnum):
+    """
+    Enumerate that contains names of unknown functions.
+    All functions are dimensionless.
+
+    Attributes
+    ----------
+    S
+        Mass coordinate.
+    P
+        Pressure.
+    Q
+        Flux of energy.
+    T
+        Temperature.
+    """
+
     S = 0
     P = 1
     Q = 2
@@ -35,7 +35,39 @@ class Vars(IntEnum):
 
 
 class BaseVerticalStructure:
-    # mu = 0.6
+    """
+    Base class for Vertical structure, solver of the system of dimensionless vertical structure ODEs.
+    The system contains four linear differential equations for pressure P, mass coordinate S, energy flux Q
+    and temperature T as functions of vertical coordinate z. The only unknown free parameter
+    is semi-thickness of accretional disc z_0. System is supplemented by four first-type
+    boundary conditions (one for each variable). Method `fit` serve to find the free
+    parameter z_0 and get solve the system. Integration of system is carried out by `integrate` method.
+
+    Attributes
+    ----------
+    Mx : double
+        Mass of central star in grams.
+    alpha : double
+        Alpha parameter for alpha-prescription of viscosity.
+    r : double
+        Distance from central star (radius in cylindrical coordinate system) in cm.
+    F : double
+        Moment of viscosity forces in g*cm^2/s^2.
+    eps : double, optional
+        Accuracy of vertical structure calculation.
+    mu : double, optional
+        Molecular weight for ideal gas equation of state.
+
+    Methods
+    -------
+    fit()
+        Solve optimization problem and calculate the vertical structure.
+    integrate()
+        Integrate the system and return values of four dimensionless functions.
+    Pi_finder()
+        Return the Pi values (see Ketsaris & Shakura, 1998).
+
+    """
 
     def __init__(self, Mx, alpha, r, F, eps=1e-4, mu=0.6):
         self.mu = mu
@@ -87,6 +119,14 @@ class BaseVerticalStructure:
         return self.z0 * self.omegaK ** 2 / xi
 
     def initial(self):
+        """
+        Initial conditions.
+
+        Returns
+        -------
+        array
+
+        """
         solution = solve_ivp(
             self.photospheric_pressure_equation,
             [0, 2 / 3],
@@ -106,29 +146,52 @@ class BaseVerticalStructure:
     def dlnTdlnP(self, y, t):
         raise NotImplementedError
 
+    def dQdz(self, y, t):
+        w_r_phi = self.viscosity(y)
+        return -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm
+
     def dydt(self, t, y):
+        """
+        The right side of ODEs system.
+
+        Parameters
+        ----------
+        t : array-like
+            Modified vertical coordinate (t = 1 - z).
+        y :
+            Current values of (dimensionless) unknown functions.
+
+        Returns
+        -------
+        array
+
+        """
         dy = np.empty(4)
         rho = self.rho(y)
-        xi = self.opacity(y)
-        w_r_phi = self.viscosity(y)
         dy[Vars.S] = rho * 2 * self.z0 / self.sigma_norm
         dy[Vars.P] = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
-        dy[Vars.Q] = -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm
-        # dy[Vars.T] = self.dlnTdlnP(y, t) * dy[Vars.P] * y[Vars.T] / y[Vars.P]
-        # dy[Vars.T] = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
-        #               * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
-
-        dTdz_Rad = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
-                    * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
-        rho_ad, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
-
-        if (y[Vars.P] / y[Vars.T]) * (dTdz_Rad / dy[Vars.P]) < eos.grad_ad:
-            dy[Vars.T] = (y[Vars.P] / y[Vars.T]) * (dTdz_Rad / dy[Vars.P])
-        else:
-            dy[Vars.T] = eos.grad_ad * dy[Vars.P] * y[Vars.T] / y[Vars.P]
+        dy[Vars.Q] = self.dQdz(y, t)
+        dy[Vars.T] = self.dlnTdlnP(y, t) * dy[Vars.P] * y[Vars.T] / y[Vars.P]
         return dy
 
     def integrate(self, t):
+        """
+        Integrates ODEs and return list that contains array with values of
+        four dimentsionless functions and a message from the solver.
+
+        Parameters
+        ----------
+        t : array-like
+            Interval of integration and evaluation.
+
+        Returns
+        -------
+        list
+            List containing the array with values of dimentsionless functions
+            calculating at points of `t` array. Also list containes the
+            message from the integrator.
+
+        """
         assert t[0] == 0
         solution = solve_ivp(self.dydt, (t[0], t[-1]), self.initial(), t_eval=t, rtol=self.eps)
         # assert solution.success
@@ -154,6 +217,15 @@ class BaseVerticalStructure:
         return Sigma0 * varkappa_C / 2
 
     def Pi_finder(self):
+        """
+        Calculates the so-called Pi parameters (see Ketsaris & Shakura, 1998).
+
+        Returns
+        -------
+        array
+            Contains the values of Pi.
+
+        """
         varkappa_C, rho_C, T_C, P_C, Sigma0 = self.parameters_C()
 
         Pi_1 = (self.omegaK ** 2 * self.z0 ** 2 * rho_C) / P_C
@@ -170,6 +242,15 @@ class BaseVerticalStructure:
                 * self.alpha ** (-1 / 10) * (self.r / 1e10) ** (1 / 20))
 
     def fit(self):
+        """
+        Solve optimization problem and calculate the vertical structure.
+
+        Returns
+        -------
+        double and result
+            The value of normalized unknown free parameter z_0 / r and result of optimization.
+
+        """
         def dq(z0r):
             self.z0 = z0r * self.r
             q_c = self.y_c()[Vars.Q]
@@ -193,44 +274,24 @@ class BaseVerticalStructure:
 
 class RadiativeTempGradient:
     def dlnTdlnP(self, y, t):
-        rho = self.rho(y)
         xi = self.opacity(y)
-        dTdz_Rad = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
-                    * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
-        dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
-        return (y[Vars.P] / y[Vars.T]) * (dTdz_Rad / dPdz)
 
-
-class AdiabaticTempGradient:
-    def dlnTdlnP(self, y, t):
-        rho_ad, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
-        return eos.grad_ad
-
-
-class FirstAssumptionRadiativeConvectiveGradient:
-    def dlnTdlnP(self, y, t):
-        rho = self.rho(y)
-        xi = self.opacity(y)
-        dTdz_Rad = ((abs(y[Vars.Q]) / y[Vars.T] ** 3)
-                    * 3 * xi * rho * self.z0 * self.Q_norm / (16 * sigmaSB * self.T_norm ** 4))
-        dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
-
-        rho_ad, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
-
-        if (y[Vars.P] / y[Vars.T]) * (dTdz_Rad / dPdz) < eos.grad_ad:
-            return (y[Vars.P] / y[Vars.T]) * (dTdz_Rad / dPdz)
+        if t == 1:
+            dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * xi * (
+                    self.Q_norm * self.P_norm / self.T_norm ** 4) / (16 * sigmaSB * t * self.omegaK ** 2)
         else:
-            return eos.grad_ad
+            rho = self.rho(y)
+            dTdz = ((abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * xi * rho * self.z0 * self.Q_norm / (
+                    16 * sigmaSB * self.T_norm ** 4))
+            dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
+            dlnTdlnP_rad = (y[Vars.P] / y[Vars.T]) * (dTdz / dPdz)
+
+        return dlnTdlnP_rad
 
 
 class IdealGasMixin:
-
     def law_of_rho(self, P, T):
         return P * self.mu / (R * T)
-
-
-class MesaGasMixin:
-    law_of_rho = opacity.rho
 
 
 class KramersOpacityMixin:
@@ -260,32 +321,20 @@ class BellLin1994TwoComponentOpacityMixin:
         return np.minimum(self.opacity_h(rho, T), self.opacity_ff(rho, T))
 
 
-class MesaOpacityMixin:
-    law_of_opacity = opacity.kappa
-
-
 class IdealKramersVerticalStructure(IdealGasMixin, KramersOpacityMixin, RadiativeTempGradient, BaseVerticalStructure):
-    pass
+    """
+    Vertical structure class for Kramers opacity law and ideal gas EOS.
 
-
-class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseVerticalStructure):
+    """
     pass
 
 
 class IdealBellLin1994VerticalStructure(IdealGasMixin, BellLin1994TwoComponentOpacityMixin, RadiativeTempGradient,
                                         BaseVerticalStructure):
-    pass
+    """
+        Vertical structure class for opacity laws from (Bell & Lin, 1994) and ideal gas EOS.
 
-
-class MesaIdealVerticalStructure(IdealGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseVerticalStructure):
-    pass
-
-
-class MesaVerticalStructureAdiabatic(MesaGasMixin, MesaOpacityMixin, AdiabaticTempGradient, BaseVerticalStructure):
-    pass
-
-
-class MesaVerticalStructureFirstAssumption(MesaGasMixin, MesaOpacityMixin, FirstAssumptionRadiativeConvectiveGradient, BaseVerticalStructure):
+    """
     pass
 
 
@@ -293,14 +342,27 @@ def main():
     M = 600 * M_sun
     r = 8e10
     alpha = 0.5
-
-    for Teff in np.linspace(2e4, 1e5, 5):
-        h = (G * M * r) ** (1 / 2)
-        F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
-        print('Mdot = %d' % (F / h))
-        vs = MesaVerticalStructureFirstAssumption(M, alpha, r, F)
-        print('Teff = %d' % vs.Teff)
-        print('tau = %d' % vs.tau0())
+    Teff = 6e3
+    print('Finding Pi parameters of structure.')
+    print('M = {:g} grams \nr = {:g} cm \nalpha = {:g} \nTeff = {:g} K'.format(M, r, alpha, Teff))
+    h = (G * M * r) ** (1 / 2)
+    F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
+    vs = IdealKramersVerticalStructure(M, alpha, r, F)
+    z0r, result = vs.fit()
+    if result.converged:
+        print('The vertical structure has been calculated successfully.')
+    Pi = vs.Pi_finder()
+    print('Pi parameters =', Pi)
+    # t = np.linspace(0, 1, 100)
+    # S, P, Q, T = vs.integrate(t)[0]
+    # import matplotlib.pyplot as plt
+    # plt.plot(1 - t, S, label='S')
+    # plt.plot(1 - t, P, label='P')
+    # plt.plot(1 - t, Q, label='Q')
+    # plt.plot(1 - t, T, label='T')
+    # plt.grid()
+    # plt.legend()
+    # plt.show()
 
 
 if __name__ == '__main__':

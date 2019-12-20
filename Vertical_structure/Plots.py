@@ -1,47 +1,23 @@
-from enum import IntEnum
-
-from vs import IdealKramersVerticalStructure, IdealBellLin1994VerticalStructure, MesaVerticalStructure, \
-    MesaIdealVerticalStructure, MesaVerticalStructureAdiabatic, MesaVerticalStructureFirstAssumption
+from vs import Vars, IdealKramersVerticalStructure, IdealBellLin1994VerticalStructure
+import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
-import numpy as np
-from astropy import constants as const
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.integrate import simps
+from astropy import constants as const
 
-try:
-    from opacity import Opac
-
-    opacity = Opac('solar', mesa_dir='/mesa')
-    # opacity = Opac({b'he4': 0.25, b'h1': 0.75}, mesa_dir='/mesa')
-    # opacity = Opac({b'h1': 1.0}, mesa_dir='/mesa')
-except ImportError:
-    class HasAnyAttr:
-        def __getattr__(self, item):
-            return None
-
-
-    opacity = HasAnyAttr()
+sigmaSB = const.sigma_sb.cgs.value
+G = const.G.cgs.value
+M_sun = const.M_sun.cgs.value
+c = const.c.cgs.value
 
 rcParams['text.usetex'] = True
 rcParams['font.size'] = 14
 rcParams['text.latex.preamble'] = [r'\usepackage[utf8]{inputenc}', r'\usepackage{amsfonts, amsmath, amsthm, amssymb}',
                                    r'\usepackage[english]{babel}']
 
-sigmaSB = const.sigma_sb.cgs.value
-G = const.G.cgs.value
-c = const.c.cgs.value
-M_sun = const.M_sun.cgs.value
 
-
-class Vars(IntEnum):
-    S = 0
-    P = 1
-    Q = 2
-    T = 3
-
-
-def Structure_Plot(M, alpha, r, Par, input='Teff', structure='Mesa', title=True):
+def Structure_Plot(M, alpha, r, Par, mu=0.6, input='Teff', structure='Kramers', title=True):
     h = (G * M * r) ** (1 / 2)
 
     if input == 'F':
@@ -51,16 +27,31 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', structure='Mesa', title=True)
     elif input == 'Mdot':
         F = Par * h
     else:
-        raise IOError('Incorrect input, try Teff, Mdot of F')
+        print('Incorrect input, try Teff, Mdot of F')
+        return
 
-    if structure == 'Mesa':
-        vs = MesaVerticalStructure(M, alpha, r, F)
-    elif structure == 'Kramers':
-        vs = IdealKramersVerticalStructure(M, alpha, r, F)
+    if structure == 'Kramers':
+        vs = IdealKramersVerticalStructure(M, alpha, r, F, mu)
     elif structure == 'BellLin':
         vs = IdealBellLin1994VerticalStructure(M, alpha, r, F)
+    elif structure == 'Mesa':
+        import MESAvs
+        vs = MESAvs.MesaVerticalStructure(M, alpha, r, F)
+    elif structure == 'MesaIdeal':
+        import MESAvs
+        vs = MESAvs.MesaIdealVerticalStructure(M, alpha, r, F, mu)
+    elif structure == 'MesaAd':
+        import MESAvs
+        vs = MESAvs.MesaVerticalStructureAdiabatic(M, alpha, r, F)
+    elif structure == 'MesaFirst':
+        import MESAvs
+        vs = MESAvs.MesaVerticalStructureFirstAssumption(M, alpha, r, F)
+    elif structure == 'MesaRadConv':
+        import MESAvs
+        vs = MESAvs.MesaVerticalStructureRadConv(M, alpha, r, F)
     else:
-        raise IOError('Incorrect structure, try Mesa, MesaIdeal, Kramers or BellLin')
+        print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
+        return
 
     vs.fit()
     print('Teff = ', vs.Teff)
@@ -79,8 +70,8 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', structure='Mesa', title=True)
     plt.close()
 
 
-def S_curve(Par_min, Par_max, M, alpha, r, structure='Mesa', n=100, input='Teff', output='Mdot', save=True,
-            path='fig/S-curve.pdf', mu=0.6, title=True):
+def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', n=100, input='Teff', output='Mdot', save=True,
+            path='fig/S-curve.pdf', title=True, savedots=False, path_dots='fig/'):
     Sigma_plot = []
     Plot = []
     Add_Plot = np.empty(n)
@@ -90,9 +81,6 @@ def S_curve(Par_min, Par_max, M, alpha, r, structure='Mesa', n=100, input='Teff'
     deltaS = 0
 
     h = (G * M * r) ** (1 / 2)
-
-    Mdot_edd = 1.7e18 * M / M_sun
-    rg = 2 * G * M / c ** 2
 
     for i, Par in enumerate(np.r_[Par_max:Par_min:complex(0, n)]):
 
@@ -109,18 +97,32 @@ def S_curve(Par_min, Par_max, M, alpha, r, structure='Mesa', n=100, input='Teff'
             Mdot = Par / h
             Teff = (3 / (8 * np.pi) * (G * M) ** 4 * Par / (sigmaSB * h ** 7)) ** (1 / 4)
         else:
-            raise IOError('Incorrect input, try Teff, Mdot of F')
+            print('Incorrect input, try Teff, Mdot of F')
+            return
 
-        if structure == 'Mesa':
-            vs = MesaVerticalStructure(M, alpha, r, F)
-        elif structure == 'MesaIdeal':
-            vs = MesaIdealVerticalStructure(M, alpha, r, F, mu=mu)
-        elif structure == 'Kramers':
-            vs = IdealKramersVerticalStructure(M, alpha, r, F, mu=mu)
+        if structure == 'Kramers':
+            vs = IdealKramersVerticalStructure(M, alpha, r, F, mu)
         elif structure == 'BellLin':
-            vs = IdealBellLin1994VerticalStructure(M, alpha, r, F, mu=mu)
+            vs = IdealBellLin1994VerticalStructure(M, alpha, r, F)
+        elif structure == 'Mesa':
+            import MESAvs
+            vs = MESAvs.MesaVerticalStructure(M, alpha, r, F)
+        elif structure == 'MesaIdeal':
+            import MESAvs
+            vs = MESAvs.MesaIdealVerticalStructure(M, alpha, r, F, mu)
+        elif structure == 'MesaAd':
+            import MESAvs
+            vs = MESAvs.MesaVerticalStructureAdiabatic(M, alpha, r, F)
+        elif structure == 'MesaFirst':
+            import MESAvs
+            vs = MESAvs.MesaVerticalStructureFirstAssumption(M, alpha, r, F)
+        elif structure == 'MesaRadConv':
+            import MESAvs
+            vs = MESAvs.MesaVerticalStructureRadConv(M, alpha, r, F)
         else:
-            raise IOError('Incorrect structure, try Mesa, MesaIdeal, Kramers or BellLin')
+            print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
+            return
+
         vs.fit()
         Sigma_plot.append(vs.y_c()[Vars.S] * vs.sigma_norm)
 
@@ -129,16 +131,19 @@ def S_curve(Par_min, Par_max, M, alpha, r, structure='Mesa', n=100, input='Teff'
         elif output == 'Mdot':
             Plot.append(Mdot)
         elif output == 'Mdot/Mdot_edd':
+            Mdot_edd = 1.7e18 * M / M_sun
             Plot.append(Mdot / Mdot_edd)
         elif output == 'F':
             Plot.append(F)
         else:
-            raise IOError('Incorrect output, try Teff, Mdot, Mdot/Mdot_edd of F')
+            print('Incorrect output, try Teff, Mdot, Mdot/Mdot_edd of F')
+            return
 
         y = vs.parameters_C()
         delta = y[3] - 4 * sigmaSB / (3 * c) * y[2] ** 4
         delta = delta / y[3]
-        if delta < 0: Add_Plot[i] = delta
+        if delta < 0:
+            Add_Plot[i] = delta
 
         if i == 0:
             Sigma0 = vs.y_c()[Vars.S] * vs.sigma_norm
@@ -165,8 +170,11 @@ def S_curve(Par_min, Par_max, M, alpha, r, structure='Mesa', n=100, input='Teff'
     plt.xlabel(r'$\Sigma_0, \, g/cm^2$')
     plt.plot(Sigma_plot, Plot, label=r'M = {:g} Msun, r = {:g} cm'.format(M / M_sun, r))
 
-    np.savetxt('fig/Sigma_0.txt', Sigma_plot)
-    np.savetxt('fig/T_eff.txt', Plot)
+    if savedots:
+        np.savetxt(path_dots + 'Sigma_0.txt', Sigma_plot)
+        np.savetxt(path_dots + 'T_eff.txt', Plot)
+
+    # rg = 2 * G * M / c ** 2
     # plt.plot(Sigma_plot[Add_Plot.argmin():], Plot[Add_Plot.argmin():],
     #          label=r'M = {:g} Msun, r = {:g} rg'.format(M / M_sun, r / rg))
 
@@ -181,14 +189,14 @@ def S_curve(Par_min, Par_max, M, alpha, r, structure='Mesa', n=100, input='Teff'
     # elif structure == 'Kramers':
     #     structure = r'Kramers + ideal gas, $\mu$ = %g' % mu
     # plt.plot(Sigma_plot, Plot, label=structure)
-
-    Mdot_up_A = 2545454545454.5454 * 1.0 * r / Mdot_edd
-    Sigma_up_A = 1.4e19 * (M / M_sun) * alpha ** (-1) * (r / rg) ** (3 / 2) / (Mdot_up_A * Mdot_edd)
+    #
+    # Mdot_up_A = 2545454545454.5454 * 1.0 * r / Mdot_edd
+    # Sigma_up_A = 1.4e19 * (M / M_sun) * alpha ** (-1) * (r / rg) ** (3 / 2) / (Mdot_up_A * Mdot_edd)
     # Teff_up_A = (3 / (8 * np.pi ) * (G * M) ** 4 * Mdot_up_A * Mdot_edd / (sigmaSB * h ** 6)) ** (1 / 4)
 
     # plt.plot([Sigma_plot[Add_Plot.argmin()], Sigma_up_A], [Plot[Add_Plot.argmin()], Mdot_up_A], '--')
 
-    Mdot_up_AA = 2 * np.pi * alpha * h * 100 * Sigma_up_A / Mdot_edd
+    # Mdot_up_AA = 2 * np.pi * alpha * h * 100 * Sigma_up_A / Mdot_edd
     # Teff_up_AA = (3 / (8 * np.pi) * (G * M) ** 4 * Mdot_up_AA * Mdot_edd / (sigmaSB * h ** 6)) ** (1 / 4)
 
     # plt.plot([Sigma_up_A, 100 * Sigma_up_A], [Mdot_up_A, Mdot_up_AA], '--')
@@ -220,6 +228,7 @@ def TempGrad_Plot(vs, title=True):
     y = vs.integrate(t)[0]
     S, P, Q, T = y
     grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
+    from MESAvs import opacity
     rho, eos = opacity.rho(P * vs.P_norm, T * vs.T_norm, True)
     ion = np.exp(eos.lnfree_e)
     kappa = vs.opacity(y)
@@ -243,7 +252,7 @@ def TempGrad_Plot(vs, title=True):
     return conv_param_z0
 
 
-def Opacity_Plot(Par_min, Par_max, M, alpha, r, structure='Mesa', n=100, input='Teff', save=True,
+def Opacity_Plot(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', n=100, input='Teff', save=True,
                  path='fig/Opacity.pdf', title=True):
     T_C_plot = []
     Opacity_Plot = []
@@ -269,16 +278,31 @@ def Opacity_Plot(Par_min, Par_max, M, alpha, r, structure='Mesa', n=100, input='
             Mdot = Par / h
             Teff = (3 / (8 * np.pi) * (G * M) ** 4 * Par / (sigmaSB * h ** 7)) ** (1 / 4)
         else:
-            raise IOError('Incorrect input, try Teff, Mdot of F')
+            print('Incorrect input, try Teff, Mdot of F')
+            return
 
-        if structure == 'Mesa':
-            vs = MesaVerticalStructure(M, alpha, r, F)
-        elif structure == 'Kramers':
-            vs = IdealKramersVerticalStructure(M, alpha, r, F)
+        if structure == 'Kramers':
+            vs = IdealKramersVerticalStructure(M, alpha, r, F, mu)
         elif structure == 'BellLin':
             vs = IdealBellLin1994VerticalStructure(M, alpha, r, F)
+        elif structure == 'Mesa':
+            import MESAvs
+            vs = MESAvs.MesaVerticalStructure(M, alpha, r, F)
+        elif structure == 'MesaIdeal':
+            import MESAvs
+            vs = MESAvs.MesaIdealVerticalStructure(M, alpha, r, F, mu)
+        elif structure == 'MesaAd':
+            import MESAvs
+            vs = MESAvs.MesaVerticalStructureAdiabatic(M, alpha, r, F)
+        elif structure == 'MesaFirst':
+            import MESAvs
+            vs = MESAvs.MesaVerticalStructureFirstAssumption(M, alpha, r, F)
+        elif structure == 'MesaRadConv':
+            import MESAvs
+            vs = MESAvs.MesaVerticalStructureRadConv(M, alpha, r, F)
         else:
-            raise IOError('Incorrect structure, try Mesa, Kramers or BellLin')
+            print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
+            return
         vs.fit()
         # y = vs.parameters_C()
         # T_C_plot.append(y[2])
@@ -318,7 +342,6 @@ def Opacity_Plot(Par_min, Par_max, M, alpha, r, structure='Mesa', n=100, input='
 
 def main():
     M = 1.5 * M_sun
-    rg = 2 * G * M / c ** 2
     alpha = 0.1
     r = 1e9
 
@@ -326,7 +349,19 @@ def main():
 
     h = (G * M * r) ** (1 / 2)
 
-    S_curve(2e3, 2e4, M, alpha, r, structure='Mesa', n=300, input='Teff', output='Mdot', save=False, path='fig/S-curve-Ab.pdf')
+    # for Teff in [2000, 3000, 4000, 5000, 7000, 10000, 12000]:
+    #     F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
+    #
+    #     vs = MesaVerticalStructure(M, alpha, r, F)
+    #     print(Teff, 'K')
+    #     print(vs.tau0())
+    #     TempGrad_Plot(vs)
+    #
+    # raise Exception
+
+    S_curve(2e3, 2e4, M, alpha, r, structure='Mesa', n=300, input='Teff', output='Teff', save=False)
+    S_curve(2e3, 2e4, M, alpha, r, structure='MesaAd', n=300, input='Teff', output='Teff', save=False)
+    S_curve(2e3, 2e4, M, alpha, r, structure='MesaFirst', n=300, input='Teff', output='Teff', save=False)
 
     sigma_down = 74.6 * (alpha / 0.1) ** (-0.83) * (r / 1e10) ** 1.18 * (M / M_sun) ** (-0.4)
     sigma_up = 39.9 * (alpha / 0.1) ** (-0.8) * (r / 1e10) ** 1.11 * (M / M_sun) ** (-0.37)
@@ -334,10 +369,14 @@ def main():
     mdot_down = 2.64e15 * (alpha / 0.1) ** 0.01 * (r / 1e10) ** 2.58 * (M / M_sun) ** (-0.85)
     mdot_up = 8.07e15 * (alpha / 0.1) ** (-0.01) * (r / 1e10) ** 2.64 * (M / M_sun) ** (-0.89)
 
-    plt.scatter(sigma_down, mdot_down)
-    plt.scatter(sigma_up, mdot_up)
+    teff_up = 6890 * (r / 1e10) ** (-0.09) * (M / M_sun) ** 0.03
+    teff_down = 5210 * (r / 1e10) ** (-0.10) * (M / M_sun) ** 0.04
+
+    plt.scatter(sigma_down, teff_down)
+    plt.scatter(sigma_up, teff_up)
 
     plt.savefig('fig/S-curve-Ab.pdf')
+
 
 if __name__ == '__main__':
     main()
