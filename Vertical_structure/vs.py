@@ -343,7 +343,7 @@ def main():
     r = 8e10
     alpha = 0.5
     Teff = 6e3
-    print('Finding Pi parameters of structure.')
+    print('Finding Pi parameters of structure and making a structure plot.')
     print('M = {:g} grams \nr = {:g} cm \nalpha = {:g} \nTeff = {:g} K'.format(M, r, alpha, Teff))
     h = (G * M * r) ** (1 / 2)
     F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
@@ -353,16 +353,16 @@ def main():
         print('The vertical structure has been calculated successfully.')
     Pi = vs.Pi_finder()
     print('Pi parameters =', Pi)
-    # t = np.linspace(0, 1, 100)
-    # S, P, Q, T = vs.integrate(t)[0]
-    # import matplotlib.pyplot as plt
-    # plt.plot(1 - t, S, label='S')
-    # plt.plot(1 - t, P, label='P')
-    # plt.plot(1 - t, Q, label='Q')
-    # plt.plot(1 - t, T, label='T')
-    # plt.grid()
-    # plt.legend()
-    # plt.show()
+    t = np.linspace(0, 1, 100)
+    S, P, Q, T = vs.integrate(t)[0]
+    import matplotlib.pyplot as plt
+    plt.plot(1 - t, S, label='S')
+    plt.plot(1 - t, P, label='P')
+    plt.plot(1 - t, Q, label='Q')
+    plt.plot(1 - t, T, label='T')
+    plt.grid()
+    plt.legend()
+    plt.show()
 
 
 if __name__ == '__main__':

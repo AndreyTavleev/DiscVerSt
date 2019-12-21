@@ -35,20 +35,20 @@ def Structure_Plot(M, alpha, r, Par, mu=0.6, input='Teff', structure='Kramers', 
     elif structure == 'BellLin':
         vs = IdealBellLin1994VerticalStructure(M, alpha, r, F)
     elif structure == 'Mesa':
-        import MESAvs
-        vs = MESAvs.MesaVerticalStructure(M, alpha, r, F)
+        import mesa_vs
+        vs = mesa_vs.MesaVerticalStructure(M, alpha, r, F)
     elif structure == 'MesaIdeal':
-        import MESAvs
-        vs = MESAvs.MesaIdealVerticalStructure(M, alpha, r, F, mu)
+        import mesa_vs
+        vs = mesa_vs.MesaIdealVerticalStructure(M, alpha, r, F, mu)
     elif structure == 'MesaAd':
-        import MESAvs
-        vs = MESAvs.MesaVerticalStructureAdiabatic(M, alpha, r, F)
+        import mesa_vs
+        vs = mesa_vs.MesaVerticalStructureAdiabatic(M, alpha, r, F)
     elif structure == 'MesaFirst':
-        import MESAvs
-        vs = MESAvs.MesaVerticalStructureFirstAssumption(M, alpha, r, F)
+        import mesa_vs
+        vs = mesa_vs.MesaVerticalStructureFirstAssumption(M, alpha, r, F)
     elif structure == 'MesaRadConv':
-        import MESAvs
-        vs = MESAvs.MesaVerticalStructureRadConv(M, alpha, r, F)
+        import mesa_vs
+        vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F)
     else:
         print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
         return
@@ -105,20 +105,20 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', n=100, inpu
         elif structure == 'BellLin':
             vs = IdealBellLin1994VerticalStructure(M, alpha, r, F)
         elif structure == 'Mesa':
-            import MESAvs
-            vs = MESAvs.MesaVerticalStructure(M, alpha, r, F)
+            import mesa_vs
+            vs = mesa_vs.MesaVerticalStructure(M, alpha, r, F)
         elif structure == 'MesaIdeal':
-            import MESAvs
-            vs = MESAvs.MesaIdealVerticalStructure(M, alpha, r, F, mu)
+            import mesa_vs
+            vs = mesa_vs.MesaIdealVerticalStructure(M, alpha, r, F, mu)
         elif structure == 'MesaAd':
-            import MESAvs
-            vs = MESAvs.MesaVerticalStructureAdiabatic(M, alpha, r, F)
+            import mesa_vs
+            vs = mesa_vs.MesaVerticalStructureAdiabatic(M, alpha, r, F)
         elif structure == 'MesaFirst':
-            import MESAvs
-            vs = MESAvs.MesaVerticalStructureFirstAssumption(M, alpha, r, F)
+            import mesa_vs
+            vs = mesa_vs.MesaVerticalStructureFirstAssumption(M, alpha, r, F)
         elif structure == 'MesaRadConv':
-            import MESAvs
-            vs = MESAvs.MesaVerticalStructureRadConv(M, alpha, r, F)
+            import mesa_vs
+            vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F)
         else:
             print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
             return
@@ -228,7 +228,7 @@ def TempGrad_Plot(vs, title=True):
     y = vs.integrate(t)[0]
     S, P, Q, T = y
     grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
-    from MESAvs import opacity
+    from mesa_vs import opacity
     rho, eos = opacity.rho(P * vs.P_norm, T * vs.T_norm, True)
     ion = np.exp(eos.lnfree_e)
     kappa = vs.opacity(y)
@@ -286,20 +286,20 @@ def Opacity_Plot(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', n=100,
         elif structure == 'BellLin':
             vs = IdealBellLin1994VerticalStructure(M, alpha, r, F)
         elif structure == 'Mesa':
-            import MESAvs
-            vs = MESAvs.MesaVerticalStructure(M, alpha, r, F)
+            import mesa_vs
+            vs = mesa_vs.MesaVerticalStructure(M, alpha, r, F)
         elif structure == 'MesaIdeal':
-            import MESAvs
-            vs = MESAvs.MesaIdealVerticalStructure(M, alpha, r, F, mu)
+            import mesa_vs
+            vs = mesa_vs.MesaIdealVerticalStructure(M, alpha, r, F, mu)
         elif structure == 'MesaAd':
-            import MESAvs
-            vs = MESAvs.MesaVerticalStructureAdiabatic(M, alpha, r, F)
+            import mesa_vs
+            vs = mesa_vs.MesaVerticalStructureAdiabatic(M, alpha, r, F)
         elif structure == 'MesaFirst':
-            import MESAvs
-            vs = MESAvs.MesaVerticalStructureFirstAssumption(M, alpha, r, F)
+            import mesa_vs
+            vs = mesa_vs.MesaVerticalStructureFirstAssumption(M, alpha, r, F)
         elif structure == 'MesaRadConv':
-            import MESAvs
-            vs = MESAvs.MesaVerticalStructureRadConv(M, alpha, r, F)
+            import mesa_vs
+            vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F)
         else:
             print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
             return

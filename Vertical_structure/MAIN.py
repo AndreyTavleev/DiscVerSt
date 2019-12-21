@@ -1,4 +1,4 @@
-from Plots import Structure_Plot, TempGrad_Plot, S_curve, Opacity_Plot
+from plots import Structure_Plot, TempGrad_Plot, S_curve, Opacity_Plot
 import numpy as np
 from astropy import constants as const
 
