@@ -4,5 +4,5 @@ of opacity law. For given parameters the vertical structure of
 disc is calculated and can be used for research of disc stability. 
 
 For scientific-python course: project consist of setup.py, README (this file), 
-Vertical_structure/__init__.py, Vertical_structure/vs.py, Vertical_structure/test.py 
+bin/__init__.py, bin/vs.py, bin/test.py 
 and requirements.txt (use pip3 install -r requirements.txt to install all dependences).
