@@ -12,7 +12,7 @@ setup(
     description='Vertical structure of accretion discs',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    package_dir={'': 'Vertical_structure'},
+    package_dir={'': 'bin'},
     py_modules=['vs'],
     test_suite='test',
     entry_points={'console_scripts': ['example_structure = vs:main']},
