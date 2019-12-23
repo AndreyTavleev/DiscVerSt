@@ -80,7 +80,7 @@ class RadConvTempGradient:
                      dlnTdlnP_rad - eos.grad_ad)
         V = VV ** (-1 / 2)
 
-        y = root_scalar(lambda x: 2 * A * x ** 3 + V * x ** 2 + V ** 2 * x - V)
+        y = root_scalar(lambda x: 2 * A * x ** 3 + V * x ** 2 + V ** 2 * x - V, bracket=[-1, 1]).root
 
         dlnTdlnP_conv = eos.grad_ad + (dlnTdlnP_rad - eos.grad_ad) * y * (y + V)
 

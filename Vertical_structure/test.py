@@ -29,9 +29,9 @@ class PiTestCase(unittest.TestCase):
                 actual = vs.Pi_finder()
                 desired = fp.getPi()
 
-                assert_allclose(actual[0], desired[0], atol=1e-3, rtol=1e-3,
+                assert_allclose(actual[0], desired[0], atol=1e-2, rtol=1e-2,
                                 err_msg='Pi1, tau0={}'.format(tau0))
-                assert_allclose(actual[1:], desired[1:], atol=1e-3, rtol=1e-3,
+                assert_allclose(actual[1:], desired[1:], atol=1e-2, rtol=1e-2,
                                 err_msg='Pi2..4, tau0={}'.format(tau0))
 
 
