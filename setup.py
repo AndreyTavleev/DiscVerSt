@@ -1,12 +1,12 @@
 from setuptools import setup
-import Vertical_structure
+import bin 
 
 with open('README.md') as file:
     long_description = file.read()
 
 setup(
     name='vs',
-    version=Vertical_structure.__version__,
+    version=bin.__version__,
     author='Andrey Tavleev',
     author_email='tavleev.as15@physics.msu.ru',
     description='Vertical structure of accretion discs',
