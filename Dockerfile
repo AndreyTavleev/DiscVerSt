@@ -7,7 +7,7 @@ RUN apt-get update && \
 COPY /requirements.txt /requirements.txt
 RUN pip install -r /requirements.txt
 
-COPY Vertical_structure /app
+COPY bin /app
 WORKDIR /app
 
 RUN mkdir -pv /app/fig
