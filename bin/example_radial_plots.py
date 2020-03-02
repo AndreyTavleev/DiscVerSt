@@ -4,10 +4,7 @@ from astropy import constants as const
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
 
-try:
-    import mesa_vs
-except ImportError:
-    mesa_vs = np.nan
+import mesa_vs
 
 rcParams['text.usetex'] = True
 rcParams['font.size'] = 14
@@ -69,17 +66,14 @@ def main():
 
         t_c_teor2 = 8.2e6 * (M / M_sun) ** (3 / 10) * alpha ** (-1 / 5) * (r / 1e7) ** (-9 / 10) * (mu / 0.6) ** (
                 1 / 5) * (Mdot / 1e17) ** (2 / 5) * 1.2
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = mesa_vs.MesaVerticalStructure(M, alpha, r, Mdot * h)
-            z0r, result = vs.fit()
-            varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
-            sigma0_plot.append(Sigma0)
-            z0r_plot.append(z0r)
-            rho_c_plot.append(rho_C)
-            t_c_plot.append(T_C)
+
+        vs = mesa_vs.MesaVerticalStructure(M, alpha, r, Mdot * h)
+        z0r, result = vs.fit()
+        varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
+        sigma0_plot.append(Sigma0)
+        z0r_plot.append(z0r)
+        rho_c_plot.append(rho_C)
+        t_c_plot.append(T_C)
         vs2 = IdealKramersVerticalStructure(M, alpha, r, Mdot * h, mu=mu)
         z0r2, result2 = vs2.fit()
         sigma0_teor_plot.append(sigma0_teor)
@@ -100,7 +94,7 @@ def main():
     plt.plot(r_plot, z0r2_plot, label='Kramers')
     plt.plot(r_plot, z0r_teor_plot, '--')
     plt.plot(r_plot, z0r_teor2_plot, '-.')
-    plt.ylim(ymin=0, ymax=0.02)
+    # plt.ylim(ymin=0, ymax=0.024)
     plt.grid()
     plt.xscale('log')
     plt.legend()

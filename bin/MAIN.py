@@ -1,10 +1,8 @@
 from plots import Structure_Plot, TempGrad_Plot, S_curve, Opacity_Plot
 import numpy as np
-from scipy.integrate import simps
 from astropy import constants as const
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
-import matplotlib.colors as mcolors
 import sys
 from astropy.io import ascii
 
@@ -28,16 +26,11 @@ def plank(nu, T):
 
 def main():
     data = ascii.read('F_xspec.dat')
-    t = list(data['col1'])
     f = list(data['col3'])
-    N = 100
-    incl = 40
     d = 5 * 3 * 1e21
     M = 1.5 * M_sun
-    rg = 2 * G * M / c ** 2
     eta = 0.1
     alpha = 0.3
-    dot_plot = []
     maximum = max(f)
     for i, el in enumerate(f):
         if el == maximum:
@@ -56,107 +49,6 @@ def main():
     print(vs.fit())
     print(vs.Teff)
     sys.exit()
-
-    jj = 0
-    for flux in f:
-        print('jj = ', jj)
-        jj = jj + 1
-        Mdot = 4 * np.pi * d ** 2 * flux / (eta * c ** 2)
-        Teff_plot = []
-        Teff_plot2 = []
-        ratio_plot = []
-        z0_plot = []
-        z0_plot2 = []
-        r_plot = np.geomspace(0.0001 * R_sun, 1.87 * R_sun, N)
-
-        for i, r in enumerate(r_plot):
-            print('i =', i)
-            import mesa_vs
-            h = (G * M * r) ** (1 / 2)
-            vs = mesa_vs.MesaVerticalStructure(M, alpha, r, Mdot * h, irr_heat=True)
-            z0r, result = vs.fit()
-            Teff_plot.append(vs.Teff)
-            z0_plot.append(z0r)
-            ratio_plot.append(vs.Q_irr / vs.Q0)
-
-        # np.savetxt('fig/z0_r.txt', z0_plot)
-        # np.savetxt('fig/r.txt', r_plot)
-        # np.savetxt('fig/Teff.txt', Teff_plot)
-        # np.savetxt('fig/ratio.txt', ratio_plot)
-        # sys.exit()
-
-        # for i, r in enumerate(r_plot):
-        #     z0_plot2.append(z0_plot[0] * (r / r_plot[0]) ** (9 / 8))
-        #     Teff_plot2.append(Teff_plot[0] * (r_plot[0] / r) ** (3 / 5))
-
-        # plt.plot(r_plot / R_sun, z0_plot2, '--', label=r'$\sim r^{9/8}$')
-        # plt.plot(r_plot / R_sun, z0_plot)
-        # plt.legend()
-        # plt.xlabel('$r/R_{sun}$')
-        # plt.ylabel('$z_0$')
-        # plt.xscale('log')
-        # plt.yscale('log')
-        # plt.grid()
-        # plt.savefig('fig/z0-r1.pdf')
-        # plt.close()
-        #
-        # plt.plot(r_plot / R_sun, Teff_plot2, '--', label=r'$\sim r^{-3/5}$')
-        # plt.plot(r_plot / R_sun, Teff_plot)
-        # plt.legend()
-        # plt.xlabel('$r/R_{sun}$')
-        # plt.ylabel(r'$T_{\rm eff}$')
-        # plt.xscale('log')
-        # plt.yscale('log')
-        # plt.grid()
-        # plt.savefig('fig/Teff-r1.pdf')
-        # plt.close()
-        #
-        # sys.exit()
-
-        nuFnu_plot = []
-        # nu_plot = np.geomspace(2.46e14, 1)
-        nu_plot = [4.56e14]
-        for i, nu in enumerate(nu_plot):
-            print('ii =', i)
-
-            f_var = []
-            for j, r in enumerate(r_plot):
-                f_var.append(plank(nu, Teff_plot[j]) * r)
-
-            integral = simps(f_var, r_plot)
-
-            nuFnu = 2 * np.pi * np.cos(np.radians(incl)) * nu * integral / d ** 2
-            nuFnu_plot.append(nuFnu)
-        dot = sum(nuFnu_plot)
-        dot_plot.append(dot)
-
-        # np.savetxt('fig/nuFnu' + str(Mdot) + '.txt', nuFnu_plot)
-        # plt.plot(nu_plot, nuFnu_plot, label=r'Mdot = {:g}'.format(Mdot))
-    # np.savetxt('fig/nu.txt', nu_plot)
-    np.savetxt('fig/nuFnu_RR.txt', dot_plot)
-    np.savetxt('fig/t.txt', t)
-
-    # plt.scatter(t, dot_plot, label='UVM2')
-    # colours = list(mcolors.TABLEAU_COLORS) + list(np.random.rand(20, 4))
-    # plt.axvline(x=4.56e14, label='R', c=colours[2])
-    # plt.axvline(x=2.46e14, label='J', c=colours[3])
-    # plt.axvline(x=8.22e14, label='U', c=colours[4])
-    # plt.axvline(x=6.74e14, label='B', c=colours[5])
-    # plt.axvline(x=5.44e14, label='V', c=colours[6])
-    # plt.axvline(x=11.5e14, label='UVW1', c=colours[7])
-    # plt.axvline(x=15.7e14, label='UVW2', c=colours[8])
-    # plt.axvline(x=13.3e14, label='UVM2', c=colours[9])
-    # plt.xlabel(r'$\nu$')
-    # plt.xlabel('t')
-    # plt.ylabel(r'$\nu F\nu$')
-    # plt.xscale('log')
-    # plt.yscale('log')
-    # plt.legend()
-    # plt.grid()
-    # plt.savefig('fig/nuFnu2.pdf')
-    # plt.savefig('fig/nuFnu_t_J.pdf')
-
-    raise Exception
 
     Structure_Plot(M, alpha, r, 1e18, input='Mdot', structure='Mesa')
 
