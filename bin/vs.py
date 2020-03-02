@@ -1,14 +1,16 @@
 from enum import IntEnum
+import sys
 
-from scipy.integrate import solve_ivp
+from scipy.integrate import solve_ivp, simps
 from scipy.optimize import brentq
 import numpy as np
 from astropy import constants as const
 
 sigmaSB = const.sigma_sb.cgs.value
-R = const.R.cgs.value
+R_gas = const.R.cgs.value
 G = const.G.cgs.value
 M_sun = const.M_sun.cgs.value
+c = const.c.cgs.value
 
 
 class Vars(IntEnum):
@@ -69,7 +71,7 @@ class BaseVerticalStructure:
 
     """
 
-    def __init__(self, Mx, alpha, r, F, eps=1e-4, mu=0.6):
+    def __init__(self, Mx, alpha, r, F, eps=1e-5, mu=0.6, irr_heat=False):
         self.mu = mu
         self.Mx = Mx
         self.GM = G * Mx
@@ -79,8 +81,20 @@ class BaseVerticalStructure:
         self.omegaK = np.sqrt(self.GM / self.r ** 3)
 
         self.Q_norm = self.Q0 = (3 / (8 * np.pi)) * F * self.omegaK / self.r ** 2
-        self.Teff = (self.Q0 / sigmaSB) ** (1 / 4)
+
         self.z0 = self.z0_init()
+        if irr_heat:
+            albedo = 0.5
+            q = 1 / 8
+            eta = 0.1
+            h = (G * self.Mx * self.r) ** (1 / 2)
+            Mdot = self.F / h
+            L_x = eta * Mdot * c ** 2
+            self.Q_irr = (1 - albedo) * q * L_x * self.z0 / (8 * np.pi * self.r ** 3)
+        else:
+            self.Q_irr = 0
+
+        self.Teff = ((self.Q0 + self.Q_irr) / sigmaSB) ** (1 / 4)
 
         self.eps = eps
 
@@ -92,7 +106,7 @@ class BaseVerticalStructure:
     def z0(self, z0):
         self.__z0 = z0
         self.P_norm = (4 / 3) * self.Q_norm / (self.alpha * z0 * self.omegaK)
-        self.T_norm = self.omegaK ** 2 * self.mu * z0 ** 2 / R
+        self.T_norm = self.omegaK ** 2 * self.mu * z0 ** 2 / R_gas
         self.sigma_norm = 28 * self.Q_norm / (3 * self.alpha * z0 ** 2 * self.omegaK ** 3)
 
     def law_of_viscosity(self, P):
@@ -108,14 +122,21 @@ class BaseVerticalStructure:
         return self.law_of_viscosity(y[Vars.P] * self.P_norm)
 
     def rho(self, y):
-        return self.law_of_rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm)
+        A = self.law_of_rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm)
+        if np.isnan(A):
+            print('rho is NAN')
+            # breakpoint()
+            return A
+        else:
+            return A
 
     def opacity(self, y):
         return self.law_of_opacity(self.rho(y), y[Vars.T] * self.T_norm)
 
     def photospheric_pressure_equation(self, tau, y):
-        rho = self.law_of_rho(y, self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4))
-        xi = self.law_of_opacity(rho, self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4))
+        T = self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)
+        rho = self.law_of_rho(y, T)
+        xi = self.law_of_opacity(rho, T)
         return self.z0 * self.omegaK ** 2 / xi
 
     def initial(self):
@@ -132,14 +153,11 @@ class BaseVerticalStructure:
             [0, 2 / 3],
             [1e-8 * self.P_norm], rtol=self.eps
         )
-        # assert solution.success
-        # integral = quad(lambda x: (1 + 3 * x / 2) ** (9 / 8), 0, 2 / 3)[0]
-        # A = np.sqrt(self.omegaK ** 2 * self.z0 * R * integral * self.Teff ** (9 / 2) / (5e24 * self.mu * 2 ** (1 / 8)))
-        # A = root(lambda P1: 3 * P0 * P1 / 2 - wqe(3 / 2, P0 * P1, z0), [0.5]).x[0]
+
         y = np.empty(4, dtype=np.float)
         y[Vars.S] = 0
         y[Vars.P] = solution.y[0][-1] / self.P_norm
-        y[Vars.Q] = 1
+        y[Vars.Q] = 1 + self.Q_irr / self.Q_norm
         y[Vars.T] = self.Teff / self.T_norm
         return y
 
@@ -167,11 +185,16 @@ class BaseVerticalStructure:
 
         """
         dy = np.empty(4)
+        if y[Vars.T] < 0 or y[Vars.S] < 0:
+            print('S or T < 0')
+            breakpoint()
         rho = self.rho(y)
         dy[Vars.S] = rho * 2 * self.z0 / self.sigma_norm
         dy[Vars.P] = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
         dy[Vars.Q] = self.dQdz(y, t)
-        dy[Vars.T] = self.dlnTdlnP(y, t) * dy[Vars.P] * y[Vars.T] / y[Vars.P]
+        grad = self.dlnTdlnP(y, t)
+        dy[Vars.T] = grad * dy[Vars.P] * y[Vars.T] / y[Vars.P]
+        # print(y, t, dy, grad, self.z0 > 0, self.P_norm > 0, self.sigma_norm > 0)
         return dy
 
     def integrate(self, t):
@@ -187,15 +210,23 @@ class BaseVerticalStructure:
         Returns
         -------
         list
-            List containing the array with values of dimentsionless functions
-            calculating at points of `t` array. Also list containes the
+            List containing the array with values of dimentionless functions
+            calculating at points of `t` array. Also list contains the
             message from the integrator.
 
         """
         assert t[0] == 0
-        solution = solve_ivp(self.dydt, (t[0], t[-1]), self.initial(), t_eval=t, rtol=self.eps)
+        solution = solve_ivp(self.dydt, (t[0], t[-1]), self.initial(), t_eval=t, rtol=self.eps, method='RK23')
         # assert solution.success
         return [solution.y, solution.message]
+
+    def tau(self):
+        t = np.linspace(0, 1, 100)
+        y = self.integrate(t)[0]
+        xi = self.opacity(y)
+        rho = self.rho(y)
+        tau_norm = simps(xi * rho, t)
+        return self.z0 * tau_norm
 
     def y_c(self):
         y = self.integrate([0, 1])
@@ -238,7 +269,7 @@ class BaseVerticalStructure:
         return Pi_real
 
     def z0_init(self):
-        return (self.r * 2.86e-7 * self.F ** (3 / 20) * (self.Mx / M_sun) ** (-12 / 35)
+        return (self.r * 2.86e-7 * self.F ** (3 / 20) * (self.Mx / M_sun) ** (-9 / 20)
                 * self.alpha ** (-1 / 10) * (self.r / 1e10) ** (1 / 20))
 
     def fit(self):
@@ -251,6 +282,7 @@ class BaseVerticalStructure:
             The value of normalized unknown free parameter z_0 / r and result of optimization.
 
         """
+
         def dq(z0r):
             self.z0 = z0r * self.r
             q_c = self.y_c()[Vars.Q]
@@ -278,11 +310,11 @@ class RadiativeTempGradient:
 
         if t == 1:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * xi * (
-                    self.Q_norm * self.P_norm / self.T_norm ** 4) / (16 * sigmaSB * t * self.omegaK ** 2)
+                    self.Q_norm * self.P_norm / self.T_norm ** 4) / (16 * sigmaSB * self.z0 * self.omegaK ** 2)
         else:
             rho = self.rho(y)
-            dTdz = ((abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * xi * rho * self.z0 * self.Q_norm / (
-                    16 * sigmaSB * self.T_norm ** 4))
+            dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * xi * rho * self.z0 * self.Q_norm / (
+                    16 * sigmaSB * self.T_norm ** 4)
             dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
             dlnTdlnP_rad = (y[Vars.P] / y[Vars.T]) * (dTdz / dPdz)
 
@@ -291,7 +323,7 @@ class RadiativeTempGradient:
 
 class IdealGasMixin:
     def law_of_rho(self, P, T):
-        return P * self.mu / (R * T)
+        return P * self.mu / (R_gas * T)
 
 
 class KramersOpacityMixin:
@@ -339,7 +371,7 @@ class IdealBellLin1994VerticalStructure(IdealGasMixin, BellLin1994TwoComponentOp
 
 
 def main():
-    M = 600 * M_sun
+    M = 10 * M_sun
     r = 8e10
     alpha = 0.5
     Teff = 6e3
