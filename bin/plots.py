@@ -22,7 +22,7 @@ rcParams['text.latex.preamble'] = [r'\usepackage[utf8]{inputenc}', r'\usepackage
                                    r'\usepackage[english]{babel}']
 
 
-def Structure_Plot(M, alpha, r, Par, mu=0.6, input='Teff', structure='Kramers', title=True):
+def Structure_Plot(M, alpha, r, Par, mu=0.6, input='Teff', structure='Kramers', abundance='solar', title=True):
     h = (G * M * r) ** (1 / 2)
 
     if input == 'F':
@@ -38,37 +38,37 @@ def Structure_Plot(M, alpha, r, Par, mu=0.6, input='Teff', structure='Kramers', 
     if structure == 'Kramers':
         vs = IdealKramersVerticalStructure(M, alpha, r, F, mu=mu)
     elif structure == 'BellLin':
-        vs = IdealBellLin1994VerticalStructure(M, alpha, r, F)
+        vs = IdealBellLin1994VerticalStructure(M, alpha, r, F, mu=mu)
     elif structure == 'Mesa':
         try:
             if np.isnan(mesa_vs):
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
-            vs = mesa_vs.MesaVerticalStructure(M, alpha, r, F)
+            vs = mesa_vs.MesaVerticalStructure(M, alpha, r, F, abundance=abundance)
     elif structure == 'MesaIdeal':
         try:
             if np.isnan(mesa_vs):
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
-            vs = mesa_vs.MesaIdealVerticalStructure(M, alpha, r, F, mu=mu)
+            vs = mesa_vs.MesaIdealVerticalStructure(M, alpha, r, F, mu=mu, abundance=abundance)
     elif structure == 'MesaAd':
         try:
             if np.isnan(mesa_vs):
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
-            vs = mesa_vs.MesaVerticalStructureAdiabatic(M, alpha, r, F)
+            vs = mesa_vs.MesaVerticalStructureAdiabatic(M, alpha, r, F, abundance=abundance)
     elif structure == 'MesaFirst':
         try:
             if np.isnan(mesa_vs):
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
-            vs = mesa_vs.MesaVerticalStructureFirstAssumption(M, alpha, r, F)
+            vs = mesa_vs.MesaVerticalStructureFirstAssumption(M, alpha, r, F, abundance=abundance)
     elif structure == 'MesaRadConv':
         try:
             if np.isnan(mesa_vs):
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
-            vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F)
+            vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F, abundance=abundance)
     else:
         print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
         return
@@ -90,7 +90,7 @@ def Structure_Plot(M, alpha, r, Par, mu=0.6, input='Teff', structure='Kramers', 
     plt.close()
 
 
-def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', n=100, input='Teff', output='Mdot', save=True,
+def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='solar', n=100, input='Teff', output='Mdot', save=True,
             path='fig/S-curve.pdf', title=True, savedots=False, path_dots='fig/'):
     Sigma_plot = []
     Plot = []
@@ -123,35 +123,37 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', n=100, inpu
         if structure == 'Kramers':
             vs = IdealKramersVerticalStructure(M, alpha, r, F, mu=mu)
         elif structure == 'BellLin':
-            vs = IdealBellLin1994VerticalStructure(M, alpha, r, F)
+            vs = IdealBellLin1994VerticalStructure(M, alpha, r, F, mu=mu)
         elif structure == 'Mesa':
             try:
                 if np.isnan(mesa_vs):
                     raise ModuleNotFoundError('Mesa2py is not installed')
             except TypeError:
-                vs = mesa_vs.MesaVerticalStructure(M, alpha, r, F)
+                vs = mesa_vs.MesaVerticalStructure(M, alpha, r, F, abundance=abundance)
         elif structure == 'MesaIdeal':
             try:
                 if np.isnan(mesa_vs):
                     raise ModuleNotFoundError('Mesa2py is not installed')
             except TypeError:
-                vs = mesa_vs.MesaIdealVerticalStructure(M, alpha, r, F, mu=mu)
+                vs = mesa_vs.MesaIdealVerticalStructure(M, alpha, r, F, mu=mu, abundance=abundance)
         elif structure == 'MesaAd':
             try:
                 if np.isnan(mesa_vs):
                     raise ModuleNotFoundError('Mesa2py is not installed')
             except TypeError:
-                vs = mesa_vs.MesaVerticalStructureAdiabatic(M, alpha, r, F)
+                vs = mesa_vs.MesaVerticalStructureAdiabatic(M, alpha, r, F, abundance=abundance)
         elif structure == 'MesaFirst':
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-            vs = mesa_vs.MesaVerticalStructureFirstAssumption(M, alpha, r, F)
+            try:
+                if np.isnan(mesa_vs):
+                    raise ModuleNotFoundError('Mesa2py is not installed')
+            except TypeError:
+                vs = mesa_vs.MesaVerticalStructureFirstAssumption(M, alpha, r, F, abundance=abundance)
         elif structure == 'MesaRadConv':
             try:
                 if np.isnan(mesa_vs):
                     raise ModuleNotFoundError('Mesa2py is not installed')
             except TypeError:
-                vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F)
+                vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F, abundance=abundance)
         else:
             print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
             return
@@ -253,7 +255,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', n=100, inpu
         plt.close()
 
 
-def TempGrad_Plot(vs, title=True):
+def TempGrad_Plot(vs, abundance='solar', title=True):
     vs.fit()
     n = 1000
     t = np.linspace(0, 1, n)
@@ -261,10 +263,11 @@ def TempGrad_Plot(vs, title=True):
     S, P, Q, T = y
     grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
     try:
-        if np.isnan(mesa_vs):
-            raise ModuleNotFoundError('Mesa2py is not installed')
-    except TypeError:
-        rho, eos = mesa_vs.opacity.rho(P * vs.P_norm, T * vs.T_norm, True)
+        from opacity import Opac
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError('Mesa2py is not installed') from e
+    mesaop = Opac(abundance, mesa_dir='/mesa')
+    rho, eos = mesaop.rho(P * vs.P_norm, T * vs.T_norm, True)
     ion = np.exp(eos.lnfree_e)
     kappa = vs.opacity(y)
     plt.plot(1 - t, grad_plot(np.log(P)), label=r'$\nabla_{rad}$')
@@ -287,7 +290,7 @@ def TempGrad_Plot(vs, title=True):
     return conv_param_z0
 
 
-def Opacity_Plot(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', n=100, input='Teff', save=True,
+def Opacity_Plot(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='solar', n=100, input='Teff', save=True,
                  path='fig/Opacity.pdf', title=True):
     T_C_plot = []
     Opacity_Plot = []
@@ -319,40 +322,41 @@ def Opacity_Plot(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', n=100,
         if structure == 'Kramers':
             vs = IdealKramersVerticalStructure(M, alpha, r, F, mu=mu)
         elif structure == 'BellLin':
-            vs = IdealBellLin1994VerticalStructure(M, alpha, r, F)
+            vs = IdealBellLin1994VerticalStructure(M, alpha, r, F, mu=mu)
         elif structure == 'Mesa':
             try:
                 if np.isnan(mesa_vs):
                     raise ModuleNotFoundError('Mesa2py is not installed')
             except TypeError:
-                vs = mesa_vs.MesaVerticalStructure(M, alpha, r, F)
+                vs = mesa_vs.MesaVerticalStructure(M, alpha, r, F, abundance=abundance)
         elif structure == 'MesaIdeal':
             try:
                 if np.isnan(mesa_vs):
                     raise ModuleNotFoundError('Mesa2py is not installed')
             except TypeError:
-                vs = mesa_vs.MesaIdealVerticalStructure(M, alpha, r, F, mu=mu)
+                vs = mesa_vs.MesaIdealVerticalStructure(M, alpha, r, F, mu=mu, abundance=abundance)
         elif structure == 'MesaAd':
             try:
                 if np.isnan(mesa_vs):
                     raise ModuleNotFoundError('Mesa2py is not installed')
             except TypeError:
-                vs = mesa_vs.MesaVerticalStructureAdiabatic(M, alpha, r, F)
+                vs = mesa_vs.MesaVerticalStructureAdiabatic(M, alpha, r, F, abundance=abundance)
         elif structure == 'MesaFirst':
             try:
                 if np.isnan(mesa_vs):
                     raise ModuleNotFoundError('Mesa2py is not installed')
             except TypeError:
-                vs = mesa_vs.MesaVerticalStructureFirstAssumption(M, alpha, r, F)
+                vs = mesa_vs.MesaVerticalStructureFirstAssumption(M, alpha, r, F, abundance=abundance)
         elif structure == 'MesaRadConv':
             try:
                 if np.isnan(mesa_vs):
                     raise ModuleNotFoundError('Mesa2py is not installed')
             except TypeError:
-                vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F)
+                vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F, abundance=abundance)
         else:
             print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
             return
+
         vs.fit()
         # y = vs.parameters_C()
         # T_C_plot.append(y[2])

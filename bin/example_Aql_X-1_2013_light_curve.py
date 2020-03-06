@@ -45,7 +45,7 @@ def main():
         for i, r in enumerate(r_plot):
             print('i =', i)
             h = (G * M * r) ** (1 / 2)
-            vs = mesa_vs.MesaVerticalStructure(M, alpha, r, Mdot * h, irr_heat=True)
+            vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, Mdot * h, irr_heat=True)
             vs.fit()
             Teff_plot.append(vs.Teff)
 

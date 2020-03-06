@@ -9,29 +9,33 @@ try:
 except ModuleNotFoundError as e:
     raise ModuleNotFoundError('Mesa2py is not installed') from e
 
-opacity = Opac('solar', mesa_dir='/mesa')
-# opacity = Opac({b'he4': 0.25, b'h1': 0.75}, mesa_dir='/mesa')
-# opacity = Opac({b'he4': 1.0}, mesa_dir='/mesa')
+
+class BaseMesaVerticalStructure(BaseVerticalStructure):
+    def __init__(self, Mx, alpha, r, F, eps=1e-5, abundance='solar', irr_heat=False):
+        super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, irr_heat=irr_heat)
+        self.mesaop = Opac(abundance, mesa_dir='/mesa')
 
 
 class MesaGasMixin:
-    law_of_rho = opacity.rho
+    def law_of_rho(self, P, T):
+        return self.mesaop.rho(P, T)
 
 
 class MesaOpacityMixin:
-    law_of_opacity = opacity.kappa
+    def law_of_opacity(self, rho, T):
+        return self.mesaop.kappa(rho, T)
 
 
 class AdiabaticTempGradient:
     def dlnTdlnP(self, y, t):
-        rho, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
+        rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
         return eos.grad_ad
 
 
 class FirstAssumptionRadiativeConvectiveGradient:
     def dlnTdlnP(self, y, t):
         xi = self.opacity(y)
-        rho, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
+        rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
 
         if t == 1:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * xi * (
@@ -52,7 +56,7 @@ class FirstAssumptionRadiativeConvectiveGradient:
 class RadConvTempGradient:
     def dlnTdlnP(self, y, t):
         xi = self.opacity(y)
-        rho, eos = opacity.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
+        rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
 
         if t == 1:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * xi * (
@@ -103,22 +107,22 @@ class RadConvTempGradient:
         return dlnTdlnP_conv
 
 
-class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseVerticalStructure):
+class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseMesaVerticalStructure):
     pass
 
 
-class MesaIdealVerticalStructure(IdealGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseVerticalStructure):
+class MesaIdealVerticalStructure(IdealGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseMesaVerticalStructure):
     pass
 
 
-class MesaVerticalStructureAdiabatic(MesaGasMixin, MesaOpacityMixin, AdiabaticTempGradient, BaseVerticalStructure):
+class MesaVerticalStructureAdiabatic(MesaGasMixin, MesaOpacityMixin, AdiabaticTempGradient, BaseMesaVerticalStructure):
     pass
 
 
 class MesaVerticalStructureFirstAssumption(MesaGasMixin, MesaOpacityMixin, FirstAssumptionRadiativeConvectiveGradient,
-                                           BaseVerticalStructure):
+                                           BaseMesaVerticalStructure):
     pass
 
 
-class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, BaseVerticalStructure):
+class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, BaseMesaVerticalStructure):
     pass

@@ -15,6 +15,7 @@ c = const.c.cgs.value
 pl_const = const.h.cgs.value
 k_B = const.k_B.cgs.value
 
+
 def main():
     M = 1.5 * M_sun
     r = 7e10
@@ -37,8 +38,13 @@ def main():
     teff_down_he = 9700 * (r / 1e10) ** (-0.09) * (M / M_sun) ** 0.03
     mdot_down_he = 3.18e16 * (alpha / 0.1) ** (-0.01) * (r / 1e10) ** 2.65 * (M / M_sun) ** (-0.88)
 
-    plt.scatter(sigma_down_sol, teff_down_sol)
-    plt.scatter(sigma_up_sol, teff_up_sol)
+    sigma_down_sol_ham = 13.4 * alpha ** (-0.83) * (r / 1e10) ** 1.14 * (M / M_sun) ** (-0.38)
+    sigma_up_sol_ham = 8.3 * alpha ** (-0.77) * (r / 1e10) ** 1.11 * (M / M_sun) ** (-0.37)
+    mdot_down_sol_ham = 4e15 * (alpha / 0.1) ** (-0.004) * (r / 1e10) ** 2.65 * (M / M_sun) ** (-0.88)
+    mdot_up_sol_ham = 9.5e15 * (alpha / 0.1) ** 0.01 * (r / 1e10) ** 2.68 * (M / M_sun) ** (-0.89)
+
+    plt.scatter(sigma_down_sol_ham, mdot_down_sol_ham)
+    plt.scatter(sigma_up_sol_ham, mdot_up_sol_ham)
 
     plt.savefig('fig/S-curve_with_dots.pdf')
 
