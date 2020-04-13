@@ -17,7 +17,7 @@ except ModuleNotFoundError as e:
 class BaseMesaVerticalStructure(BaseVerticalStructure):
     def __init__(self, Mx, alpha, r, F, eps=1e-5, abundance='solar'):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6)
-        self.mesaop = Opac(abundance, mesa_dir='/mesa')
+        self.mesaop = Opac(abundance)
 
 
 class MesaGasMixin:
