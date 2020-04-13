@@ -158,8 +158,15 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
                     raise ModuleNotFoundError('Mesa2py is not installed')
             except TypeError:
                 vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F, abundance=abundance)
+        elif structure == 'MesaRadConvIrr':
+            try:
+                if np.isnan(mesa_vs):
+                    raise ModuleNotFoundError('Mesa2py is not installed')
+            except TypeError:
+                vs = mesa_vs.MesaVerticalStructureRadConvExternalIrradiation(M, alpha, r, F, abundance=abundance)
         else:
-            print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
+            print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst, MesaRadConv or '
+                  'MesaRadConvIrr')
             return
 
         z0r, result = vs.fit()
