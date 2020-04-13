@@ -1,8 +1,12 @@
 from vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient
 import numpy as np
 from astropy import constants as const
+from astropy.units import Hz
+from scipy.integrate import solve_ivp, simps
 
 sigmaSB = const.sigma_sb.cgs.value
+c = const.c.cgs.value
+pl_const = const.h
 
 try:
     from opacity import Opac
@@ -107,6 +111,161 @@ class RadConvTempGradient:
         return dlnTdlnP_conv
 
 
+class ExternalIrradiation:
+    def photospheric_sigma_equation(self, tau, y):
+        T = self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)  # problem: Teff is unknown (we know only Tvis, but not Tirr)
+        rho = self.law_of_rho(y, T)
+        xi = self.law_of_opacity(rho, T)
+        return - self.z0 / xi
+
+    def sigma_ph(self):
+        solution = solve_ivp(
+            self.photospheric_sigma_equation,
+            [0, 2 / 3],
+            [1e-8 * self.sigma_norm], rtol=self.eps
+        )
+        return solution.y[0][-1]  # dimentional value
+
+    def k_d_nu(self, nu):
+        E = (pl_const * nu * Hz).to('keV').value
+
+        if 0.030 <= E <= 0.100:
+            c_0 = 17.3
+            c_1 = 608.1
+            c_2 = -2150.0
+        elif 0.100 < E <= 0.284:
+            c_0 = 34.6
+            c_1 = 267.9
+            c_2 = -476.1
+        elif 0.284 < E <= 0.400:
+            c_0 = 78.1
+            c_1 = 18.8
+            c_2 = 4.3
+        elif 0.400 < E <= 0.532:
+            c_0 = 71.4
+            c_1 = 66.8
+            c_2 = -51.4
+        elif 0.532 < E <= 0.707:
+            c_0 = 95.5
+            c_1 = 145.8
+            c_2 = -61.1
+        elif 0.707 < E <= 0.867:
+            c_0 = 308.9
+            c_1 = -380.6
+            c_2 = 294.0
+        elif 0.867 < E <= 1.303:
+            c_0 = 120.6
+            c_1 = 169.3
+            c_2 = -47.7
+        elif 1.303 < E <= 1.840:
+            c_0 = 141.3
+            c_1 = 146.8
+            c_2 = -31.5
+        elif 1.840 < E <= 2.471:
+            c_0 = 202.7
+            c_1 = 104.7
+            c_2 = -17.0
+        elif 2.471 < E <= 3.210:
+            c_0 = 342.7
+            c_1 = 18.7
+            c_2 = 0.0
+        elif 3.210 < E <= 4.038:
+            c_0 = 352.2
+            c_1 = 18.7
+            c_2 = 0.0
+        elif 4.038 < E <= 7.111:
+            c_0 = 433.9
+            c_1 = -2.4
+            c_2 = 0.75
+        elif 7.111 < E <= 8.331:
+            c_0 = 629.0
+            c_1 = 30.9
+            c_2 = 0.0
+        elif 8.331 < E <= 10.000:
+            c_0 = 701.2
+            c_1 = 25.2
+            c_2 = 0.0
+
+        result = (c_0 + c_1 * E + c_2 * E ** 2) * E ** (-3) * 1e-24  # cross-section in cm2
+        return result
+
+    def J_tot(self, nu, y, tau_0, spectra):
+        kpd = 0.1
+        h = np.sqrt(self.GM * self.r)
+        F_x = kpd * c ** 2 * self.F / (h * 4 * np.pi * self.r ** 2) * spectra
+        sigma = 0.34
+        # k_d_nu = self.k_d_nu(nu)
+        k_d_nu = 10
+        tau = (sigma + k_d_nu) * y[Vars.S] * self.sigma_norm
+        lamb = sigma / (sigma + k_d_nu)
+        k = np.sqrt(3 * (1 - lamb))
+        zeta_0 = 1 / 8 * (self.z0 / self.r)
+
+        D_nu = 3 * lamb * zeta_0 ** 2 / (1 - k ** 2 * zeta_0 ** 2)
+
+        C_nu = D_nu * (1 + np.exp(-tau_0 / zeta_0) + 2 / (3 * zeta_0) * (1 + np.exp(-tau_0 / zeta_0))) / (
+                1 + np.exp(-k * tau_0) + 2 * k / 3 * (1 + np.exp(-k * tau_0)))
+
+        J_tot = F_x / (4 * np.pi) * (C_nu * (np.exp(-k * tau) + np.exp(-k * (tau_0 - tau))) +
+                                     (1 - D_nu) * (np.exp(-tau / zeta_0) + np.exp(-(tau_0 - tau) / zeta_0)))
+
+        return J_tot
+
+    def H_tot(self, nu, tau_0, spectra):
+        kpd = 0.1
+        h = np.sqrt(self.GM * self.r)
+        F_x = kpd * c ** 2 * self.F / (h * 4 * np.pi * self.r ** 2) * spectra
+        sigma = 0.34
+        # k_d_nu = self.k_d_nu(nu)
+        k_d_nu = 10
+        tau = (sigma + k_d_nu) * self.sigma_ph()
+        lamb = sigma / (sigma + k_d_nu)
+        k = np.sqrt(3 * (1 - lamb))
+        zeta_0 = 1 / 8 * (self.z0 / self.r)
+
+        D_nu = 3 * lamb * zeta_0 ** 2 / (1 - k ** 2 * zeta_0 ** 2)
+
+        C_nu = D_nu * (1 + np.exp(-tau_0 / zeta_0) + 2 / (3 * zeta_0) * (1 + np.exp(-tau_0 / zeta_0))) / (
+                1 + np.exp(-k * tau_0) + 2 * k / 3 * (1 + np.exp(-k * tau_0)))
+
+        H_tot = F_x * (
+                k * C_nu / 3 * (np.exp(-k * tau) - np.exp(-k * (tau_0 - tau))) + (zeta_0 - D_nu / (3 * zeta_0)) * (
+                np.exp(-tau / zeta_0) - np.exp(-(tau_0 - tau) / zeta_0)))
+
+        return H_tot
+
+    def epsilon(self, y):
+        rho = self.rho(y)
+        tau_0 = np.infty
+        # nu_integral = np.linspace(7.3e15, 2.4e18, 100)  # from 0.03 to 10 keV
+        # spectra = np.ones(nu_integral.shape)
+        # J_integral = [self.J_tot(nu, y, tau_0, spectra[i]) for i, nu in enumerate(nu_integral)]
+        spectra = 1
+        nu = 1.2e18  # doesn't used now
+        # epsilon = 4 * np.pi * rho * simps(J_integral, nu_integral)
+        epsilon = 4 * np.pi * rho * self.J_tot(nu, y, tau_0, spectra)
+        return epsilon
+
+    def Q_irr_ph(self):
+        tau_0 = np.infty
+        # nu_integral = np.linspace(7.3e15, 2.4e18, 100)  # from 0.03 to 10 keV
+        # spectra = np.ones(nu_integral.shape)
+        # H_integral = [self.H_tot(nu, tau_0, spectra[i]) for i, nu in enumerate(nu_integral)]
+        nu = 1.2e18  # doesn't used now
+        spectra = 1
+        # Qirr = simps(H_integral, nu_integral)
+        Qirr = self.H_tot(nu, tau_0, spectra)
+        return Qirr
+
+    def Q_initial(self):
+        result = 1 + self.Q_irr_ph() / self.Q_norm
+        return result
+
+    def dQdz(self, y, t):
+        w_r_phi = self.viscosity(y)
+        return -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm - self.epsilon(y) * self.z0 / self.Q_norm
+
+
 class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseMesaVerticalStructure):
     pass
 
@@ -125,4 +284,9 @@ class MesaVerticalStructureFirstAssumption(MesaGasMixin, MesaOpacityMixin, First
 
 
 class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, BaseMesaVerticalStructure):
+    pass
+
+
+class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,
+                                                      ExternalIrradiation, BaseMesaVerticalStructure):
     pass
