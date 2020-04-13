@@ -90,19 +90,23 @@ def Structure_Plot(M, alpha, r, Par, mu=0.6, input='Teff', structure='Kramers', 
     plt.close()
 
 
-def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='solar', n=100, input='Teff', output='Mdot', save=True,
-            path='fig/S-curve.pdf', title=True, savedots=False, path_dots='fig/'):
+def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='solar', n=100, input='Teff',
+            output='Mdot', xscale='log', yscale='log', save=True, path='fig/S-curve.pdf', title=True, savedots=True,
+            path_dots='fig/'):
+
+    if xscale not in ['linear', 'log', 'parlog']:
+        print('Incorrect xscale, try linear, log or parlog')
+        return
+    if yscale not in ['linear', 'log', 'parlog']:
+        print('Incorrect yscale, try linear, log or parlog')
+        return
     Sigma_plot = []
     Plot = []
     Add_Plot = np.zeros(n)
-    k = 1
-    a = 0
-    b = 0
-    deltaS = 0
 
     h = (G * M * r) ** (1 / 2)
 
-    for i, Par in enumerate(np.linspace(Par_max, Par_min, n)):
+    for i, Par in enumerate(np.geomspace(Par_max, Par_min, n)):
 
         if input == 'Teff':
             Teff = Par
@@ -158,7 +162,9 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
             print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
             return
 
-        vs.fit()
+        z0r, result = vs.fit()
+        print('Teff = {:g}, tau = {:g}, z0r = {:g}'.format(Teff, vs.tau(), z0r))
+
         y = vs.parameters_C()
         Sigma_plot.append(y[4])
 
@@ -171,42 +177,43 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
             Plot.append(Mdot / Mdot_edd)
         elif output == 'F':
             Plot.append(F)
+        elif output == 'z0r':
+            Plot.append(z0r)
         else:
-            print('Incorrect output, try Teff, Mdot, Mdot/Mdot_edd of F')
+            print('Incorrect output, try Teff, Mdot, Mdot/Mdot_edd, F or z0r')
             return
 
         delta = y[3] - 4 * sigmaSB / (3 * c) * y[2] ** 4
         delta = delta / y[3]
         Add_Plot[i] = delta
 
-        if i == 0:
-            Sigma0 = y[4]
-        else:
-            Sigma = y[4]
-            deltaS = Sigma0 - Sigma
-            Sigma0 = Sigma
-
-        if deltaS < 0 and k == 1:
-            print('QWERTY_in')
-            a = i
-            k = 0
-        if deltaS > 0 and k == 0:
-            print('QWERTY')
-            b = i
-            k = 1
-
         print(i + 1)
 
     print('(P_C - P_rad_C) / P_C =', Add_Plot.min())
 
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.xlabel(r'$\Sigma_0, \, g/cm^2$')
-    plt.plot(Sigma_plot, Plot, label=r'M = {:g} Msun, r = {:g} cm'.format(M / M_sun, r))
+    label = r'M = {:g} Msun, r = {:g} rg, alpha = {:g}'.format(M / M_sun, r / (2 * G * M / c ** 2), alpha)
+
+    xlabel = r'$\Sigma_0, \, g/cm^2$'
+    if xscale == 'parlog' and yscale == 'parlog':
+        plt.plot(np.log10(Sigma_plot), np.log10(Plot), label=label)
+        xlabel = r'$log \,$' + xlabel
+    elif xscale == 'parlog':
+        plt.plot(np.log10(Sigma_plot), Plot, label=label)
+        xlabel = r'$log \,$' + xlabel
+        plt.yscale(yscale)
+    elif yscale == 'parlog':
+        plt.plot(Sigma_plot, np.log10(Plot), label=label)
+        plt.xscale(xscale)
+    else:
+        plt.plot(Sigma_plot, Plot, label=label)
+        plt.xscale(xscale)
+        plt.yscale(yscale)
+
+    plt.xlabel(xlabel)
 
     if savedots:
         np.savetxt(path_dots + 'Sigma_0.txt', Sigma_plot)
-        np.savetxt(path_dots + 'T_eff.txt', Plot)
+        np.savetxt(path_dots + output + '.txt', Plot)
 
     # rg = 2 * G * M / c ** 2
     # plt.plot(Sigma_plot[Add_Plot.argmin():], Plot[Add_Plot.argmin():],
@@ -238,13 +245,18 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
     # plt.scatter(Sigma_plot[Add_Plot.argmin()], Plot[Add_Plot.argmin()])
 
     if output == 'Teff':
-        plt.ylabel(r'$T_{\rm eff}, \, K$')
+        ylabel = r'$T_{\rm eff}, \, K$'
     elif output == 'Mdot':
-        plt.ylabel(r'$\dot{M}, \, g/s$')
+        ylabel = r'$\dot{M}, \, g/s$'
     elif output == 'Mdot/Mdot_edd':
-        plt.ylabel(r'$\dot{M}/\dot{M}_{edd} $')
+        ylabel = r'$\dot{M}/\dot{M}_{edd} $'
     elif output == 'F':
-        plt.ylabel(r'$F, \, g~cm^2$')
+        ylabel = r'$F, \, g~cm^2$'
+    elif output == 'z0r':
+        ylabel = r'$z_0/r$'
+    if yscale == 'parlog':
+        ylabel = r'$log \,$' + ylabel
+    plt.ylabel(ylabel)
     plt.grid(True, which='both', ls='-')
     plt.legend()
     if title:
@@ -290,7 +302,8 @@ def TempGrad_Plot(vs, abundance='solar', title=True):
     return conv_param_z0
 
 
-def Opacity_Plot(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='solar', n=100, input='Teff', save=True,
+def Opacity_Plot(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='solar', n=100, input='Teff',
+                 save=True,
                  path='fig/Opacity.pdf', title=True):
     T_C_plot = []
     Opacity_Plot = []
@@ -301,7 +314,7 @@ def Opacity_Plot(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abunda
 
     h = (G * M * r) ** (1 / 2)
 
-    for i, Par in enumerate(np.linspace(Par_max, Par_min, n)):
+    for i, Par in enumerate(np.geomspace(Par_max, Par_min, n)):
 
         if input == 'Teff':
             Teff = Par

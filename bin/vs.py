@@ -1,5 +1,4 @@
 from enum import IntEnum
-import sys
 
 from scipy.integrate import solve_ivp, simps
 from scipy.optimize import brentq
@@ -41,7 +40,7 @@ class BaseVerticalStructure:
     Base class for Vertical structure, solver of the system of dimensionless vertical structure ODEs.
     The system contains four linear differential equations for pressure P, mass coordinate S, energy flux Q
     and temperature T as functions of vertical coordinate z. The only unknown free parameter
-    is semi-thickness of accretional disc z_0. System is supplemented by four first-type
+    is semi-thickness of accretion disc z_0. System is supplemented by four first-type
     boundary conditions (one for each variable). Method `fit` serve to find the free
     parameter z_0 and get solve the system. Integration of system is carried out by `integrate` method.
 
@@ -71,7 +70,7 @@ class BaseVerticalStructure:
 
     """
 
-    def __init__(self, Mx, alpha, r, F, eps=1e-5, mu=0.6, irr_heat=False):
+    def __init__(self, Mx, alpha, r, F, eps=1e-5, mu=0.6):
         self.mu = mu
         self.Mx = Mx
         self.GM = G * Mx
@@ -79,24 +78,12 @@ class BaseVerticalStructure:
         self.r = r
         self.F = F
         self.omegaK = np.sqrt(self.GM / self.r ** 3)
+        self.eps = eps
 
         self.Q_norm = self.Q0 = (3 / (8 * np.pi)) * F * self.omegaK / self.r ** 2
 
         self.z0 = self.z0_init()
-        if irr_heat:
-            albedo = 0.5
-            q = 1 / 8
-            eta = 0.1
-            h = (G * self.Mx * self.r) ** (1 / 2)
-            Mdot = self.F / h
-            L_x = eta * Mdot * c ** 2
-            self.Q_irr = (1 - albedo) * q * L_x * self.z0 / (8 * np.pi * self.r ** 3)
-        else:
-            self.Q_irr = 0
-
-        self.Teff = ((self.Q0 + self.Q_irr) / sigmaSB) ** (1 / 4)
-
-        self.eps = eps
+        self.Teff = (self.Q0 / sigmaSB) ** (1 / 4)
 
     @property
     def z0(self):
@@ -122,13 +109,7 @@ class BaseVerticalStructure:
         return self.law_of_viscosity(y[Vars.P] * self.P_norm)
 
     def rho(self, y):
-        A = self.law_of_rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm)
-        if np.isnan(A):
-            print('rho is NAN')
-            # breakpoint()
-            return A
-        else:
-            return A
+        return self.law_of_rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm)
 
     def opacity(self, y):
         return self.law_of_opacity(self.rho(y), y[Vars.T] * self.T_norm)
@@ -138,6 +119,9 @@ class BaseVerticalStructure:
         rho = self.law_of_rho(y, T)
         xi = self.law_of_opacity(rho, T)
         return self.z0 * self.omegaK ** 2 / xi
+
+    def Q_initial(self):
+        return 1
 
     def initial(self):
         """
@@ -154,11 +138,12 @@ class BaseVerticalStructure:
             [1e-8 * self.P_norm], rtol=self.eps
         )
 
+        Q_initial = self.Q_initial()
         y = np.empty(4, dtype=np.float)
         y[Vars.S] = 0
         y[Vars.P] = solution.y[0][-1] / self.P_norm
-        y[Vars.Q] = 1 + self.Q_irr / self.Q_norm
-        y[Vars.T] = self.Teff / self.T_norm
+        y[Vars.Q] = Q_initial
+        y[Vars.T] = (Q_initial * self.Q_norm / sigmaSB) ** (1 / 4) / self.T_norm
         return y
 
     def dlnTdlnP(self, y, t):
@@ -374,11 +359,11 @@ def main():
     M = 10 * M_sun
     r = 8e10
     alpha = 0.5
-    Teff = 6e3
+    Mdot = 1e17
     print('Finding Pi parameters of structure and making a structure plot.')
-    print('M = {:g} grams \nr = {:g} cm \nalpha = {:g} \nTeff = {:g} K'.format(M, r, alpha, Teff))
+    print('M = {:g} grams \nr = {:g} cm \nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, alpha, Mdot))
     h = (G * M * r) ** (1 / 2)
-    F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
+    F = Mdot * h
     vs = IdealKramersVerticalStructure(M, alpha, r, F)
     z0r, result = vs.fit()
     if result.converged:
