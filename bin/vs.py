@@ -120,8 +120,30 @@ class BaseVerticalStructure:
         xi = self.law_of_opacity(rho, T)
         return self.z0 * self.omegaK ** 2 / xi
 
+    def P_ph(self):
+        solution = solve_ivp(
+            self.photospheric_pressure_equation,
+            [0, 2 / 3],
+            [1e-8 * self.P_norm], rtol=self.eps
+        )
+        return solution.y[0][-1]
+
     def Q_initial(self):
         return 1
+
+    def photospheric_sigma_equation(self, tau, y):
+        T = self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)  # problem: Teff is unknown (we know only Tvis, but not Tirr)
+        rho = self.law_of_rho(y, T)
+        xi = self.law_of_opacity(rho, T)
+        return 1 / xi
+
+    def sigma_ph(self):
+        solution = solve_ivp(
+            self.photospheric_sigma_equation,
+            t_span=[0, 2 / 3],
+            y0=[1e-8 * self.sigma_norm], rtol=self.eps
+        )
+        return solution.y[0][-1]  # dimentional value
 
     def initial(self):
         """
@@ -132,16 +154,13 @@ class BaseVerticalStructure:
         array
 
         """
-        solution = solve_ivp(
-            self.photospheric_pressure_equation,
-            [0, 2 / 3],
-            [1e-8 * self.P_norm], rtol=self.eps
-        )
 
         Q_initial = self.Q_initial()
         y = np.empty(4, dtype=np.float)
-        y[Vars.S] = 0
-        y[Vars.P] = solution.y[0][-1] / self.P_norm
+        # y[Vars.S] = 0
+        y[Vars.S] = self.sigma_ph() / self.sigma_norm
+        # y[Vars.S] = self.P_ph() / (self.z0 * self.omegaK ** 2) / self.sigma_norm
+        y[Vars.P] = self.P_ph() / self.P_norm
         y[Vars.Q] = Q_initial
         y[Vars.T] = (Q_initial * self.Q_norm / sigmaSB) ** (1 / 4) / self.T_norm
         return y

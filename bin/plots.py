@@ -91,8 +91,8 @@ def Structure_Plot(M, alpha, r, Par, mu=0.6, input='Teff', structure='Kramers', 
 
 
 def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='solar', n=100, input='Teff',
-            output='Mdot', xscale='log', yscale='log', save=True, path='fig/S-curve.pdf', title=True, savedots=True,
-            path_dots='fig/'):
+            output='Mdot', xscale='log', yscale='log', save=True, path='fig/S-curve.pdf', set_title=False,
+            title='S-curve', savedots=True, path_dots='fig/'):
 
     if xscale not in ['linear', 'log', 'parlog']:
         print('Incorrect xscale, try linear, log or parlog')
@@ -103,6 +103,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
     Sigma_plot = []
     Plot = []
     Add_Plot = np.zeros(n)
+    a = 0
+    key = True
 
     h = (G * M * r) ** (1 / 2)
 
@@ -192,17 +194,22 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
 
         delta = y[3] - 4 * sigmaSB / (3 * c) * y[2] ** 4
         delta = delta / y[3]
+        if delta > 0.0 and key:
+            a = i
+            key = False
         Add_Plot[i] = delta
+        print(delta)
 
         print(i + 1)
 
     print('(P_C - P_rad_C) / P_C =', Add_Plot.min())
 
-    label = r'M = {:g} Msun, r = {:g} rg, alpha = {:g}'.format(M / M_sun, r / (2 * G * M / c ** 2), alpha)
+    label = r'M = {:g} Msun, r = {:g} cm, alpha = {:g}'.format(M / M_sun, r, alpha)
 
     xlabel = r'$\Sigma_0, \, g/cm^2$'
     if xscale == 'parlog' and yscale == 'parlog':
-        plt.plot(np.log10(Sigma_plot), np.log10(Plot), label=label)
+        plt.plot(np.log10(Sigma_plot[:a+1]), np.log10(Plot[:a+1]), label='$Pgas < Prad$',  color='b')
+        plt.plot(np.log10(Sigma_plot[a:]), np.log10(Plot[a:]), label='$Pgas > Prad$', color='g')
         xlabel = r'$log \,$' + xlabel
     elif xscale == 'parlog':
         plt.plot(np.log10(Sigma_plot), Plot, label=label)
@@ -266,8 +273,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
     plt.ylabel(ylabel)
     plt.grid(True, which='both', ls='-')
     plt.legend()
-    if title:
-        plt.title('S-curve')
+    if set_title:
+        plt.title(title)
     plt.tight_layout()
     if save:
         plt.savefig(path)
