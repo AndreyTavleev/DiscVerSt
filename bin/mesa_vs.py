@@ -15,8 +15,8 @@ except ModuleNotFoundError as e:
 
 
 class BaseMesaVerticalStructure(BaseVerticalStructure):
-    def __init__(self, Mx, alpha, r, F, eps=1e-5, abundance='solar'):
-        super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6)
+    def __init__(self, Mx, alpha, r, F, eps=1e-5, mu=0.6, abundance='solar'):
+        super().__init__(Mx, alpha, r, F, eps=eps, mu=mu)
         self.mesaop = Opac(abundance)
 
 
@@ -38,14 +38,14 @@ class AdiabaticTempGradient:
 
 class FirstAssumptionRadiativeConvectiveGradient:
     def dlnTdlnP(self, y, t):
-        xi = self.opacity(y)
+        varkappa = self.opacity(y)
         rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
 
         if t == 1:
-            dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * xi * (
+            dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
                     self.Q_norm * self.P_norm / self.T_norm ** 4) / (16 * sigmaSB * self.z0 * self.omegaK ** 2)
         else:
-            dTdz = ((abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * xi * rho * self.z0 * self.Q_norm / (
+            dTdz = ((abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
                     16 * sigmaSB * self.T_norm ** 4))
             dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
 
@@ -59,14 +59,14 @@ class FirstAssumptionRadiativeConvectiveGradient:
 
 class RadConvTempGradient:
     def dlnTdlnP(self, y, t):
-        xi = self.opacity(y)
+        varkappa = self.opacity(y)
         rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
 
         if t == 1:
-            dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * xi * (
+            dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
                     self.Q_norm * self.P_norm / self.T_norm ** 4) / (16 * sigmaSB * self.z0 * self.omegaK ** 2)
         else:
-            dTdz = ((abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * xi * rho * self.z0 * self.Q_norm / (
+            dTdz = ((abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
                     16 * sigmaSB * self.T_norm ** 4))
             dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
 
@@ -81,7 +81,7 @@ class RadConvTempGradient:
         H_p = y[Vars.P] * self.P_norm / (
                 rho * self.omegaK ** 2 * self.z0 * (1 - t) + self.omegaK * np.sqrt(y[Vars.P] * self.P_norm * rho))
         H_ml = alpha_ml * H_p
-        omega = xi * rho * H_ml
+        omega = varkappa * rho * H_ml
         A = 9 / 8 * omega ** 2 / (3 + omega ** 2)
         VV = -((3 + omega ** 2) / (
                 3 * omega)) ** 2 * eos.c_p ** 2 * rho ** 2 * H_ml ** 2 * self.omegaK ** 2 * self.z0 * (1 - t) / (
@@ -105,7 +105,7 @@ class RadConvTempGradient:
 
         # print(x)
         # print(H_p, H_ml, omega, eos.c_p, eos.dlnRho_dlnT_const_Pgas, dlnTdlnP_rad - eos.grad_ad, VV, rho,
-        #       y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, eos.grad_ad, dlnTdlnP_rad, xi)
+        #       y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, eos.grad_ad, dlnTdlnP_rad, varkappa)
 
         dlnTdlnP_conv = eos.grad_ad + (dlnTdlnP_rad - eos.grad_ad) * x * (x + V)
         return dlnTdlnP_conv
@@ -176,48 +176,41 @@ class ExternalIrradiation:
         result = (c_0 + c_1 * E + c_2 * E ** 2) * E ** (-3) * 1e-24  # cross-section in cm2
         return result
 
-    def J_tot(self, nu, y, tau_0, spectra):
-        kpd = 0.1
-        h = np.sqrt(self.GM * self.r)
-        F_x = kpd * c ** 2 * self.F / (h * 4 * np.pi * self.r ** 2) * spectra
+    def J_tot(self, F_nu, y, tau_0):
         sigma = 0.34
         k_d_nu = 2
         tau = (sigma + k_d_nu) * y[Vars.S] * self.sigma_norm
         lamb = sigma / (sigma + k_d_nu)
         k = np.sqrt(3 * (1 - lamb))
-        zeta_0 = 1 / 8 * (self.z0 / self.r)
+        zeta_0 = np.cos(self.theta_irr)
 
         D_nu = 3 * lamb * zeta_0 ** 2 / (1 - k ** 2 * zeta_0 ** 2)
 
         C_nu = D_nu * (1 + np.exp(-tau_0 / zeta_0) + 2 / (3 * zeta_0) * (1 + np.exp(-tau_0 / zeta_0))) / (
                 1 + np.exp(-k * tau_0) + 2 * k / 3 * (1 + np.exp(-k * tau_0)))
 
-        J_tot = F_x / (4 * np.pi) * (
+        J_tot = F_nu / (4 * np.pi) * (
                 C_nu * (np.exp(-k * tau) + np.exp(-k * (tau_0 - tau))) +
                 (1 - D_nu) * (np.exp(-tau / zeta_0) + np.exp(-(tau_0 - tau) / zeta_0))
         )
 
         return J_tot
 
-    def H_tot(self, nu, tau_0, spectra):
-        kpd = 0.1
-        h = np.sqrt(self.GM * self.r)
-        F_x = kpd * c ** 2 * self.F / (h * 4 * np.pi * self.r ** 2) * spectra
+    def H_tot(self, F_nu, tau_0):
         sigma = 0.34
         k_d_nu = 2
-        tau = (sigma + k_d_nu) * self.sigma_ph()
+        tau = (sigma + k_d_nu) * 0.1
         # tau = (sigma + k_d_nu) * self.P_ph() / (self.z0 * self.omegaK ** 2)
-
         lamb = sigma / (sigma + k_d_nu)
         k = np.sqrt(3 * (1 - lamb))
-        zeta_0 = 1 / 8 * (self.z0 / self.r)
+        zeta_0 = np.cos(self.theta_irr)
 
         D_nu = 3 * lamb * zeta_0 ** 2 / (1 - k ** 2 * zeta_0 ** 2)
 
         C_nu = D_nu * (1 + np.exp(-tau_0 / zeta_0) + 2 / (3 * zeta_0) * (1 + np.exp(-tau_0 / zeta_0))) / (
                 1 + np.exp(-k * tau_0) + 2 * k / 3 * (1 + np.exp(-k * tau_0)))
 
-        H_tot = F_x * (
+        H_tot = F_nu * (
                 k * C_nu / 3 * (np.exp(-k * tau) - np.exp(-k * (tau_0 - tau))) +
                 (zeta_0 - D_nu / (3 * zeta_0)) * (np.exp(-tau / zeta_0) - np.exp(-(tau_0 - tau) / zeta_0))
         )
@@ -227,17 +220,13 @@ class ExternalIrradiation:
     def epsilon(self, y):
         rho = self.rho(y)
         tau_0 = np.infty
-        nu = 1.2e18  # doesn't used now
-        spectra = 1
         k_d_nu = 2
-        epsilon = 4 * np.pi * rho * self.J_tot(nu, y, tau_0, spectra) * k_d_nu
+        epsilon = 4 * np.pi * rho * simps(k_d_nu * self.J_tot(self.F_nu_irr, y, tau_0), self.nu_irr)
         return epsilon
 
     def Q_irr_ph(self):
         tau_0 = np.infty
-        nu = 1.2e18  # doesn't used now
-        spectra = 1
-        Qirr = self.H_tot(nu, tau_0, spectra)
+        Qirr = simps(self.H_tot(self.F_nu_irr, tau_0), self.nu_irr)
         return Qirr
 
     def Q_initial(self):
@@ -246,7 +235,7 @@ class ExternalIrradiation:
         # print('Initial =', result)
         return result
 
-    def dQdz(self, y, t):
+    def dQdz(self, y):
         w_r_phi = self.viscosity(y)
         result = -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm - self.epsilon(y) * self.z0 / self.Q_norm
         # print('dQdz =', result, -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm, self.epsilon(y))
@@ -276,4 +265,11 @@ class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGr
 
 class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,
                                                       ExternalIrradiation, BaseMesaVerticalStructure):
-    pass
+    def __init__(self, Mx, alpha, r, F, nu_irr, F_nu_irr, theta_irr=None, eps=1e-5, mu=0.6, abundance='solar'):
+        super().__init__(Mx, alpha, r, F, eps, mu, abundance)
+        self.nu_irr = nu_irr
+        self.F_nu_irr = F_nu_irr
+        if theta_irr is None:
+            self.theta_irr = np.arccos(1 / 8 * (self.z0 / self.r))
+        else:
+            self.theta_irr = theta_irr

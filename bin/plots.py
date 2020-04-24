@@ -22,15 +22,20 @@ rcParams['text.latex.preamble'] = [r'\usepackage[utf8]{inputenc}', r'\usepackage
                                    r'\usepackage[english]{babel}']
 
 
-def Structure_Plot(M, alpha, r, Par, mu=0.6, input='Teff', structure='Kramers', abundance='solar', title=True):
+def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar'):
     h = (G * M * r) ** (1 / 2)
-
-    if input == 'F':
-        F = Par
-    elif input == 'Teff':
+    if input == 'Teff':
+        Teff = Par
         F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Par ** 4
+        Mdot = F / h
     elif input == 'Mdot':
+        Mdot = Par
         F = Par * h
+        Teff = (3 / (8 * np.pi) * (G * M) ** 4 * F / (sigmaSB * h ** 7)) ** (1 / 4)
+    elif input == 'F':
+        F = Par
+        Mdot = Par / h
+        Teff = (3 / (8 * np.pi) * (G * M) ** 4 * Par / (sigmaSB * h ** 7)) ** (1 / 4)
     else:
         print('Incorrect input, try Teff, Mdot of F')
         return
@@ -73,6 +78,11 @@ def Structure_Plot(M, alpha, r, Par, mu=0.6, input='Teff', structure='Kramers', 
         print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
         return
 
+    return vs, F, Teff, Mdot
+
+
+def Structure_Plot(M, alpha, r, Par, mu=0.6, input='Teff', structure='Kramers', abundance='solar', title=True):
+    vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
     vs.fit()
     print('Teff = ', vs.Teff)
     t = np.linspace(0, 1, 100)
@@ -93,7 +103,6 @@ def Structure_Plot(M, alpha, r, Par, mu=0.6, input='Teff', structure='Kramers', 
 def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='solar', n=100, input='Teff',
             output='Mdot', xscale='log', yscale='log', save=True, path='fig/S-curve.pdf', set_title=False,
             title='S-curve', savedots=True, path_dots='fig/'):
-
     if xscale not in ['linear', 'log', 'parlog']:
         print('Incorrect xscale, try linear, log or parlog')
         return
@@ -103,75 +112,18 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
     Sigma_plot = []
     Plot = []
     Add_Plot = np.zeros(n)
-    a = 0
-    key = True
-
-    h = (G * M * r) ** (1 / 2)
+    a = 0  # where Pgas = Prad
+    b = n  # where tau < 1
+    free_e_index = 0  # where free_e < 0.5
+    key = True  # for a
+    kkey = True  # for b
+    kkkey = True  # for c
 
     for i, Par in enumerate(np.geomspace(Par_max, Par_min, n)):
 
-        if input == 'Teff':
-            Teff = Par
-            F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Par ** 4
-            Mdot = F / h
-        elif input == 'Mdot':
-            Mdot = Par
-            F = Par * h
-            Teff = (3 / (8 * np.pi) * (G * M) ** 4 * F / (sigmaSB * h ** 7)) ** (1 / 4)
-        elif input == 'F':
-            F = Par
-            Mdot = Par / h
-            Teff = (3 / (8 * np.pi) * (G * M) ** 4 * Par / (sigmaSB * h ** 7)) ** (1 / 4)
-        else:
-            print('Incorrect input, try Teff, Mdot of F')
-            return
-
-        if structure == 'Kramers':
-            vs = IdealKramersVerticalStructure(M, alpha, r, F, mu=mu)
-        elif structure == 'BellLin':
-            vs = IdealBellLin1994VerticalStructure(M, alpha, r, F, mu=mu)
-        elif structure == 'Mesa':
-            try:
-                if np.isnan(mesa_vs):
-                    raise ModuleNotFoundError('Mesa2py is not installed')
-            except TypeError:
-                vs = mesa_vs.MesaVerticalStructure(M, alpha, r, F, abundance=abundance)
-        elif structure == 'MesaIdeal':
-            try:
-                if np.isnan(mesa_vs):
-                    raise ModuleNotFoundError('Mesa2py is not installed')
-            except TypeError:
-                vs = mesa_vs.MesaIdealVerticalStructure(M, alpha, r, F, mu=mu, abundance=abundance)
-        elif structure == 'MesaAd':
-            try:
-                if np.isnan(mesa_vs):
-                    raise ModuleNotFoundError('Mesa2py is not installed')
-            except TypeError:
-                vs = mesa_vs.MesaVerticalStructureAdiabatic(M, alpha, r, F, abundance=abundance)
-        elif structure == 'MesaFirst':
-            try:
-                if np.isnan(mesa_vs):
-                    raise ModuleNotFoundError('Mesa2py is not installed')
-            except TypeError:
-                vs = mesa_vs.MesaVerticalStructureFirstAssumption(M, alpha, r, F, abundance=abundance)
-        elif structure == 'MesaRadConv':
-            try:
-                if np.isnan(mesa_vs):
-                    raise ModuleNotFoundError('Mesa2py is not installed')
-            except TypeError:
-                vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F, abundance=abundance)
-        elif structure == 'MesaRadConvIrr':
-            try:
-                if np.isnan(mesa_vs):
-                    raise ModuleNotFoundError('Mesa2py is not installed')
-            except TypeError:
-                vs = mesa_vs.MesaVerticalStructureRadConvExternalIrradiation(M, alpha, r, F, abundance=abundance)
-        else:
-            print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst, MesaRadConv or '
-                  'MesaRadConvIrr')
-            return
-
+        vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
         z0r, result = vs.fit()
+
         print('Teff = {:g}, tau = {:g}, z0r = {:g}'.format(Teff, vs.tau(), z0r))
 
         y = vs.parameters_C()
@@ -197,66 +149,43 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
         if delta > 0.0 and key:
             a = i
             key = False
+            # print(vs.Pi_finder(), delta)
+            # print(y)
         Add_Plot[i] = delta
-        print(delta)
+        if vs.tau() < 1 and kkey:
+            b = i
+            kkey = False
+        rho, eos = vs.mesaop.rho(y[3], y[2], True)
+        if np.exp(eos.lnfree_e) < 0.5 and kkkey:
+            free_e_index = i
+            kkkey = False
 
         print(i + 1)
-
-    print('(P_C - P_rad_C) / P_C =', Add_Plot.min())
-
-    label = r'M = {:g} Msun, r = {:g} cm, alpha = {:g}'.format(M / M_sun, r, alpha)
-
-    xlabel = r'$\Sigma_0, \, g/cm^2$'
-    if xscale == 'parlog' and yscale == 'parlog':
-        plt.plot(np.log10(Sigma_plot[:a+1]), np.log10(Plot[:a+1]), label='$Pgas < Prad$',  color='b')
-        plt.plot(np.log10(Sigma_plot[a:]), np.log10(Plot[a:]), label='$Pgas > Prad$', color='g')
-        xlabel = r'$log \,$' + xlabel
-    elif xscale == 'parlog':
-        plt.plot(np.log10(Sigma_plot), Plot, label=label)
-        xlabel = r'$log \,$' + xlabel
-        plt.yscale(yscale)
-    elif yscale == 'parlog':
-        plt.plot(Sigma_plot, np.log10(Plot), label=label)
-        plt.xscale(xscale)
-    else:
-        plt.plot(Sigma_plot, Plot, label=label)
-        plt.xscale(xscale)
-        plt.yscale(yscale)
-
-    plt.xlabel(xlabel)
 
     if savedots:
         np.savetxt(path_dots + 'Sigma_0.txt', Sigma_plot)
         np.savetxt(path_dots + output + '.txt', Plot)
 
-    # rg = 2 * G * M / c ** 2
-    # plt.plot(Sigma_plot[Add_Plot.argmin():], Plot[Add_Plot.argmin():],
-    #          label=r'M = {:g} Msun, r = {:g} rg'.format(M / M_sun, r / rg))
+    print('(P_C - P_rad_C) / P_C =', Add_Plot.min())
 
-    # plt.text(2e4, 3.7e3, 'BC', rotation=-11, wrap=True)
+    label = r'M = {:g} Msun, r = {:g} cm, alpha = {:g}'.format(M / M_sun, r, alpha)
+    xlabel = r'$\Sigma_0, \, g/cm^2$'
 
-    ### plt.plot(Sigma_plot[:a], Plot[:a], 'g-', label='BC')
-    ### plt.plot(Sigma_plot[a:b], Plot[a:b], 'c--', label='Partial ionization, instability')
-    ### plt.plot(Sigma_plot[b:], Plot[b:], 'b-', label='Cold disc')
+    if xscale == 'parlog':
+        Sigma_plot = np.log10(Sigma_plot)
+        xlabel = r'$log \,$' + xlabel
+    if yscale == 'parlog':
+        Plot = np.log10(Plot)
 
-    # if structure == 'MesaIdeal':
-    #      structure = r'Mesa + ideal gas, $\mu$ = %g' % mu
-    # elif structure == 'Kramers':
-    #     structure = r'Kramers + ideal gas, $\mu$ = %g' % mu
-    # plt.plot(Sigma_plot, Plot, label=structure)
-    #
-    # Mdot_up_A = 2545454545454.5454 * 1.0 * r / Mdot_edd
-    # Sigma_up_A = 1.4e19 * (M / M_sun) * alpha ** (-1) * (r / rg) ** (3 / 2) / (Mdot_up_A * Mdot_edd)
-    # Teff_up_A = (3 / (8 * np.pi ) * (G * M) ** 4 * Mdot_up_A * Mdot_edd / (sigmaSB * h ** 6)) ** (1 / 4)
+    pl = plt.plot(Sigma_plot[:b + 1], Plot[:b + 1], label=r'$Pgas > Prad, \alpha = {:g}$'.format(alpha))
+    plt.plot(Sigma_plot[b:], Plot[b:], color=pl[0].get_c(), alpha=0.5)
+    plt.plot(Sigma_plot[:a + 1], Plot[:a + 1], label='$Pgas < Prad$')
+    plt.scatter(Sigma_plot[free_e_index], Plot[free_e_index], s=20, color=pl[0].get_c())
 
-    # plt.plot([Sigma_plot[Add_Plot.argmin()], Sigma_up_A], [Plot[Add_Plot.argmin()], Mdot_up_A], '--')
-
-    # Mdot_up_AA = 2 * np.pi * alpha * h * 100 * Sigma_up_A / Mdot_edd
-    # Teff_up_AA = (3 / (8 * np.pi) * (G * M) ** 4 * Mdot_up_AA * Mdot_edd / (sigmaSB * h ** 6)) ** (1 / 4)
-
-    # plt.plot([Sigma_up_A, 100 * Sigma_up_A], [Mdot_up_A, Mdot_up_AA], '--')
-    #
-    # plt.scatter(Sigma_plot[Add_Plot.argmin()], Plot[Add_Plot.argmin()])
+    if xscale != 'parlog':
+        plt.xscale(xscale)
+    if yscale != 'parlog':
+        plt.yscale(yscale)
 
     if output == 'Teff':
         ylabel = r'$T_{\rm eff}, \, K$'
@@ -271,6 +200,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
     if yscale == 'parlog':
         ylabel = r'$log \,$' + ylabel
     plt.ylabel(ylabel)
+    plt.xlabel(xlabel)
     plt.grid(True, which='both', ls='-')
     plt.legend()
     if set_title:
@@ -317,8 +247,7 @@ def TempGrad_Plot(vs, abundance='solar', title=True):
 
 
 def Opacity_Plot(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='solar', n=100, input='Teff',
-                 save=True,
-                 path='fig/Opacity.pdf', title=True):
+                 save=True, path='fig/Opacity.pdf', title=True):
     T_C_plot = []
     Opacity_Plot = []
     k = 1
@@ -326,65 +255,11 @@ def Opacity_Plot(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abunda
     a = 0
     b = 0
 
-    h = (G * M * r) ** (1 / 2)
-
     for i, Par in enumerate(np.geomspace(Par_max, Par_min, n)):
 
-        if input == 'Teff':
-            Teff = Par
-            F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Par ** 4
-            Mdot = F / h
-        elif input == 'Mdot':
-            Mdot = Par
-            F = Par * h
-            Teff = (3 / (8 * np.pi) * (G * M) ** 4 * F / (sigmaSB * h ** 7)) ** (1 / 4)
-        elif input == 'F':
-            F = Par
-            Mdot = Par / h
-            Teff = (3 / (8 * np.pi) * (G * M) ** 4 * Par / (sigmaSB * h ** 7)) ** (1 / 4)
-        else:
-            print('Incorrect input, try Teff, Mdot of F')
-            return
-
-        if structure == 'Kramers':
-            vs = IdealKramersVerticalStructure(M, alpha, r, F, mu=mu)
-        elif structure == 'BellLin':
-            vs = IdealBellLin1994VerticalStructure(M, alpha, r, F, mu=mu)
-        elif structure == 'Mesa':
-            try:
-                if np.isnan(mesa_vs):
-                    raise ModuleNotFoundError('Mesa2py is not installed')
-            except TypeError:
-                vs = mesa_vs.MesaVerticalStructure(M, alpha, r, F, abundance=abundance)
-        elif structure == 'MesaIdeal':
-            try:
-                if np.isnan(mesa_vs):
-                    raise ModuleNotFoundError('Mesa2py is not installed')
-            except TypeError:
-                vs = mesa_vs.MesaIdealVerticalStructure(M, alpha, r, F, mu=mu, abundance=abundance)
-        elif structure == 'MesaAd':
-            try:
-                if np.isnan(mesa_vs):
-                    raise ModuleNotFoundError('Mesa2py is not installed')
-            except TypeError:
-                vs = mesa_vs.MesaVerticalStructureAdiabatic(M, alpha, r, F, abundance=abundance)
-        elif structure == 'MesaFirst':
-            try:
-                if np.isnan(mesa_vs):
-                    raise ModuleNotFoundError('Mesa2py is not installed')
-            except TypeError:
-                vs = mesa_vs.MesaVerticalStructureFirstAssumption(M, alpha, r, F, abundance=abundance)
-        elif structure == 'MesaRadConv':
-            try:
-                if np.isnan(mesa_vs):
-                    raise ModuleNotFoundError('Mesa2py is not installed')
-            except TypeError:
-                vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F, abundance=abundance)
-        else:
-            print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
-            return
-
+        vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
         vs.fit()
+
         # y = vs.parameters_C()
         # T_C_plot.append(y[2])
         # Opacity_Plot.append(y[0])

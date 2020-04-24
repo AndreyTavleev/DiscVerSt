@@ -117,8 +117,8 @@ class BaseVerticalStructure:
     def photospheric_pressure_equation(self, tau, y):
         T = self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)
         rho = self.law_of_rho(y, T)
-        xi = self.law_of_opacity(rho, T)
-        return self.z0 * self.omegaK ** 2 / xi
+        varkappa = self.law_of_opacity(rho, T)
+        return self.z0 * self.omegaK ** 2 / varkappa
 
     def P_ph(self):
         solution = solve_ivp(
@@ -134,8 +134,8 @@ class BaseVerticalStructure:
     def photospheric_sigma_equation(self, tau, y):
         T = self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)  # problem: Teff is unknown (we know only Tvis, but not Tirr)
         rho = self.law_of_rho(y, T)
-        xi = self.law_of_opacity(rho, T)
-        return 1 / xi
+        varkappa = self.law_of_opacity(rho, T)
+        return 1 / varkappa
 
     def sigma_ph(self):
         solution = solve_ivp(
@@ -158,7 +158,7 @@ class BaseVerticalStructure:
         Q_initial = self.Q_initial()
         y = np.empty(4, dtype=np.float)
         # y[Vars.S] = 0
-        y[Vars.S] = self.sigma_ph() / self.sigma_norm
+        y[Vars.S] = 0.1 / self.sigma_norm
         # y[Vars.S] = self.P_ph() / (self.z0 * self.omegaK ** 2) / self.sigma_norm
         y[Vars.P] = self.P_ph() / self.P_norm
         y[Vars.Q] = Q_initial
@@ -168,7 +168,7 @@ class BaseVerticalStructure:
     def dlnTdlnP(self, y, t):
         raise NotImplementedError
 
-    def dQdz(self, y, t):
+    def dQdz(self, y):
         w_r_phi = self.viscosity(y)
         return -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm
 
@@ -193,7 +193,7 @@ class BaseVerticalStructure:
             print('S or T < 0')
             breakpoint()
         rho = self.rho(y)
-        dy[Vars.S] = rho * 2 * self.z0 / self.sigma_norm
+        dy[Vars.S] = rho * self.z0 / self.sigma_norm
         dy[Vars.P] = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
         dy[Vars.Q] = self.dQdz(y, t)
         grad = self.dlnTdlnP(y, t)
@@ -227,9 +227,9 @@ class BaseVerticalStructure:
     def tau(self):
         t = np.linspace(0, 1, 100)
         y = self.integrate(t)[0]
-        xi = self.opacity(y)
+        varkappa = self.opacity(y)
         rho = self.rho(y)
-        tau_norm = simps(xi * rho, t)
+        tau_norm = simps(varkappa * rho, t)
         return self.z0 * tau_norm
 
     def y_c(self):
@@ -310,14 +310,14 @@ class BaseVerticalStructure:
 
 class RadiativeTempGradient:
     def dlnTdlnP(self, y, t):
-        xi = self.opacity(y)
+        varkappa = self.opacity(y)
 
         if t == 1:
-            dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * xi * (
+            dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
                     self.Q_norm * self.P_norm / self.T_norm ** 4) / (16 * sigmaSB * self.z0 * self.omegaK ** 2)
         else:
             rho = self.rho(y)
-            dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * xi * rho * self.z0 * self.Q_norm / (
+            dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
                     16 * sigmaSB * self.T_norm ** 4)
             dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
             dlnTdlnP_rad = (y[Vars.P] / y[Vars.T]) * (dTdz / dPdz)
@@ -331,27 +331,27 @@ class IdealGasMixin:
 
 
 class KramersOpacityMixin:
-    xi0 = 5e24
+    varkappa0 = 5e24
     zeta = 1
     gamma = -7 / 2
 
     def law_of_opacity(self, rho, T):
-        return self.xi0 * (rho ** self.zeta) * (T ** self.gamma)
+        return self.varkappa0 * (rho ** self.zeta) * (T ** self.gamma)
 
 
 class BellLin1994TwoComponentOpacityMixin:
-    xi0_ff = 1.5e20  # BB AND FF, OPAL
+    varkappa0_ff = 1.5e20  # BB AND FF, OPAL
     zeta_ff = 1
     gamma_ff = - 5 / 2
-    xi0_h = 1.0e-36  # H-scattering
+    varkappa0_h = 1.0e-36  # H-scattering
     zeta_h = 1 / 3
     gamma_h = 10
 
     def opacity_h(self, rho, T):
-        return self.xi0_h * (rho ** self.zeta_h) * (T ** self.gamma_h)
+        return self.varkappa0_h * (rho ** self.zeta_h) * (T ** self.gamma_h)
 
     def opacity_ff(self, rho, T):
-        return self.xi0_ff * (rho ** self.zeta_ff) * (T ** self.gamma_ff)
+        return self.varkappa0_ff * (rho ** self.zeta_ff) * (T ** self.gamma_ff)
 
     def law_of_opacity(self, rho, T):
         return np.minimum(self.opacity_h(rho, T), self.opacity_ff(rho, T))
