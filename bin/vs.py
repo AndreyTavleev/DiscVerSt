@@ -1,9 +1,9 @@
 from enum import IntEnum
 
-from scipy.integrate import solve_ivp, simps
-from scipy.optimize import brentq
 import numpy as np
 from astropy import constants as const
+from scipy.integrate import solve_ivp, simps
+from scipy.optimize import brentq
 
 sigmaSB = const.sigma_sb.cgs.value
 R_gas = const.R.cgs.value
@@ -168,7 +168,7 @@ class BaseVerticalStructure:
     def dlnTdlnP(self, y, t):
         raise NotImplementedError
 
-    def dQdz(self, y):
+    def dQdz(self, y, t):
         w_r_phi = self.viscosity(y)
         return -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm
 
@@ -241,7 +241,7 @@ class BaseVerticalStructure:
         Sigma0 = y_c[Vars.S] * self.sigma_norm
         T_C = y_c[Vars.T] * self.T_norm
         P_C = y_c[Vars.P] * self.P_norm
-        rho_C = self.law_of_rho(P_C, T_C)
+        rho_C = self.rho(y_c)
         varkappa_C = self.opacity(y_c)
         return varkappa_C, rho_C, T_C, P_C, Sigma0
 

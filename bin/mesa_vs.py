@@ -1,8 +1,8 @@
-from vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient
 import numpy as np
 from astropy import constants as const
 from astropy.units import Hz
-from scipy.integrate import solve_ivp, simps
+from scipy.integrate import simps
+from vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient
 
 sigmaSB = const.sigma_sb.cgs.value
 c = const.c.cgs.value
@@ -235,7 +235,7 @@ class ExternalIrradiation:
         # print('Initial =', result)
         return result
 
-    def dQdz(self, y):
+    def dQdz(self, y, t):
         w_r_phi = self.viscosity(y)
         result = -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm - self.epsilon(y) * self.z0 / self.Q_norm
         # print('dQdz =', result, -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm, self.epsilon(y))
@@ -265,8 +265,8 @@ class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGr
 
 class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,
                                                       ExternalIrradiation, BaseMesaVerticalStructure):
-    def __init__(self, Mx, alpha, r, F, nu_irr, F_nu_irr, theta_irr=None, eps=1e-5, mu=0.6, abundance='solar'):
-        super().__init__(Mx, alpha, r, F, eps, mu, abundance)
+    def __init__(self, Mx, alpha, r, F, nu_irr, F_nu_irr, theta_irr=None, eps=1e-5, abundance='solar'):
+        super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
         self.nu_irr = nu_irr
         self.F_nu_irr = F_nu_irr
         if theta_irr is None:
