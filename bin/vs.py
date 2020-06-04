@@ -157,8 +157,8 @@ class BaseVerticalStructure:
 
         Q_initial = self.Q_initial()
         y = np.empty(4, dtype=np.float)
-        # y[Vars.S] = 0
-        y[Vars.S] = 0.1 / self.sigma_norm
+        y[Vars.S] = 0
+        # y[Vars.S] = 0.1 / self.sigma_norm
         # y[Vars.S] = self.P_ph() / (self.z0 * self.omegaK ** 2) / self.sigma_norm
         y[Vars.P] = self.P_ph() / self.P_norm
         y[Vars.Q] = Q_initial
@@ -193,7 +193,7 @@ class BaseVerticalStructure:
             print('S or T < 0')
             breakpoint()
         rho = self.rho(y)
-        dy[Vars.S] = rho * self.z0 / self.sigma_norm
+        dy[Vars.S] = 2 * rho * self.z0 / self.sigma_norm
         dy[Vars.P] = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
         dy[Vars.Q] = self.dQdz(y, t)
         grad = self.dlnTdlnP(y, t)
@@ -376,13 +376,15 @@ class IdealBellLin1994VerticalStructure(IdealGasMixin, BellLin1994TwoComponentOp
 
 def main():
     M = 10 * M_sun
-    r = 8e10
+    r = 1e10
     alpha = 0.5
     Mdot = 1e17
     print('Finding Pi parameters of structure and making a structure plot.')
     print('M = {:g} grams \nr = {:g} cm \nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, alpha, Mdot))
-    h = (G * M * r) ** (1 / 2)
-    F = Mdot * h
+    h = np.sqrt(G * M * r)
+    rg = 2 * G * M / c ** 2
+    r_in = 3 * rg
+    F = Mdot * h * (1 - np.sqrt(r_in / r))
     vs = IdealKramersVerticalStructure(M, alpha, r, F)
     z0r, result = vs.fit()
     if result.converged:

@@ -1,10 +1,10 @@
-from vs import Vars, IdealKramersVerticalStructure, IdealBellLin1994VerticalStructure
 import numpy as np
+from astropy import constants as const
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
-from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.integrate import simps
-from astropy import constants as const
+from scipy.interpolate import InterpolatedUnivariateSpline
+from vs import IdealKramersVerticalStructure, IdealBellLin1994VerticalStructure
 
 try:
     import mesa_vs
@@ -23,22 +23,29 @@ rcParams['text.latex.preamble'] = [r'\usepackage[utf8]{inputenc}', r'\usepackage
 
 
 def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar'):
-    h = (G * M * r) ** (1 / 2)
+    h = np.sqrt(G * M * r)
+    rg = 2 * G * M / c ** 2
+    r_in = 3 * rg
+    func = 1 - np.sqrt(r_in / r)
     if input == 'Teff':
         Teff = Par
         F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Par ** 4
-        Mdot = F / h
+        Mdot = F / (h * func)
     elif input == 'Mdot':
         Mdot = Par
-        F = Par * h
+        F = Par * h * func
         Teff = (3 / (8 * np.pi) * (G * M) ** 4 * F / (sigmaSB * h ** 7)) ** (1 / 4)
     elif input == 'F':
         F = Par
-        Mdot = Par / h
+        Mdot = Par / (h * func)
         Teff = (3 / (8 * np.pi) * (G * M) ** 4 * Par / (sigmaSB * h ** 7)) ** (1 / 4)
+    elif input == 'Mdot/Mdot_edd':
+        Mdot = Par * 1.39e18 * M / M_sun
+        F = Mdot * h * func
+        Teff = (3 / (8 * np.pi) * (G * M) ** 4 * F / (sigmaSB * h ** 7)) ** (1 / 4)
     else:
-        print('Incorrect input, try Teff, Mdot of F')
-        return
+        print('Incorrect input, try Teff, Mdot, F of Mdot/Mdot_edd')
+        raise Exception
 
     if structure == 'Kramers':
         vs = IdealKramersVerticalStructure(M, alpha, r, F, mu=mu)
@@ -76,7 +83,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
             vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F, abundance=abundance)
     else:
         print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
-        return
+        raise Exception
 
     return vs, F, Teff, Mdot
 
@@ -134,7 +141,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
         elif output == 'Mdot':
             Plot.append(Mdot)
         elif output == 'Mdot/Mdot_edd':
-            Mdot_edd = 1.7e18 * M / M_sun
+            Mdot_edd = 1.39e18 * M / M_sun
             Plot.append(Mdot / Mdot_edd)
         elif output == 'F':
             Plot.append(F)
@@ -149,8 +156,9 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
         if delta > 0.0 and key:
             a = i
             key = False
-            # print(vs.Pi_finder(), delta)
-            # print(y)
+            print(vs.Pi_finder(), delta)
+            print('index =', i)
+            print(y)
         Add_Plot[i] = delta
         if vs.tau() < 1 and kkey:
             b = i
@@ -159,6 +167,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
         if np.exp(eos.lnfree_e) < 0.5 and kkkey:
             free_e_index = i
             kkkey = False
+            # return y[4]
 
         print(i + 1)
 
@@ -177,10 +186,10 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
     if yscale == 'parlog':
         Plot = np.log10(Plot)
 
-    pl = plt.plot(Sigma_plot[:b + 1], Plot[:b + 1], label=r'$Pgas > Prad, \alpha = {:g}$'.format(alpha))
-    plt.plot(Sigma_plot[b:], Plot[b:], color=pl[0].get_c(), alpha=0.5)
+    pl, = plt.plot(Sigma_plot[:b + 1], Plot[:b + 1], label=r'$Pgas > Prad, \alpha = {:g}$'.format(alpha))
+    plt.plot(Sigma_plot[b:], Plot[b:], color=pl.get_c(), alpha=0.5)
     plt.plot(Sigma_plot[:a + 1], Plot[:a + 1], label='$Pgas < Prad$')
-    plt.scatter(Sigma_plot[free_e_index], Plot[free_e_index], s=20, color=pl[0].get_c())
+    plt.scatter(Sigma_plot[free_e_index], Plot[free_e_index], s=20, color=pl.get_c())
 
     if xscale != 'parlog':
         plt.xscale(xscale)
@@ -303,7 +312,7 @@ def main():
 
     # Structure_Plot(M, alpha, r, 1e4, structure='Mesa')
 
-    h = (G * M * r) ** (1 / 2)
+    h = np.sqrt(G * M * r)
 
     # for Teff in [2000, 3000, 4000, 5000, 7000, 10000, 12000]:
     #     F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
