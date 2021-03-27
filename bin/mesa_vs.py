@@ -1,10 +1,17 @@
+from abc import ABC
+
 import numpy as np
 from astropy import constants as const
 from astropy.units import Hz
-from scipy.integrate import simps
-from vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient
+from scipy.integrate import simps, solve_ivp
+from scipy.optimize import newton
+
+from vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient, BellLin1994TwoComponentOpacityMixin
+from vs import Prad
 
 sigmaSB = const.sigma_sb.cgs.value
+sigmaT = const.sigma_T.cgs.value
+mu = const.u.cgs.value
 c = const.c.cgs.value
 pl_const = const.h
 
@@ -20,14 +27,60 @@ class BaseMesaVerticalStructure(BaseVerticalStructure):
         self.mesaop = Opac(abundance)
 
 
+def important_addition_to_kappa_and_rho(P, T):
+    # return P, T
+    if type(P) != np.float64 and type(T) != np.float64:
+        for i, _ in enumerate(P):
+            if P[i] < 0 or np.isnan(P[i]):
+                continue
+            if 2 > np.log10(P[i]) > 1:
+                if 5.5 > np.log10(T[i]) > 3.69:
+                    P[i] = 10.765
+                    T[i] = 362669.111
+    elif type(P) != np.float64 and type(T) == np.float64:
+        for i, _ in enumerate(P):
+            if P[i] < 0 or np.isnan(P[i]):
+                continue
+            if 2 > np.log10(P[i]) > 1:
+                if 5.5 > np.log10(T) > 3.69:
+                    P[i] = 10.765
+                    T = 362669.111
+    elif type(P) == np.float64 and type(T) != np.float64:
+        if P < 0 or np.isnan(P):
+            return P, T
+        for i, _ in enumerate(T):
+            if 2 > np.log10(P) > 1:
+                if 5.5 > np.log10(T[i]) > 3.69:
+                    P = 10.765
+                    T[i] = 362669.111
+    else:
+        if P < 0 or np.isnan(P):
+            return P, T
+        if 2 > np.log10(P) > 1:
+            if 5.5 > np.log10(T) > 3.69:
+                P = 10.765
+                T = 362669.111
+    return P, T
+
+
 class MesaGasMixin:
-    def law_of_rho(self, P, T):
-        return self.mesaop.rho(P, T)
+    def law_of_rho(self, P, T, full_output):
+        # P, T = important_addition_to_kappa_and_rho(P, T)
+        if full_output:
+            rho, eos = self.mesaop.rho(P, T, full_output=full_output)
+            return rho, eos
+        else:
+            return self.mesaop.rho(P, T, full_output=full_output)
 
 
 class MesaOpacityMixin:
-    def law_of_opacity(self, rho, T):
-        return self.mesaop.kappa(rho, T)
+    def law_of_opacity(self, rho, T, lnfree_e):
+        return self.mesaop.kappa(rho, T, lnfree_e=lnfree_e)
+
+    # def opacity(self, y, lnfree_e):
+    #     _, T = important_addition_to_kappa_and_rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm)
+    #     rho = self.rho(y, False)
+    #     return self.law_of_opacity(rho, T, lnfree_e=lnfree_e)
 
 
 class AdiabaticTempGradient:
@@ -59,18 +112,37 @@ class FirstAssumptionRadiativeConvectiveGradient:
 
 class RadConvTempGradient:
     def dlnTdlnP(self, y, t):
-        varkappa = self.opacity(y)
-        rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
+        rho, eos = self.rho(y, True)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
 
         if t == 1:
-            dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
-                    self.Q_norm * self.P_norm / self.T_norm ** 4) / (16 * sigmaSB * self.z0 * self.omegaK ** 2)
-        else:
-            dTdz = ((abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
-                    16 * sigmaSB * self.T_norm ** 4))
-            dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
+            dTdz_der = (self.dQdz(y, t) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
+                    16 * sigmaSB * self.T_norm ** 4)
+            A_der = - rho * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
+            B = 16 * sigmaSB / (3 * c) * self.T_norm ** 4 * y[Vars.T] ** 3 / self.P_norm
+            dPdz = A_der - B * dTdz_der
+            dlnTdlnP_rad = (y[Vars.P] / y[Vars.T]) * (dTdz_der / dPdz)
+            # if dlnTdlnP_rad < 0.0:
+            #     print('t = 1, ', dlnTdlnP_rad)
 
+            # dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
+            #         self.Q_norm * self.P_norm / self.T_norm ** 4) / (16 * sigmaSB * self.z0 * self.omegaK ** 2)
+        else:
+            # dTdz = (abs(y[Vars.Q] + self.Q_adv(y[Vars.P] * self.P_norm) / self.Q_norm) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
+            #         16 * sigmaSB * self.T_norm ** 4)
+            dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
+                    16 * sigmaSB * self.T_norm ** 4)
+
+            A = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
+            B = 16 * sigmaSB / (3 * c) * self.T_norm ** 4 * y[Vars.T] ** 3 / self.P_norm
+            dPdz = A - B * dTdz
             dlnTdlnP_rad = (y[Vars.P] / y[Vars.T]) * (dTdz / dPdz)
+
+            # if dlnTdlnP_rad < 0.0:
+            #     print('t = {}, '.format(t), dlnTdlnP_rad)
+
+            # dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
+            # dlnTdlnP_rad = (y[Vars.P] / y[Vars.T]) * (dTdz / dPdz)
 
         if dlnTdlnP_rad < eos.grad_ad:
             return dlnTdlnP_rad
@@ -83,9 +155,11 @@ class RadConvTempGradient:
         H_ml = alpha_ml * H_p
         omega = varkappa * rho * H_ml
         A = 9 / 8 * omega ** 2 / (3 + omega ** 2)
+        der = eos.dlnRho_dlnT_const_Pgas
+
         VV = -((3 + omega ** 2) / (
                 3 * omega)) ** 2 * eos.c_p ** 2 * rho ** 2 * H_ml ** 2 * self.omegaK ** 2 * self.z0 * (1 - t) / (
-                     512 * sigmaSB ** 2 * y[Vars.T] ** 6 * self.T_norm ** 6 * H_p) * eos.dlnRho_dlnT_const_Pgas * (
+                     512 * sigmaSB ** 2 * y[Vars.T] ** 6 * self.T_norm ** 6 * H_p) * der * (
                      dlnTdlnP_rad - eos.grad_ad)
         V = 1 / np.sqrt(VV)
 
@@ -109,6 +183,96 @@ class RadConvTempGradient:
 
         dlnTdlnP_conv = eos.grad_ad + (dlnTdlnP_rad - eos.grad_ad) * x * (x + V)
         return dlnTdlnP_conv
+
+
+class AnotherPph:
+    def P_ph(self):
+        def func(tau_end):
+            # print('Start')
+            solution = solve_ivp(
+                self.photospheric_pressure_equation,
+                t_span=[0, tau_end], t_eval=np.linspace(0, tau_end, 100),
+                y0=[1e-7 * self.P_norm], rtol=self.eps
+            )
+            # print('End')
+            P_temp = solution.y[0]
+            tau_temp = solution.t
+            T_temp = self.Teff * (1 / 2 + 3 * tau_temp / 4) ** (1 / 4)
+            integral_plot = []
+            for j in range(len(P_temp)):
+                rho_temp, eos_temp = self.law_of_rho(P_temp[j], T_temp[j], full_output=True)
+                lnfree_e = eos_temp.lnfree_e
+                # _, T_strih = important_addition_to_kappa_and_rho(P_temp[j], T_temp[j])
+                kappa = self.law_of_opacity(rho_temp, T_temp[j], lnfree_e)
+                # kappa = self.law_of_opacity(rho_temp, T_strih, lnfree_e)
+                if (kappa - sigmaT / mu * np.exp(lnfree_e)) < 0:
+                    integral_plot.append(0.0)
+                else:
+                    integral_plot.append(np.sqrt((kappa - sigmaT / mu * np.exp(lnfree_e)) / kappa))
+                # integral_plot.append(np.sqrt((kappa - sigmaT / mu * np.exp(lnfree_e)) / kappa))
+                # print(kappa, sigmaT / mu * np.exp(lnfree_e), kappa - sigmaT / mu * np.exp(lnfree_e),
+                #       (kappa - sigmaT / mu * np.exp(lnfree_e)) / kappa, lnfree_e, P_temp[j], T_temp[j],
+                #       rho_temp, 5e24 * rho_temp * T_temp[j] ** (-7/2))
+            tau_eff = simps(integral_plot, tau_temp)
+            # print('tau_eff = ', tau_eff, 1 - tau_eff)
+            # return 1 - tau_eff
+            return 2 / 3 - tau_eff
+
+        root, info = newton(func, x0=2 / 3, full_output=True)
+        # print('root = ', root)
+        solution = solve_ivp(
+            self.photospheric_pressure_equation,
+            [0, root],
+            [1e-7 * self.P_norm], rtol=self.eps
+        )
+        return solution.y[0][-1], root
+
+    def initial(self):
+        Q_initial = self.Q_initial()
+        y = np.empty(4, dtype=np.float64)
+        y[Vars.S] = 0
+        P_ph, root = self.P_ph()
+        # print('root = ', root)
+        y[Vars.P] = P_ph / self.P_norm
+        y[Vars.Q] = Q_initial
+        y[Vars.T] = (Q_initial * self.Q_norm / sigmaSB) ** (1 / 4) / self.T_norm * (1 / 2 + 3 * root / 4) ** (1 / 4)
+        return y
+
+
+class Advection:
+    def Q_adv(self, P):
+        v_r = - self.alpha * self.r * self.omegaK * (self.z0 / self.r) ** 2
+        beta = 1
+        Q_adv = v_r * (self.z0 / self.r) * P * (-15 + 99 / 8 * beta)
+        return Q_adv
+
+    def initial(self):
+        """
+        Initial conditions.
+
+        Returns
+        -------
+        array
+
+        """
+
+        Q_initial = self.Q_initial()
+        y = np.empty(4, dtype=np.float)
+        y[Vars.S] = 0
+        # y[Vars.S] = 0.1 / self.sigma_norm
+        # y[Vars.S] = self.P_ph() / (self.z0 * self.omegaK ** 2) / self.sigma_norm
+        y[Vars.P] = self.P_ph() / self.P_norm
+        y[Vars.Q] = Q_initial
+        y[Vars.T] = ((Q_initial - self.Q_adv(y[Vars.P] * self.P_norm) / self.Q_norm) * self.Q_norm / sigmaSB) ** (
+                1 / 4) / self.T_norm
+        return y
+
+    def photospheric_pressure_equation(self, tau, y):
+        Teff = ((self.Q0 - self.Q_adv(y)) / sigmaSB) ** (1 / 4)
+        T = Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)
+        rho = self.law_of_rho(y, T)
+        varkappa = self.law_of_opacity(rho, T)
+        return self.z0 * self.omegaK ** 2 / varkappa
 
 
 class ExternalIrradiation:
@@ -242,6 +406,11 @@ class ExternalIrradiation:
         return result
 
 
+class ExternalIrradiationZeroAssumption:
+    def Q_initial(self):
+        return 1 + self.Q_irr / self.Q_norm
+
+
 class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseMesaVerticalStructure):
     pass
 
@@ -273,3 +442,59 @@ class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityM
             self.theta_irr = np.arccos(1 / 8 * (self.z0 / self.r))
         else:
             self.theta_irr = theta_irr
+
+
+class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,
+                                                                    ExternalIrradiationZeroAssumption,
+                                                                    BaseMesaVerticalStructure):
+    def __init__(self, Mx, alpha, r, F, eps=1e-5, abundance='solar'):
+        super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
+        h = np.sqrt(self.GM * self.r)
+        albedo = 0.5
+        eta_accr = 0.1
+        rg = 2 * self.GM / c ** 2
+        r_in = 3 * rg
+        func = 1 - np.sqrt(r_in / r)
+        Mdot = self.F / (h * func)
+        q = 1 / 8
+        C_irr = (1 - albedo) * q * self.z0 / self.r
+        self.Q_irr = C_irr * eta_accr * Mdot * c ** 2 / (4 * np.pi * self.r ** 2)
+
+        self.Teff = ((self.Q0 + self.Q_irr) / sigmaSB) ** (1 / 4)
+        self.Tirr = (self.Q_irr / sigmaSB) ** (1 / 4)
+        self.Tvis = (self.Q0 / sigmaSB) ** (1 / 4)
+
+
+class MesaVerticalStructureRadConvAdvection(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, Advection,
+                                            BaseMesaVerticalStructure):
+    pass
+
+
+class MesaVerticalStructureAdvection(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, Advection,
+                                     BaseMesaVerticalStructure):
+    pass
+
+
+class MesaIdealVerticalStructureAdvection(IdealGasMixin, MesaOpacityMixin, RadiativeTempGradient, Advection,
+                                          BaseMesaVerticalStructure):
+    pass
+
+
+class IdealBellLin1994VerticalStructureRadConv(IdealGasMixin, BellLin1994TwoComponentOpacityMixin, RadConvTempGradient,
+                                               BaseMesaVerticalStructure):
+    pass
+
+
+class MesaVerticalStructureRadConvAnotherPph(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, AnotherPph,
+                                             BaseMesaVerticalStructure):
+    pass
+
+
+class MesaVerticalStructureRadConvPrad(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, Prad,
+                                       BaseMesaVerticalStructure):
+    pass
+
+
+class MesaVerticalStructureRadConvPradAnotherPph(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, AnotherPph, Prad,
+                                                 BaseMesaVerticalStructure):
+    pass
