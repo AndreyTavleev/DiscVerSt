@@ -82,8 +82,15 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
             vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F, abundance=abundance)
+    elif structure == 'AnotherPph':
+        try:
+            if np.isnan(mesa_vs):
+                raise ModuleNotFoundError('Mesa2py is not installed')
+        except TypeError:
+            vs = mesa_vs.MesaVerticalStructureRadConvAnotherPph(M, alpha, r, F, abundance=abundance, mu=mu)
     else:
-        print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
+        print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst, MesaRadConv'
+              ' or AnotherPph')
         raise Exception
 
     return vs, F, Teff, Mdot

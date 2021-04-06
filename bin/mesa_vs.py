@@ -1,5 +1,7 @@
 import numpy as np
 from astropy import constants as const
+from scipy.integrate import solve_ivp, simps
+from scipy.optimize import newton
 
 from vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient, BellLin1994TwoComponentOpacityMixin
 
@@ -117,6 +119,61 @@ class RadConvTempGradient:
         return dlnTdlnP_conv
 
 
+class AnotherPph:
+    def P_ph(self):
+        def func(tau_end):
+            # print('Start')
+            solution = solve_ivp(
+                self.photospheric_pressure_equation,
+                t_span=[0, tau_end], t_eval=np.linspace(0, tau_end, 100),
+                y0=[1e-7 * self.P_norm], rtol=self.eps
+            )
+            # print('End')
+            P_temp = solution.y[0]
+            tau_temp = solution.t
+            T_temp = self.Teff * (1 / 2 + 3 * tau_temp / 4) ** (1 / 4)
+            integral_plot = []
+            for j in range(len(P_temp)):
+                rho_temp, eos_temp = self.law_of_rho(P_temp[j], T_temp[j], full_output=True)
+                lnfree_e = eos_temp.lnfree_e
+                # _, T_strih = important_addition_to_kappa_and_rho(P_temp[j], T_temp[j])
+                kappa = self.law_of_opacity(rho_temp, T_temp[j], lnfree_e)
+                # kappa = self.law_of_opacity(rho_temp, T_strih, lnfree_e)
+                if (kappa - sigmaT / mu * np.exp(lnfree_e)) < 0:
+                    integral_plot.append(0.0)
+                else:
+                    integral_plot.append(np.sqrt((kappa - sigmaT / mu * np.exp(lnfree_e)) / kappa))
+                # integral_plot.append(np.sqrt((kappa - sigmaT / mu * np.exp(lnfree_e)) / kappa))
+                # print(kappa, sigmaT / mu * np.exp(lnfree_e), kappa - sigmaT / mu * np.exp(lnfree_e),
+                #       (kappa - sigmaT / mu * np.exp(lnfree_e)) / kappa, lnfree_e, P_temp[j], T_temp[j],
+                #       rho_temp, 5e24 * rho_temp * T_temp[j] ** (-7/2))
+            tau_eff = simps(integral_plot, tau_temp)
+            # print('tau_eff = ', tau_eff, 1 - tau_eff)
+            # return 1 - tau_eff
+            return 2 / 3 - tau_eff
+
+        root, info = newton(func, x0=2 / 3, full_output=True)
+        # print('root = ', root)
+        solution = solve_ivp(
+            self.photospheric_pressure_equation,
+            [0, root],
+            [1e-7 * self.P_norm], rtol=self.eps
+        )
+        return solution.y[0][-1], root
+
+    def initial(self):
+        Q_initial = self.Q_initial()
+        y = np.empty(4, dtype=np.float64)
+        y[Vars.S] = 0
+        P_ph, root = self.P_ph()
+        print('root = ', root)
+        y[Vars.P] = P_ph / self.P_norm
+        y[Vars.Q] = Q_initial
+        y[Vars.T] = (Q_initial * self.Q_norm / sigmaSB) ** (1 / 4) / self.T_norm * (1 / 2 + 3 * root / 4) ** (1 / 4)
+        return y
+
+
+
 class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseMesaVerticalStructure):
     pass
 
@@ -135,4 +192,9 @@ class MesaVerticalStructureFirstAssumption(MesaGasMixin, MesaOpacityMixin, First
 
 
 class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, BaseMesaVerticalStructure):
+    pass
+
+
+class MesaVerticalStructureRadConvAnotherPph(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, AnotherPph,
+                                             BaseMesaVerticalStructure):
     pass
