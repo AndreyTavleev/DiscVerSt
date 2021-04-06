@@ -13,42 +13,6 @@ M_sun = const.M_sun.cgs.value
 c = const.c.cgs.value
 
 
-def important_addition_to_kappa_and_rho(P, T):
-    # return P, T
-    if type(P) != np.float64 and type(T) != np.float64:
-        for i, _ in enumerate(P):
-            if P[i] < 0 or np.isnan(P[i]):
-                continue
-            if 2 > np.log10(P[i]) > 1:
-                if 5.5 > np.log10(T[i]) > 3.69:
-                    P[i] = 10.765
-                    T[i] = 362669.111
-    elif type(P) != np.float64 and type(T) == np.float64:
-        for i, _ in enumerate(P):
-            if P[i] < 0 or np.isnan(P[i]):
-                continue
-            if 2 > np.log10(P[i]) > 1:
-                if 5.5 > np.log10(T) > 3.69:
-                    P[i] = 10.765
-                    T = 362669.111
-    elif type(P) == np.float64 and type(T) != np.float64:
-        if P < 0 or np.isnan(P):
-            return P, T
-        for i, _ in enumerate(T):
-            if 2 > np.log10(P) > 1:
-                if 5.5 > np.log10(T[i]) > 3.69:
-                    P = 10.765
-                    T[i] = 362669.111
-    else:
-        if P < 0 or np.isnan(P):
-            return P, T
-        if 2 > np.log10(P) > 1:
-            if 5.5 > np.log10(T) > 3.69:
-                P = 10.765
-                T = 362669.111
-    return P, T
-
-
 class Vars(IntEnum):
     """
     Enumerate that contains names of unknown functions.
@@ -155,9 +119,7 @@ class BaseVerticalStructure:
     def photospheric_pressure_equation(self, tau, P):
         T = self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)
         rho, eos = self.law_of_rho(P, T, True)
-        # _, T_strih = important_addition_to_kappa_and_rho(P, T)
         varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
-        # varkappa = self.law_of_opacity(rho, T_strih, lnfree_e=eos.lnfree_e)
         return self.z0 * self.omegaK ** 2 / varkappa
 
     def P_ph(self):
@@ -174,20 +136,6 @@ class BaseVerticalStructure:
     def Q_initial(self):
         return 1
 
-    def photospheric_sigma_equation(self, tau, P):
-        T = self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)  # problem: Teff is unknown (we know only Tvis, but not Tirr)
-        rho, eos = self.law_of_rho(P, T, True)
-        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
-        return 1 / varkappa
-
-    def sigma_ph(self):
-        solution = solve_ivp(
-            self.photospheric_sigma_equation,
-            t_span=[0, 2 / 3],
-            y0=[1e-7 * self.sigma_norm], rtol=self.eps
-        )
-        return solution.y[0][-1]  # dimentional value
-
     def initial(self):
         """
         Initial conditions.
@@ -201,8 +149,6 @@ class BaseVerticalStructure:
         Q_initial = self.Q_initial()
         y = np.empty(4, dtype=np.float64)
         y[Vars.S] = 0
-        # y[Vars.S] = 0.1 / self.sigma_norm
-        # y[Vars.S] = self.P_ph() / (self.z0 * self.omegaK ** 2) / self.sigma_norm
         y[Vars.P] = self.P_ph() / self.P_norm
         y[Vars.Q] = Q_initial
         y[Vars.T] = (Q_initial * self.Q_norm / sigmaSB) ** (1 / 4) / self.T_norm
@@ -451,9 +397,7 @@ class Prad:
         # print(np.log10(P), np.log10(T))
 
         rho, eos = self.law_of_rho(P, T, True)
-        # _, T_strih = important_addition_to_kappa_and_rho(P, T)
         varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
-        # varkappa = self.law_of_opacity(rho, T_strih, lnfree_e=eos.lnfree_e)
 
         # print(self.z0 * self.omegaK ** 2 / varkappa - (sigmaSB / c) * self.Teff ** 4)
         # if np.isnan(self.z0 * self.omegaK ** 2 / varkappa - (sigmaSB / c) * self.Teff ** 4):
