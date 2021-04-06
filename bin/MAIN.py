@@ -7,7 +7,6 @@ from astropy.io import ascii
 from matplotlib import rcParams
 from scipy.integrate import simps
 
-from mesa_vs import MesaVerticalStructureRadConvPrad
 from plots import Structure_Plot, S_curve
 
 rcParams['text.usetex'] = True

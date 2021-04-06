@@ -3,7 +3,6 @@ from numpy.testing import assert_allclose
 from vertstr import FindPi
 import numpy as np
 from vs import IdealKramersVerticalStructure, IdealBellLin1994VerticalStructure
-from vs import IdealKramersVerticalStructurePrad, IdealBellLin1994VerticalStructurePrad
 from astropy import constants as const
 
 sigmaSB = const.sigma_sb.cgs.value
