@@ -82,63 +82,15 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
             vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F, abundance=abundance)
-    elif structure == 'MesaRadConvIrrZero':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = mesa_vs.MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(M, alpha, r, F,
-                                                                                       abundance=abundance)
-    elif structure == 'MesaRadConvAdv':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = mesa_vs.MesaVerticalStructureRadConvAdvection(M, alpha, r, F, abundance=abundance)
-    elif structure == 'MesaAdv':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = mesa_vs.MesaVerticalStructureAdvection(M, alpha, r, F, abundance=abundance)
-    elif structure == 'MesaIdealAdv':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = mesa_vs.MesaIdealVerticalStructureAdvection(M, alpha, r, F, abundance=abundance, mu=mu)
     elif structure == 'IdealBellLinRadConv':
         try:
             if np.isnan(mesa_vs):
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
             vs = mesa_vs.IdealBellLin1994VerticalStructureRadConv(M, alpha, r, F, abundance=abundance, mu=mu)
-    elif structure == 'AnotherPph':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = mesa_vs.MesaVerticalStructureRadConvAnotherPph(M, alpha, r, F, abundance=abundance, mu=mu)
-    elif structure == 'Prad':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = mesa_vs.MesaVerticalStructureRadConvPrad(M, alpha, r, F, abundance=abundance, mu=mu)
-    elif structure == 'Prad_Pph':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = mesa_vs.MesaVerticalStructureRadConvPradAnotherPph(M, alpha, r, F, abundance=abundance, mu=mu)
-    elif structure == 'Prad_BellLin':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = vert.IdealBellLin1994VerticalStructurePrad(M, alpha, r, F, mu=mu)
     else:
-        print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
+        print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst, MesaRadConv or '
+              'IdealBellLinRadConv')
         raise Exception
 
     return vs, F, Teff, Mdot

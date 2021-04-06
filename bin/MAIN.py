@@ -7,7 +7,6 @@ from astropy.io import ascii
 from matplotlib import rcParams
 from scipy.integrate import simps
 
-from mesa_vs import MesaVerticalStructureRadConvPrad
 from plots import Structure_Plot, S_curve
 
 rcParams['text.usetex'] = True
@@ -27,11 +26,6 @@ sigmaSB = const.sigma_sb.cgs.value
 def plank(nu, T):
     a = 2 * pl_const * nu ** 3 / c ** 2
     return a / np.expm1(pl_const * nu / (k_B * T))
-
-
-def func(tau_end, integral_plot):
-    tau_eff = simps(integral_plot, np.linspace(0, tau_end, len(integral_plot)))
-    return 1.0 - tau_eff
 
 
 def main(days):

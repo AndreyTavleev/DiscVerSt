@@ -3,7 +3,6 @@ from numpy.testing import assert_allclose
 from vertstr import FindPi
 import numpy as np
 from vs import IdealKramersVerticalStructure, IdealBellLin1994VerticalStructure
-from vs import IdealKramersVerticalStructurePrad, IdealBellLin1994VerticalStructurePrad
 from astropy import constants as const
 
 sigmaSB = const.sigma_sb.cgs.value
@@ -65,10 +64,10 @@ class PiTestCase(unittest.TestCase):
                 print('Teff = ', Teff)
                 F = 8 * np.pi / 3 * h ** 7 / (G * M) ** 4 * sigmaSB * Teff ** 4
 
-                vs = IdealBellLin1994VerticalStructurePrad(M, alpha, r, F, mu=mu)
+                vs = IdealKramersVerticalStructure(M, alpha, r, F, mu=mu)
                 vs.fit()
                 tau0 = vs.tau0()
-                fp = FindPi(tau0, opacity=(1, 5/2))
+                fp = FindPi(tau0, opacity=(1, 7/2))
 
                 actual = vs.Pi_finder()
                 desired = fp.getPi()
@@ -104,7 +103,7 @@ class PiTestCase(unittest.TestCase):
                 func = 1 - np.sqrt(r_in / r)
                 F = Mdot * h * func
 
-                vs = IdealKramersVerticalStructurePrad(M, alpha, r, F, mu=mu)
+                vs = IdealKramersVerticalStructure(M, alpha, r, F, mu=mu)
                 z0r, result = vs.fit()
 
                 z0r_teor = 0.020 * (M / M_sun) ** (-3 / 8) * alpha ** (-1 / 10) * (r / 1e10) ** (1 / 8) * (
