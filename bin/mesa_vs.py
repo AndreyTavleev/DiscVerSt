@@ -9,6 +9,42 @@ mu = const.u.cgs.value
 c = const.c.cgs.value
 pl_const = const.h
 
+
+def important_addition_to_kappa_and_rho(P, T):
+    if type(P) != np.float64 and type(T) != np.float64:
+        for i, _ in enumerate(P):
+            if P[i] < 0 or np.isnan(P[i]):
+                continue
+            if 2 > np.log10(P[i]) > 1:
+                if 5.5 > np.log10(T[i]) > 3.69:
+                    P[i] = 10.765
+                    T[i] = 362669.111
+    elif type(P) != np.float64 and type(T) == np.float64:
+        for i, _ in enumerate(P):
+            if P[i] < 0 or np.isnan(P[i]):
+                continue
+            if 2 > np.log10(P[i]) > 1:
+                if 5.5 > np.log10(T) > 3.69:
+                    P[i] = 10.765
+                    T = 362669.111
+    elif type(P) == np.float64 and type(T) != np.float64:
+        if P < 0 or np.isnan(P):
+            return P, T
+        for i, _ in enumerate(T):
+            if 2 > np.log10(P) > 1:
+                if 5.5 > np.log10(T[i]) > 3.69:
+                    P = 10.765
+                    T[i] = 362669.111
+    else:
+        if P < 0 or np.isnan(P):
+            return P, T
+        if 2 > np.log10(P) > 1:
+            if 5.5 > np.log10(T) > 3.69:
+                P = 10.765
+                T = 362669.111
+    return P, T
+
+
 try:
     from opacity import Opac
 except ModuleNotFoundError as e:
@@ -23,6 +59,7 @@ class BaseMesaVerticalStructure(BaseVerticalStructure):
 
 class MesaGasMixin:
     def law_of_rho(self, P, T, full_output):
+        P, T = important_addition_to_kappa_and_rho(P, T)
         if full_output:
             rho, eos = self.mesaop.rho(P, T, full_output=full_output)
             return rho, eos
@@ -33,6 +70,12 @@ class MesaGasMixin:
 class MesaOpacityMixin:
     def law_of_opacity(self, rho, T, lnfree_e):
         return self.mesaop.kappa(rho, T, lnfree_e=lnfree_e)
+
+    def opacity(self, y, lnfree_e):
+        _, T = important_addition_to_kappa_and_rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm)
+        rho = self.rho(y, False)
+        return self.law_of_opacity(rho, T, lnfree_e=lnfree_e)
+
 
 
 class AdiabaticTempGradient:

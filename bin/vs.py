@@ -13,6 +13,41 @@ M_sun = const.M_sun.cgs.value
 c = const.c.cgs.value
 
 
+def important_addition_to_kappa_and_rho(P, T):
+    if type(P) != np.float64 and type(T) != np.float64:
+        for i, _ in enumerate(P):
+            if P[i] < 0 or np.isnan(P[i]):
+                continue
+            if 2 > np.log10(P[i]) > 1:
+                if 5.5 > np.log10(T[i]) > 3.69:
+                    P[i] = 10.765
+                    T[i] = 362669.111
+    elif type(P) != np.float64 and type(T) == np.float64:
+        for i, _ in enumerate(P):
+            if P[i] < 0 or np.isnan(P[i]):
+                continue
+            if 2 > np.log10(P[i]) > 1:
+                if 5.5 > np.log10(T) > 3.69:
+                    P[i] = 10.765
+                    T = 362669.111
+    elif type(P) == np.float64 and type(T) != np.float64:
+        if P < 0 or np.isnan(P):
+            return P, T
+        for i, _ in enumerate(T):
+            if 2 > np.log10(P) > 1:
+                if 5.5 > np.log10(T[i]) > 3.69:
+                    P = 10.765
+                    T[i] = 362669.111
+    else:
+        if P < 0 or np.isnan(P):
+            return P, T
+        if 2 > np.log10(P) > 1:
+            if 5.5 > np.log10(T) > 3.69:
+                P = 10.765
+                T = 362669.111
+    return P, T
+
+
 class Vars(IntEnum):
     """
     Enumerate that contains names of unknown functions.
@@ -119,7 +154,8 @@ class BaseVerticalStructure:
     def photospheric_pressure_equation(self, tau, P):
         T = self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)
         rho, eos = self.law_of_rho(P, T, True)
-        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
+        _, T_strih = important_addition_to_kappa_and_rho(P, T)
+        varkappa = self.law_of_opacity(rho, T_strih, lnfree_e=eos.lnfree_e)
         return self.z0 * self.omegaK ** 2 / varkappa
 
     def P_ph(self):
