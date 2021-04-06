@@ -177,8 +177,8 @@ def Structure_Plot(M, alpha, r, Par, mu=0.6, input='Teff', structure='Kramers', 
     varkappa = vs.law_of_opacity(rho, T * vs.T_norm, lnfree_e=eos.lnfree_e)
     output_arr = np.column_stack((t, S, P, Q, T, rho / rho_C, varkappa / varkappa_C, grad_plot(np.log(P))))
     try:
-        output_arr = np.column_stack((output_arr, eos.grad_ad))
-        header = 't\t S\t P\t Q\t T\t rho\t varkappa\t grad\t grad_ad'
+        output_arr = np.column_stack((output_arr, eos.grad_ad, eos.lnfree_e))
+        header = 't\t S\t P\t Q\t T\t rho\t varkappa\t grad\t grad_ad\t lnfree_e'
     except AttributeError:
         header = 't\t S\t P\t Q\t T\t rho\t varkappa\t grad'
     header_input = '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, Teff = {} K, Mdot = {:e} g/s, ' \
@@ -363,9 +363,9 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
             tau_key = False
             break
         if structure not in ['Kramers', 'BellLin', 'Prad_BellLin'] and Sigma_minus_key:
-            rho, eos = vs.mesaop.rho(y[3], y[2], True)
+            rho, eos = vs.mesaop.rho(y[3], y[2], full_output=True)
             free_e = np.exp(eos.lnfree_e)
-            if free_e < 0.5 and Sigma_minus_key:
+            if free_e < (1 + vs.mesaop.X) / 4 and Sigma_minus_key:
                 Sigma_minus_index = i
                 Sigma_minus_key = False
                 # try:
