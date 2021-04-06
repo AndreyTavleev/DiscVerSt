@@ -206,11 +206,6 @@ class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGr
     pass
 
 
-class IdealBellLin1994VerticalStructureRadConv(IdealGasMixin, BellLin1994TwoComponentOpacityMixin, RadConvTempGradient,
-                                               BaseMesaVerticalStructure):
-    pass
-
-
 class MesaVerticalStructureRadConvPrad(MesaGasMixin, MesaOpacityMixin, RadConvTempGradientPrad, Prad,
                                        BaseMesaVerticalStructure):
     pass
