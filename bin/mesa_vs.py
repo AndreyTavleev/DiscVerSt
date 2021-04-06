@@ -136,9 +136,7 @@ class AnotherPph:
             for j in range(len(P_temp)):
                 rho_temp, eos_temp = self.law_of_rho(P_temp[j], T_temp[j], full_output=True)
                 lnfree_e = eos_temp.lnfree_e
-                # _, T_strih = important_addition_to_kappa_and_rho(P_temp[j], T_temp[j])
                 kappa = self.law_of_opacity(rho_temp, T_temp[j], lnfree_e)
-                # kappa = self.law_of_opacity(rho_temp, T_strih, lnfree_e)
                 if (kappa - sigmaT / mu * np.exp(lnfree_e)) < 0:
                     integral_plot.append(0.0)
                 else:
