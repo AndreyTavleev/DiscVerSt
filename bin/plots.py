@@ -82,15 +82,8 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
             vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F, abundance=abundance)
-    elif structure == 'IdealBellLinRadConv':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = mesa_vs.IdealBellLin1994VerticalStructureRadConv(M, alpha, r, F, abundance=abundance, mu=mu)
     else:
-        print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst, MesaRadConv or '
-              'IdealBellLinRadConv')
+        print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
         raise Exception
 
     return vs, F, Teff, Mdot
@@ -314,7 +307,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
             tau_index = i
             tau_key = False
             break
-        if structure not in ['Kramers', 'BellLin', 'Prad_BellLin'] and Sigma_minus_key:
+        if structure not in ['Kramers', 'BellLin'] and Sigma_minus_key:
             rho, eos = vs.mesaop.rho(y[3], y[2], full_output=True)
             free_e = np.exp(eos.lnfree_e)
             if free_e < (1 + vs.mesaop.X) / 4 and Sigma_minus_key:
@@ -351,7 +344,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
                                                  tau_plot, PradPgas_Plot, varkappa_c_plot]), header=header)
 
     if not make_pic:
-        if structure not in ['Kramers', 'BellLin', 'Prad_BellLin']:
+        if structure not in ['Kramers', 'BellLin']:
             return conv_param_z0_plot, conv_param_sigma_plot
         else:
             return
@@ -406,7 +399,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
 
 def TempGrad_Plot(M, alpha, r, Par, mu=0.6, input='Teff', structure='Mesa', abundance='solar', path='fig/TempGrad.pdf',
                   set_title=True, title=r'$\frac{d(lnT)}{d(lnP)}$'):
-    if structure in ['MesaAd', 'MesaFirst', 'MesaRadConv']:
+    if structure not in ['Kramers', 'BellLin', 'Mesa', 'MesaIdeal']:
         print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal')
         raise Exception
     vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
