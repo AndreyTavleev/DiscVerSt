@@ -1,8 +1,8 @@
 Module 'vs' contains several classes that represent the vertical 
-structure of accretion discs in LMXB for different assumptions 
+structure of accretion discs in X-ray binaries for different assumptions 
 of opacity law. For given parameters the vertical structure of 
-disc is calculated and can be used for research of disc stability. 
+disc is calculated and can be used for research of disc stability.
 
-For scientific-python course: project consist of setup.py, README (this file), 
-bin/__init__.py, bin/vs.py, bin/test.py 
-and requirements.txt (use pip3 install -r requirements.txt to install all dependences).
+Module 'mesa_vs' contains some additional classes, that represent 
+the vertical structure for tabular opacities and convective energy transport.
+'mesa2py' is required for 'mesa_vs' structure for work.
