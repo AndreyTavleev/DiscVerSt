@@ -375,8 +375,9 @@ def main():
     Mdot = 1e17
     rg = 2 * G * M / c ** 2
     r = 400 * rg
-    print('Finding Pi parameters of structure and making a structure plot.')
-    print('M = {:g} grams \nr = {:g} cm \nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, alpha, Mdot))
+    print('Finding Pi parameters of structure and making a structure plot. \nStructure with Kramers opacity and ideal '
+          'gas EOS.')
+    print('M = {:g} grams \nr = {:g} cm = {:g} rg \nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, r / rg, alpha, Mdot))
     h = np.sqrt(G * M * r)
     r_in = 3 * rg
     F = Mdot * h * (1 - np.sqrt(r_in / r))
@@ -386,13 +387,15 @@ def main():
         print('The vertical structure has been calculated successfully.')
     Pi = vs.Pi_finder()
     print('Pi parameters =', Pi)
+    print('z0/r = ', z0r)
     t = np.linspace(0, 1, 100)
     S, P, Q, T = vs.integrate(t)[0]
     import matplotlib.pyplot as plt
-    plt.plot(1 - t, S, label='S')
-    plt.plot(1 - t, P, label='P')
-    plt.plot(1 - t, Q, label='Q')
-    plt.plot(1 - t, T, label='T')
+    plt.plot(1 - t, S, label='S/S0')
+    plt.plot(1 - t, P, label='P/P0')
+    plt.plot(1 - t, Q, label='Q/Q0')
+    plt.plot(1 - t, T, label='T/T0')
+    plt.xlabel('z/z0')
     plt.grid()
     plt.legend()
     plt.show()
