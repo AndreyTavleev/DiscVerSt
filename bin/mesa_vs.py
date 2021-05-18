@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
 import numpy as np
 from astropy import constants as const
 
-from vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient, BellLin1994TwoComponentOpacityMixin
+from vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient
 
 sigmaSB = const.sigma_sb.cgs.value
 sigmaT = const.sigma_T.cgs.value
@@ -36,12 +37,21 @@ class MesaOpacityMixin:
 
 
 class AdiabaticTempGradient:
+    """
+    Temperature gradient class. Return adiabatic d(lnT)/d(lnP) from Mesa.
+
+    """
     def dlnTdlnP(self, y, t):
         rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, full_output=True)
         return eos.grad_ad
 
 
 class FirstAssumptionRadiativeConvectiveGradient:
+    """
+    Temperature gradient class. Calculate d(lnT)/d(lnP) in first assumption.
+    If gradient is over-adiabatic, then return adiabatic gradient, else calculate radiative gradient.
+
+    """
     def dlnTdlnP(self, y, t):
         varkappa = self.opacity(y)
         rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
@@ -63,6 +73,10 @@ class FirstAssumptionRadiativeConvectiveGradient:
 
 
 class RadConvTempGradient:
+    """
+    Temperature gradient class. Calculate d(lnT)/d(lnP) in presence of convection according to mixing length theory.
+
+    """
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, True)
         varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
@@ -96,7 +110,6 @@ class RadConvTempGradient:
         V = 1 / np.sqrt(VV)
 
         coeff = [2 * A, V, V ** 2, - V]
-        # print(coeff)
         try:
             x = np.roots(coeff)
         except np.linalg.LinAlgError:
@@ -108,31 +121,46 @@ class RadConvTempGradient:
             print('not one x of there is no right x')
             breakpoint()
         x = x[0]
-
-        # print(x)
-        # print(H_p, H_ml, omega, eos.c_p, eos.dlnRho_dlnT_const_Pgas, dlnTdlnP_rad - eos.grad_ad, VV, rho,
-        #       y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, eos.grad_ad, dlnTdlnP_rad, varkappa)
-
         dlnTdlnP_conv = eos.grad_ad + (dlnTdlnP_rad - eos.grad_ad) * x * (x + V)
         return dlnTdlnP_conv
 
 
 class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseMesaVerticalStructure):
+    """
+    Vertical structure class for (tabular) Mesa opacities and EOS without convective energy transport.
+
+    """
     pass
 
 
 class MesaIdealVerticalStructure(IdealGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseMesaVerticalStructure):
+    """
+    Vertical structure class for (tabular) Mesa opacities and ideal gas EOS without convective energy transport.
+
+    """
     pass
 
 
 class MesaVerticalStructureAdiabatic(MesaGasMixin, MesaOpacityMixin, AdiabaticTempGradient, BaseMesaVerticalStructure):
+    """
+    Vertical structure class for (tabular) Mesa opacities and EOS with adiabatic energy transport.
+
+    """
     pass
 
 
 class MesaVerticalStructureFirstAssumption(MesaGasMixin, MesaOpacityMixin, FirstAssumptionRadiativeConvectiveGradient,
                                            BaseMesaVerticalStructure):
+    """
+    Vertical structure class for (tabular) Mesa opacities and EOS with radiative+adiabatic energy transport.
+
+    """
     pass
 
 
 class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, BaseMesaVerticalStructure):
+    """
+    Vertical structure class for (tabular) Mesa opacities and EOS with radiative+convective energy transport.
+
+    """
     pass

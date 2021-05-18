@@ -185,9 +185,6 @@ class BaseVerticalStructure:
         dy[Vars.Q] = self.dQdz(y, t)
         grad = self.dlnTdlnP(y, t)
         dy[Vars.T] = grad * dy[Vars.P] * y[Vars.T] / y[Vars.P]
-
-        # print(y, t, dy, grad)  # , self.z0 > 0, self.P_norm > 0, self.sigma_norm > 0)
-        # print(rho, y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm)
         return dy
 
     def integrate(self, t):
@@ -210,7 +207,6 @@ class BaseVerticalStructure:
         """
         assert t[0] == 0
         solution = solve_ivp(self.dydt, (t[0], t[-1]), self.initial(), t_eval=t, rtol=self.eps, method='RK23')
-        # assert solution.success
         return [solution.y, solution.message]
 
     def tau(self):
@@ -298,6 +294,10 @@ class BaseVerticalStructure:
 
 
 class RadiativeTempGradient:
+    """
+    Temperature gradient class. Calculate radiative d(lnT)/d(lnP) in the Eddington approximation.
+
+    """
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, full_output=True)
         varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
@@ -363,7 +363,7 @@ class IdealKramersVerticalStructure(IdealGasMixin, KramersOpacityMixin, Radiativ
 class IdealBellLin1994VerticalStructure(IdealGasMixin, BellLin1994TwoComponentOpacityMixin, RadiativeTempGradient,
                                         BaseVerticalStructure):
     """
-        Vertical structure class for opacity laws from (Bell & Lin, 1994) and ideal gas EOS.
+    Vertical structure class for opacity laws from (Bell & Lin, 1994) and ideal gas EOS.
 
     """
     pass
@@ -375,8 +375,8 @@ def main():
     Mdot = 1e17
     rg = 2 * G * M / c ** 2
     r = 400 * rg
-    print('Finding Pi parameters of structure and making a structure plot. \nStructure with Kramers opacity and ideal '
-          'gas EOS.')
+    print('Finding Pi parameters of structure and making a structure plot. '
+          '\nStructure with Kramers opacity and ideal gas EOS.')
     print('M = {:g} grams \nr = {:g} cm = {:g} rg \nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, r / rg, alpha, Mdot))
     h = np.sqrt(G * M * r)
     r_in = 3 * rg

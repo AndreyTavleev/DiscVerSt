@@ -11,27 +11,27 @@ the vertical structure for tabular opacities and convective energy transport.
 'mesa2py' (https://github.com/hombit/mesa2py) is required for 'mesa_vs' structure for work.
 
 ## Usage:
-1) Create and activate virtual environment
+1. Create and activate virtual environment
 
 ``` shell
 $ python3 -m venv ~/.venv/vs
 $ source ~/.venv/vs/bin/activate
 ```
 
-2) Update pip and install all requirements from [`requirements.txt`](https://github.com/Andrey890/Vertical-structure-of-accretion-discs/blob/master/requirements.txt)
+2. Update pip and install all requirements from [`requirements.txt`](https://github.com/Andrey890/Vertical-structure-of-accretion-discs/blob/master/requirements.txt)
 
 ``` shell
 $ pip3 install -U pip
 $ pip3 install -r requirements.txt
 ```
 
-2) Install 'Vertical-structure-of-accretion-discs' package
+3. Install 'Vertical-structure-of-accretion-discs' package
 
 ``` shell
 $ python3 setup.py install
 ```
 
-3) Run python and try vs.main()
+4. Run python and try vs.main()
 
 ```
 $ python3
@@ -49,7 +49,7 @@ $ python3
 	Pi parameters = [7.10271534 0.4859551  1.13097882 0.3985615 ]
 	z0/r =  0.028869666211114635
 
-4) You can use 'vs' module with different output parameters: mass of central object, alpha, radius and viscous torque
+5. You can use 'vs' module with different output parameters: mass of central object, alpha, radius and viscous torque
 
 ``` python3
 import vs
@@ -61,5 +61,9 @@ F = 2e34  # viscous torque
 
 vertstr = vs.IdealBellLin1994VerticalStructure(M, alpha, r, F)  # create structure with BellLin opacities and ideal gas EOS
 z0r, result = vertstr.fit()  # calculate structure
-print(z0r)  # semi-thickness of disc
+varkappa_C, rho_C, T_C, P_C, Sigma0 = vertstr.parameters_C()
+print(z0r)  # semi-thickness z0/r of disc
+print(varkappa_C, rho_C, T_C, P_C)  # Opacity, bulk density, temperature and gas pressure in the symmetry plane of disc
+print(Sigma0)  # Surface density of disc
+print(vertstr.tau())  # optical thickness of disc
 ```
