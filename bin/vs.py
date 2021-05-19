@@ -69,6 +69,10 @@ class BaseVerticalStructure:
         Integrate the system and return values of four dimensionless functions.
     Pi_finder()
         Return the Pi values (see Ketsaris & Shakura, 1998).
+    parameters_C()
+        Calculates parameters of disc in the symmetry plane.
+    tau()
+        Calculates optical thickness of the disc.
 
     """
 
@@ -210,6 +214,15 @@ class BaseVerticalStructure:
         return [solution.y, solution.message]
 
     def tau(self):
+        """
+        Calculates optical thickness of the disc.
+
+        Returns
+        -------
+        double
+            Optical thickness.
+
+        """
         t = np.linspace(0, 1, 100)
         y = self.integrate(t)[0]
         rho, eos = self.rho(y, full_output=True)
@@ -222,13 +235,22 @@ class BaseVerticalStructure:
         return y[0][:, -1]
 
     def parameters_C(self):
+        """
+        Calculates parameters of disc in the symmetry plane.
+
+        Returns
+        -------
+        array
+            Opacity, bulk density, temperature, gas pressure and surface density of disc.
+
+        """
         y_c = self.y_c()
         Sigma0 = y_c[Vars.S] * self.sigma_norm
         T_C = y_c[Vars.T] * self.T_norm
         P_C = y_c[Vars.P] * self.P_norm
         rho_C, eos = self.rho(y_c, full_output=True)
         varkappa_C = self.opacity(y_c, lnfree_e=eos.lnfree_e)
-        return varkappa_C, rho_C, T_C, P_C, Sigma0
+        return np.array([varkappa_C, rho_C, T_C, P_C, Sigma0])
 
     def tau0(self):
         y = self.parameters_C()
@@ -399,6 +421,7 @@ def main():
     plt.grid()
     plt.legend()
     plt.show()
+    return
 
 
 if __name__ == '__main__':

@@ -1,5 +1,9 @@
 # Vertical-structure-of-accretion-discs
 
+This code can calculate vertical structure of accretion discs around neutron stars and black holes.
+
+## Calculate structure:
+
 Module 'vs' contains several classes that represent the vertical 
 structure of accretion discs in X-ray binaries for different assumptions 
 of opacity law. For given parameters the vertical structure of 
@@ -10,7 +14,7 @@ the vertical structure for tabular opacities and convective energy transport.
 
 'mesa2py' (https://github.com/hombit/mesa2py) is required for 'mesa_vs' structure for work.
 
-## Usage:
+### Usage
 1. Create and activate virtual environment
 
 ``` shell
@@ -66,4 +70,41 @@ print(z0r)  # semi-thickness z0/r of disc
 print(varkappa_C, rho_C, T_C, P_C)  # Opacity, bulk density, temperature and gas pressure in the symmetry plane of disc
 print(Sigma0)  # Surface density of disc
 print(vertstr.tau())  # optical thickness of disc
+```
+
+## Make plots and tables with disc parameters
+
+Module 'plots_vs' contains functions, that calculates structure and S-curve and return tables with disc parameters and make plots.
+Try it
+``` python3
+import plots_vs
+plots_vs.main()
+```
+
+'plots_vs' contains two functions: 'Structure_Plot' and 'S_curve'. 
+'Structure_Plot' return table with parameters of disc as functions of vertical coordinate at specific radius. Also make plot of structure.
+'S_curve' calculate S-curve and return table with disc parameters on the curve. Also make plot of S-curve.
+
+### Usage:
+``` python3
+M = 1.5 * 2e33  # 1.5 * M_sun
+alpha = 0.2
+r = 1e10
+Teff = 1e4
+
+plots_vs.Structure_Plot(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100,
+                   	savedots=True, path_dots='vs.dat', make_pic=True, save_plot=True, path_plot='vs.pdf',
+                   	set_title=True,
+                   	title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, T_{{\rm eff}} = {:g} \, '
+                        	 r'{{\rm K}}$'.format(M / 2e33, r, alpha, Teff))
+
+plots_vs.S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False, savedots=True,
+            	 path_dots='S-curve.dat', make_Pi_table=True, Pi_table_path='Pi_table.dat', make_pic=True, output='Mdot',
+            	 xscale='parlog', yscale='parlog', save_plot=True, path_plot='S-curve.pdf', set_title=True,
+            	 title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / M_sun, r, alpha))
+```
+Both functions have help
+``` python3
+help(plots_vs.Structure_Plot)
+help(plots_vs.S_curve)
 ```

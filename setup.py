@@ -13,5 +13,5 @@ setup(
     description='Vertical structure of accretion discs',
     long_description=long_description,
     package_dir={'': 'bin'},
-    py_modules=['vs', 'mesa_vs']
+    py_modules=['vs', 'mesa_vs', 'plots_vs']
     )
