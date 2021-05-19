@@ -2,7 +2,7 @@
 
 This code can calculate vertical structure of accretion discs around neutron stars and black holes.
 
-## Calculate structure:
+## Calculate structure
 
 Module 'vs' contains several classes that represent the vertical 
 structure of accretion discs in X-ray binaries for different assumptions 
@@ -14,7 +14,7 @@ the vertical structure for tabular opacities and convective energy transport.
 
 'mesa2py' (https://github.com/hombit/mesa2py) is required for 'mesa_vs' structure for work.
 
-### Usage
+### Usage:
 1. Create and activate virtual environment
 
 ``` shell
