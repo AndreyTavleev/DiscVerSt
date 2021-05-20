@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+"""
+Module contains several classes that represent vertical structure of accretion disc in case
+of analytical opacity and ideal gas EOS.
+
+Class IdealKramersVerticalStructure --  for Kramers opacity law and ideal gas EOS.
+Class IdealBellLin1994VerticalStructure -- for opacity laws from (Bell & Lin, 1994) and ideal gas EOS.
+
+"""
 from collections import namedtuple
 from enum import IntEnum
 

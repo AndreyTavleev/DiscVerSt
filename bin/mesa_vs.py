@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+"""
+Module contains several classes that represent vertical structure of accretion disc in case
+of (tabular) Mesa opacity and(or) EOS.
+
+Class MesaVerticalStructure --  for (tabular) Mesa opacities and EOS with radiative energy transport.
+Class MesaIdealVerticalStructure -- for (tabular) Mesa opacities and ideal gas EOS with radiative energy transport.
+Class MesaVerticalStructureAdiabatic -- for (tabular) Mesa opacities and EOS with adiabatic energy transport.
+Class MesaVerticalStructureFirstAssumption -- for (tabular) Mesa opacities and EOS with radiative+adiabatic energy
+    transport.
+Class MesaVerticalStructureRadConv -- for (tabular) Mesa opacities and EOS with radiative+convective energy transport.
+
+"""
 import numpy as np
 from astropy import constants as const
 
@@ -127,7 +139,7 @@ class RadConvTempGradient:
 
 class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseMesaVerticalStructure):
     """
-    Vertical structure class for (tabular) Mesa opacities and EOS without convective energy transport.
+    Vertical structure class for (tabular) Mesa opacities and EOS with radiative energy transport.
 
     """
     pass
@@ -135,7 +147,7 @@ class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradien
 
 class MesaIdealVerticalStructure(IdealGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseMesaVerticalStructure):
     """
-    Vertical structure class for (tabular) Mesa opacities and ideal gas EOS without convective energy transport.
+    Vertical structure class for (tabular) Mesa opacities and ideal gas EOS with radiative energy transport.
 
     """
     pass

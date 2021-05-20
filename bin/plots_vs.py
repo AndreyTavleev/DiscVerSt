@@ -1,3 +1,18 @@
+#!/usr/bin/env python3
+"""
+Module contains functions that calculate vertical structure and S-curve. Functions return tables with calculated data
+and make plots of structure or S-curve.
+
+Structure_Plot -- calculates vertical structure and makes table with disc parameters as functions of vertical
+    coordinate. Table also contains input parameters of structure, parameters in the symmetry plane and
+    parameter normalisations. Also makes a plot of structure.
+S_curve -- Calculates S-curve and makes table with disc parameters on the S-curve.
+    Table contains input parameters of system, surface density Sigma0, viscous torque F,
+    accretion rate Mdot, effective temperature Teff, geometrical thickness of the disc z0r,
+    parameters in the symmetry plane of disc on the S-curve.
+    Also makes a table with Pi values on S-curve and makes a plot of S-curve.
+
+"""
 import numpy as np
 from astropy import constants as const
 from matplotlib import pyplot as plt
@@ -105,20 +120,20 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
                    path_dots='vs.dat', make_pic=True, save_plot=True, path_plot='vs.pdf', set_title=True,
                    title='Vertical structure'):
     """
-    Calculate vertical structure and make table with disc parameters as functions of vertical coordinate.
+    Calculates vertical structure and makes table with disc parameters as functions of vertical coordinate.
     Table also contains input parameters of structure, parameters in the symmetry plane and parameter normalisations.
-    Also make a plot of structure.
+    Also makes a plot of structure.
 
     Parameters
     ----------
     M : double
-        Mass of central object.
+        Mass of central object in grams.
     alpha : double
-        Viscosity parameter.
+        Alpha parameter for alpha-prescription of viscosity.
     r : double
-        Radius.
+        Distance from central star (radius in cylindrical coordinate system) in cm.
     Par : double
-        Can be viscous torque, effective temperature, accretion rate in g/s or in eddington limits.
+        Can be viscous torque in g*cm^2/s^2, effective temperature in K, accretion rate in g/s or in eddington limits.
         Choice depends on 'input' parameter.
     input : str
         Define the choice of 'Par' parameter. Can be 'F' (viscous torque), 'Teff' (effective temperature),
@@ -130,6 +145,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst' or 'MesaRadConv'.
     abundance : dict
         Chemical composition of disc. Use in case of Mesa EOS.
+        Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
     n : int
         Number of dots to calculate.
@@ -152,7 +168,6 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
     z0r, result = vs.fit()
     rg = 2 * G * M / c ** 2
-    print('Teff = ', vs.Teff)
     t = np.linspace(0, 1, n)
     S, P, Q, T = vs.integrate(t)[0]
     varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
@@ -169,10 +184,11 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     except AttributeError:
         header = 't\t S\t P\t Q\t T\t rho\t varkappa\t grad'
         header_conv = ''
-    header_input = '\nt = 1 - z/z0 \nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, Teff = {} K, ' \
-                   'Mdot = {:e} g/s, F = {:e} g*cm^2/s^2, abundance = {}, structure = {}'.format(
-        M / M_sun, alpha, r, r / rg, Teff, Mdot, F, abundance, structure)
-    header_C = '\nvarkappa_C = {:e}, rho_C = {:e}, T_C = {:e}, P_C = {:e}, Sigma0 = {:e}, ' \
+    header_input = '\nS, P, Q, T -- normalized values, rho -- in g/cm^3, varkappa -- in cm^2/g \nt = 1 - z/z0 ' \
+                   '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, Teff = {} K, Mdot = {:e} g/s, ' \
+                   'F = {:e} g*cm^2/s^2, abundance = {}, structure = {}'.format(M / M_sun, alpha, r, r / rg, Teff,
+                                                                                Mdot, F, abundance, structure)
+    header_C = '\nvarkappa_C = {:e} cm^2/g, rho_C = {:e} g/cm^3, T_C = {:e} K, P_C = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
                'PradPgas = {:e}, z0r = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r)
     header_norm = '\nSigma_norm = {:e}, P_norm = {:e}, T_norm = {:e}, Q_norm = {:e}'.format(
         vs.sigma_norm, vs.P_norm, vs.T_norm, vs.Q_norm)
@@ -202,26 +218,26 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             make_pic=True, output='Mdot', xscale='log', yscale='log', save_plot=True, path_plot='S-curve.pdf',
             set_title=True, title='S-curve'):
     """
-    Calculate S-curve and make table with disc parameters on the S-curve.
+    Calculates S-curve and makes table with disc parameters on the S-curve.
     Table contains input parameters of system, surface density Sigma0, viscous torque F,
     accretion rate Mdot, effective temperature Teff, geometrical thickness of the disc z0r,
     parameters in the symmetry plane of disc on the S-curve.
-    Also make a table with Pi values on S-curve and make a plot of S-curve.
+    Also makes a table with Pi values on S-curve and makes a plot of S-curve.
 
     Parameters
     ----------
     Par_min : double
-        The starting value of Par. Par_min and Par_max can be viscous torque, effective temperature,
+        The starting value of Par. Par_min and Par_max can be viscous torque in g*cm^2/s^2, effective temperature in K,
         accretion rate in g/s or in eddington limits. Choice depends on 'input' parameter.
     Par_max : double
-        The end value of Par. Par_min and Par_max can be viscous torque, effective temperature,
+        The end value of Par. Par_min and Par_max can be viscous torque in g*cm^2/s^2, effective temperature in K,
         accretion rate in g/s or in eddington limits. Choice depends on 'input' parameter.
     M : double
-        Mass of central object.
+        Mass of central object in grams.
     alpha : double
-        Viscosity parameter.
+        Alpha parameter for alpha-prescription of viscosity.
     r : double
-        Radius.
+        Distance from central star (radius in cylindrical coordinate system) in cm.
     input : str
         Define the choice of 'Par_min' and 'Par_max' parameters.
         Can be 'F' (viscous torque), 'Teff' (effective temperature),
@@ -233,6 +249,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         Molecular weight. Use in case of ideal gas EOS.
     abundance : dict
         Chemical composition of disc. Use in case of Mesa EOS.
+        Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
     n : int
         Number of dots to calculate.
@@ -378,7 +395,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
     if savedots:
         rg = 2 * G * M / c ** 2
-        header_start = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c'
+        header_start = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c ' \
+                       '\nAll values a in CGS units.'
         header_end = '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, abundance = {}, structure = {} ' \
                      '\nSigma_plus_index = {:d} \tSigma_minus_index = {:d}'.format(
             M / M_sun, alpha, r, r / rg, abundance, structure, Sigma_plus_index, Sigma_minus_index)
@@ -447,7 +465,7 @@ def main():
     r = 1e10
     Teff = 1e4
 
-    print('Calculate vertical structure. Return structure table and plot.')
+    print('Calculation of vertical structure. Return structure table and plot.')
     print('M = {:g} M_sun \nr = {:g} cm \nalpha = {:g} \nTeff = {:g} K'.format(M / M_sun, r, alpha, Teff))
 
     Structure_Plot(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100,
@@ -455,15 +473,15 @@ def main():
                    set_title=True,
                    title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, T_{{\rm eff}} = {:g} \, '
                          r'{{\rm K}}$'.format(M / M_sun, r, alpha, Teff))
-    print('Structure calculate successfully.')
+    print('Structure is calculated successfully. \n')
 
-    print('Calculate S-curve for Teff from 4e3 K to 1e4 K. Return S-curve table and Sigma0-Mdot plot.')
+    print('Calculation of S-curve for Teff from 4e3 K to 1e4 K. Return S-curve table and Sigma0-Mdot plot.\n')
 
     S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False, savedots=True,
             path_dots='S-curve.dat', make_Pi_table=True, Pi_table_path='Pi_table.dat', make_pic=True, output='Mdot',
             xscale='parlog', yscale='parlog', save_plot=True, path_plot='S-curve.pdf', set_title=True,
             title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / M_sun, r, alpha))
-    print('S-curve calculate successfully.')
+    print('S-curve is calculated successfully.')
     return
 
 

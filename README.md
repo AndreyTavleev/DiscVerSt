@@ -2,19 +2,8 @@
 
 This code can calculate vertical structure of accretion discs around neutron stars and black holes.
 
-## Calculate structure
+### Installation
 
-Module 'vs' contains several classes that represent the vertical 
-structure of accretion discs in X-ray binaries for different assumptions 
-of opacity law. For given parameters the vertical structure of 
-disc is calculated and can be used for research of disc stability.
-
-Module 'mesa_vs' contains some additional classes, that represent 
-the vertical structure for tabular opacities and convective energy transport.
-
-'mesa2py' (https://github.com/hombit/mesa2py) is required for 'mesa_vs' structure for work.
-
-### Usage:
 1. Create and activate virtual environment
 
 ``` shell
@@ -37,10 +26,8 @@ $ python3 setup.py install
 
 4. Run python and try vs.main()
 
-```
-$ python3
->>> import vs
->>> vs.main()
+``` shell
+$ python3 -m vs
 ```
 
 	Finding Pi parameters of structure and making a structure plot. 
@@ -53,7 +40,20 @@ $ python3
 	Pi parameters = [7.10271534 0.4859551  1.13097882 0.3985615 ]
 	z0/r =  0.028869666211114635
 
-5. You can use 'vs' module with different output parameters: mass of central object, alpha, radius and viscous torque
+## Calculate structure
+
+Module 'vs' contains several classes that represent the vertical 
+structure of accretion discs in X-ray binaries for different assumptions 
+of opacity law. For given parameters the vertical structure of 
+disc is calculated and can be used for research of disc stability.
+
+Module 'mesa_vs' contains some additional classes, that represent 
+the vertical structure for tabular opacities and convective energy transport.
+
+'mesa2py' (https://github.com/hombit/mesa2py) is required for 'mesa_vs' structure for work.
+
+### Usage:
+You can use 'vs' module with different output parameters: mass of central object, alpha, radius and viscous torque
 
 ``` python3
 import vs
@@ -71,19 +71,24 @@ print(varkappa_C, rho_C, T_C, P_C)  # Opacity, bulk density, temperature and gas
 print(Sigma0)  # Surface density of disc
 print(vertstr.tau())  # optical thickness of disc
 ```
+Both 'vs' and 'mesa_vs' modules have help
+``` python3
+help(vs)
+help(mesa_vs)
+```
 
 ## Make plots and tables with disc parameters
 
-Module 'plots_vs' contains functions, that calculates structure and S-curve and return tables with disc parameters and make plots.
+Module 'plots_vs' contains functions, that calculate structure and S-curve and return tables with disc parameters and make plots.
+With plots_vs.main() the structure, S-curves and Pi-parameters can be calculated for default parameters, stored as a plot and tables.  
 Try it
-``` python3
-import plots_vs
-plots_vs.main()
+``` shell
+$ python3 -m plots_vs
 ```
 
 'plots_vs' contains two functions: 'Structure_Plot' and 'S_curve'. 
-'Structure_Plot' return table with parameters of disc as functions of vertical coordinate at specific radius. Also make plot of structure.
-'S_curve' calculate S-curve and return table with disc parameters on the curve. Also make plot of S-curve.
+'Structure_Plot' returns table with parameters of disc as functions of vertical coordinate at specific radius. Also makes plot of structure.
+'S_curve' calculates S-curve and return table with disc parameters on the curve. Also makes plot of S-curve.
 
 ### Usage:
 ``` python3
@@ -103,8 +108,9 @@ plots_vs.S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.
             	 xscale='parlog', yscale='parlog', save_plot=True, path_plot='S-curve.pdf', set_title=True,
             	 title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / M_sun, r, alpha))
 ```
-Both functions have help
+Both 'plots_vs' module and functions in it have help
 ``` python3
+help(plots_vs)
 help(plots_vs.Structure_Plot)
 help(plots_vs.S_curve)
 ```
