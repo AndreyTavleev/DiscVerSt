@@ -106,7 +106,7 @@ plots_vs.Structure_Plot(M, alpha, r, Teff, input='Teff', mu=0.62, structure='Bel
 plots_vs.S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False, savedots=True,
             	 path_dots='S-curve.dat', make_Pi_table=True, Pi_table_path='Pi_table.dat', make_pic=True, output='Mdot',
             	 xscale='parlog', yscale='parlog', save_plot=True, path_plot='S-curve.pdf', set_title=True,
-            	 title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / M_sun, r, alpha))
+            	 title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / 2e33, r, alpha))
 ```
 Both 'plots_vs' module and functions in it have help
 ``` python3
