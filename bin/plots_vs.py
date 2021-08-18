@@ -36,6 +36,8 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
     h = np.sqrt(G * M * r)
     rg = 2 * G * M / c ** 2
     r_in = 3 * rg
+    if r < r_in:
+        raise Exception('Radius r should be greater than inner radius r_in = 3*rg. Actual radius r = {:g} rg'.format(r / rg))
     func = 1 - np.sqrt(r_in / r)
     if input == 'Teff':
         Teff = Par
