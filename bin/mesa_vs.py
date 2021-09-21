@@ -1,3 +1,16 @@
+#!/usr/bin/env python3
+"""
+Module contains several classes that represent vertical structure of accretion disc in case
+of (tabular) Mesa opacity and(or) EOS.
+
+Class MesaVerticalStructure --  for (tabular) Mesa opacities and EOS with radiative energy transport.
+Class MesaIdealVerticalStructure -- for (tabular) Mesa opacities and ideal gas EOS with radiative energy transport.
+Class MesaVerticalStructureAdiabatic -- for (tabular) Mesa opacities and EOS with adiabatic energy transport.
+Class MesaVerticalStructureFirstAssumption -- for (tabular) Mesa opacities and EOS with radiative+adiabatic energy
+    transport.
+Class MesaVerticalStructureRadConv -- for (tabular) Mesa opacities and EOS with radiative+convective energy transport.
+
+"""
 import numpy as np
 from astropy import constants as const
 from astropy.units import Hz
@@ -39,12 +52,21 @@ class MesaOpacityMixin:
 
 
 class AdiabaticTempGradient:
+    """
+    Temperature gradient class. Return adiabatic d(lnT)/d(lnP) from Mesa.
+
+    """
     def dlnTdlnP(self, y, t):
         rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, full_output=True)
         return eos.grad_ad
 
 
 class FirstAssumptionRadiativeConvectiveGradient:
+    """
+    Temperature gradient class. Calculate d(lnT)/d(lnP) in first assumption.
+    If gradient is over-adiabatic, then return adiabatic gradient, else calculate radiative gradient.
+
+    """
     def dlnTdlnP(self, y, t):
         varkappa = self.opacity(y)
         rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
@@ -66,6 +88,10 @@ class FirstAssumptionRadiativeConvectiveGradient:
 
 
 class RadConvTempGradient:
+    """
+    Temperature gradient class. Calculate d(lnT)/d(lnP) in presence of convection according to mixing length theory.
+
+    """
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, True)
         varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
@@ -74,8 +100,6 @@ class RadConvTempGradient:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
                     self.Q_norm * self.P_norm / self.T_norm ** 4) / (16 * sigmaSB * self.z0 * self.omegaK ** 2)
         else:
-            # dTdz = (abs(y[Vars.Q] + self.Q_adv(y[Vars.P] * self.P_norm) / self.Q_norm) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
-            #         16 * sigmaSB * self.T_norm ** 4)
             dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
                     16 * sigmaSB * self.T_norm ** 4)
             dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
@@ -113,7 +137,6 @@ class RadConvTempGradient:
             print('not one x of there is no right x')
             breakpoint()
         x = x[0]
-
         # print(x)
         # print(H_p, H_ml, omega, eos.c_p, eos.dlnRho_dlnT_const_Pgas, dlnTdlnP_rad - eos.grad_ad, VV, rho,
         #       y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, eos.grad_ad, dlnTdlnP_rad, varkappa)
@@ -295,23 +318,43 @@ class ExternalIrradiationZeroAssumption:
 
 
 class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseMesaVerticalStructure):
+    """
+    Vertical structure class for (tabular) Mesa opacities and EOS with radiative energy transport.
+
+    """
     pass
 
 
 class MesaIdealVerticalStructure(IdealGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseMesaVerticalStructure):
+    """
+    Vertical structure class for (tabular) Mesa opacities and ideal gas EOS with radiative energy transport.
+
+    """
     pass
 
 
 class MesaVerticalStructureAdiabatic(MesaGasMixin, MesaOpacityMixin, AdiabaticTempGradient, BaseMesaVerticalStructure):
+    """
+    Vertical structure class for (tabular) Mesa opacities and EOS with adiabatic energy transport.
+
+    """
     pass
 
 
 class MesaVerticalStructureFirstAssumption(MesaGasMixin, MesaOpacityMixin, FirstAssumptionRadiativeConvectiveGradient,
                                            BaseMesaVerticalStructure):
+    """
+    Vertical structure class for (tabular) Mesa opacities and EOS with radiative+adiabatic energy transport.
+
+    """
     pass
 
 
 class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, BaseMesaVerticalStructure):
+    """
+    Vertical structure class for (tabular) Mesa opacities and EOS with radiative+convective energy transport.
+
+    """
     pass
 
 
@@ -348,11 +391,6 @@ class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin
         self.Tvis = (self.Q0 / sigmaSB) ** (1 / 4)
 
 
-class MesaVerticalStructureRadConvAdvection(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, Advection,
-                                            BaseMesaVerticalStructure):
-    pass
-
-
 class MesaVerticalStructureAdvection(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, Advection,
                                      BaseMesaVerticalStructure):
     pass
@@ -360,4 +398,9 @@ class MesaVerticalStructureAdvection(MesaGasMixin, MesaOpacityMixin, RadiativeTe
 
 class MesaIdealVerticalStructureAdvection(IdealGasMixin, MesaOpacityMixin, RadiativeTempGradient, Advection,
                                           BaseMesaVerticalStructure):
+    pass
+
+
+class MesaVerticalStructureRadConvAdvection(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, Advection,
+                                            BaseMesaVerticalStructure):
     pass

@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+"""
+Module contains several classes that represent vertical structure of accretion disc in case
+of analytical opacity and ideal gas EOS.
+
+Class IdealKramersVerticalStructure --  for Kramers opacity law and ideal gas EOS.
+Class IdealBellLin1994VerticalStructure -- for opacity laws from (Bell & Lin, 1994) and ideal gas EOS.
+
+"""
 from collections import namedtuple
 from enum import IntEnum
 
@@ -68,6 +77,10 @@ class BaseVerticalStructure:
         Integrate the system and return values of four dimensionless functions.
     Pi_finder()
         Return the Pi values (see Ketsaris & Shakura, 1998).
+    parameters_C()
+        Calculates parameters of disc in the symmetry plane.
+    tau()
+        Calculates optical thickness of the disc.
 
     """
 
@@ -133,20 +146,6 @@ class BaseVerticalStructure:
     def Q_initial(self):
         return 1
 
-    def photospheric_sigma_equation(self, tau, P):
-        T = self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)  # problem: Teff is unknown (we know only Tvis, but not Tirr)
-        rho, eos = self.law_of_rho(P, T, True)
-        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
-        return 1 / varkappa
-
-    def sigma_ph(self):
-        solution = solve_ivp(
-            self.photospheric_sigma_equation,
-            t_span=[0, 2 / 3],
-            y0=[1e-7 * self.sigma_norm], rtol=self.eps
-        )
-        return solution.y[0][-1]  # dimentional value
-
     def initial(self):
         """
         Initial conditions.
@@ -160,14 +159,9 @@ class BaseVerticalStructure:
         Q_initial = self.Q_initial()
         y = np.empty(4, dtype=np.float64)
         y[Vars.S] = 0
-        # y[Vars.S] = 0.1 / self.sigma_norm
-        # y[Vars.S] = self.P_ph() / (self.z0 * self.omegaK ** 2) / self.sigma_norm
         y[Vars.P] = self.P_ph() / self.P_norm
         y[Vars.Q] = Q_initial
         y[Vars.T] = (Q_initial * self.Q_norm / sigmaSB) ** (1 / 4) / self.T_norm
-        # print('P_ph = ', self.P_ph(), self.P_ph() / self.P_norm)
-        # breakpoint()
-        # print('y_initial = {}'.format(y))
         return y
 
     def dlnTdlnP(self, y, t):
@@ -203,9 +197,6 @@ class BaseVerticalStructure:
         dy[Vars.Q] = self.dQdz(y, t)
         grad = self.dlnTdlnP(y, t)
         dy[Vars.T] = grad * dy[Vars.P] * y[Vars.T] / y[Vars.P]
-
-        # print(y, t, dy, grad)  # , self.z0 > 0, self.P_norm > 0, self.sigma_norm > 0)
-        # print(rho, y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm)
         return dy
 
     def integrate(self, t):
@@ -228,10 +219,18 @@ class BaseVerticalStructure:
         """
         assert t[0] == 0
         solution = solve_ivp(self.dydt, (t[0], t[-1]), self.initial(), t_eval=t, rtol=self.eps, method='RK23')
-        # assert solution.success
         return [solution.y, solution.message]
 
     def tau(self):
+        """
+        Calculates optical thickness of the disc.
+
+        Returns
+        -------
+        double
+            Optical thickness.
+
+        """
         t = np.linspace(0, 1, 100)
         y = self.integrate(t)[0]
         rho, eos = self.rho(y, full_output=True)
@@ -244,13 +243,22 @@ class BaseVerticalStructure:
         return y[0][:, -1]
 
     def parameters_C(self):
+        """
+        Calculates parameters of disc in the symmetry plane.
+
+        Returns
+        -------
+        array
+            Opacity, bulk density, temperature, gas pressure and surface density of disc.
+
+        """
         y_c = self.y_c()
         Sigma0 = y_c[Vars.S] * self.sigma_norm
         T_C = y_c[Vars.T] * self.T_norm
         P_C = y_c[Vars.P] * self.P_norm
         rho_C, eos = self.rho(y_c, full_output=True)
         varkappa_C = self.opacity(y_c, lnfree_e=eos.lnfree_e)
-        return varkappa_C, rho_C, T_C, P_C, Sigma0
+        return np.array([varkappa_C, rho_C, T_C, P_C, Sigma0])
 
     def tau0(self):
         y = self.parameters_C()
@@ -295,7 +303,6 @@ class BaseVerticalStructure:
         """
 
         def dq(z0r):
-            # print('z0r = ', z0r)
             self.z0 = z0r * self.r
             q_c = self.y_c()[Vars.Q]
             return q_c
@@ -317,6 +324,10 @@ class BaseVerticalStructure:
 
 
 class RadiativeTempGradient:
+    """
+    Temperature gradient class. Calculate radiative d(lnT)/d(lnP) in the Eddington approximation.
+
+    """
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, full_output=True)
         varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
@@ -382,7 +393,7 @@ class IdealKramersVerticalStructure(IdealGasMixin, KramersOpacityMixin, Radiativ
 class IdealBellLin1994VerticalStructure(IdealGasMixin, BellLin1994TwoComponentOpacityMixin, RadiativeTempGradient,
                                         BaseVerticalStructure):
     """
-        Vertical structure class for opacity laws from (Bell & Lin, 1994) and ideal gas EOS.
+    Vertical structure class for opacity laws from (Bell & Lin, 1994) and ideal gas EOS.
 
     """
     pass
@@ -394,8 +405,9 @@ def main():
     Mdot = 1e17
     rg = 2 * G * M / c ** 2
     r = 400 * rg
-    print('Finding Pi parameters of structure and making a structure plot.')
-    print('M = {:g} grams \nr = {:g} cm \nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, alpha, Mdot))
+    print('Finding Pi parameters of structure and making a structure plot. '
+          '\nStructure with Kramers opacity and ideal gas EOS.')
+    print('M = {:g} grams \nr = {:g} cm = {:g} rg \nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, r / rg, alpha, Mdot))
     h = np.sqrt(G * M * r)
     r_in = 3 * rg
     F = Mdot * h * (1 - np.sqrt(r_in / r))
@@ -405,16 +417,19 @@ def main():
         print('The vertical structure has been calculated successfully.')
     Pi = vs.Pi_finder()
     print('Pi parameters =', Pi)
+    print('z0/r = ', z0r)
     t = np.linspace(0, 1, 100)
     S, P, Q, T = vs.integrate(t)[0]
     import matplotlib.pyplot as plt
-    plt.plot(1 - t, S, label='S')
-    plt.plot(1 - t, P, label='P')
-    plt.plot(1 - t, Q, label='Q')
-    plt.plot(1 - t, T, label='T')
+    plt.plot(1 - t, S, label='S/S0')
+    plt.plot(1 - t, P, label='P/P0')
+    plt.plot(1 - t, Q, label='Q/Q0')
+    plt.plot(1 - t, T, label='T/T0')
+    plt.xlabel('z/z0')
     plt.grid()
     plt.legend()
     plt.show()
+    return
 
 
 if __name__ == '__main__':
