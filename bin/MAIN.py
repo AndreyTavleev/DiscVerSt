@@ -150,11 +150,14 @@ def main(days):
     M = 6 * M_sun  # 6 * M_sun
     alpha = 0.01  # 0.5
     rg = 2 * G * M / c ** 2
-    r = 100 * rg  # 100 * rg
-    S_curve(6e3, 4e4, M, alpha, r, structure='BellLin', abundance='solar', n=400, input='Teff',
+    r = 1e5 * rg  # 100 * rg
+    # Structure_Plot(M, alpha, r, 5000, input='Teff', structure='MesaRadConv', abundance='solar', n=500, savedots=True,
+    #                path_output='fig/Approx_formulas/vs5e3_pres.dat', make_pic=False)
+    S_curve(2e3, 2e4, M, alpha, r, structure='MesaRadConv', abundance='solar', n=200, input='Teff',
             savedots=True, save_indexes=True,
-            path_output='fig/Approx_formulas/diploma5.dat', path_indexes='fig/Approx_formulas/diploma5_indexes.dat',
-            make_Pi_table=True, Pi_table_path='fig/Approx_formulas/Pi_param_diploma5.txt', make_pic=False)  # 2e3 1e7 400
+            path_output='fig/Approx_formulas/Poland1.dat', path_indexes='fig/Approx_formulas/Poland1_indexes.dat',
+            make_Pi_table=True,
+            Pi_table_path='fig/Approx_formulas/Pi_param_Poland1.txt', make_pic=False)  # 2e3 1e7 400
     print(datetime.now() - time0)
     raise Exception
 

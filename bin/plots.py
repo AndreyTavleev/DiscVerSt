@@ -177,6 +177,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
     varkappa_c_plot, T_c_plot, P_c_plot, rho_c_plot = [], [], [], []
     z0r_plot, tau_plot, PradPgas_Plot = [], [], []
     conv_param_z0_plot, conv_param_sigma_plot = [], []
+    T_ph_plot, varkappa_ph_plot = [], []
+    free_e_ph_plot, free_e_c_plot = [], []
 
     PradPgas10_index = 0  # where Prad = Pgas
     PradPgas08_index = 0  # where Prad = 0.8 Pgas
@@ -207,7 +209,20 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
 
         print('Teff = {:g}, tau = {:g}, z0r = {:g}'.format(Teff, vs.tau(), z0r))
 
+        t = np.linspace(0, 1, 100)
+        S, P, Q, T = vs.integrate(t)[0]
+        T_ph = T[25] * vs.T_norm
+        P_ph = P[25] * vs.P_norm
+        rho_ph, eos_ph = vs.mesaop.rho(P_ph, T_ph, True)
+        varkappa_ph = vs.mesaop.kappa(rho_ph, T_ph)
+
+        T_ph_plot.append(T_ph)
+        varkappa_ph_plot.append(varkappa_ph)
+        free_e_ph_plot.append(np.exp(eos_ph.lnfree_e))
+
         y = vs.parameters_C()
+        _, eos_c = vs.mesaop.rho(y[3], y[2], True)
+        free_e_c_plot.append(np.exp(eos_c.lnfree_e))
         Sigma_plot.append(y[4])
         varkappa_c_plot.append(y[0])
         T_c_plot.append(y[2])
@@ -343,12 +358,18 @@ def S_curve(Par_min, Par_max, M, alpha, r, mu=0.6, structure='Mesa', abundance='
 
     if savedots:
         rg = 2 * G * M / c ** 2
-        header = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c' + \
+        header = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c \tvarkappa_ph \tT_ph ' \
+                 '\tfree_e_ph \tfree_e_c' + \
                  '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, abundance = {}, structure = {}'.format(
                      M / M_sun, alpha, r, r / rg, abundance, structure)
+        # header = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c' + \
+        #          '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, abundance = {}, structure = {}'.format(
+        #              M / M_sun, alpha, r, r / rg, abundance, structure)
         np.savetxt(path_output, np.column_stack([Sigma_plot, Teff_plot, Mdot_plot, F_plot,
                                                  z0r_plot, rho_c_plot, T_c_plot, P_c_plot,
-                                                 tau_plot, PradPgas_Plot, varkappa_c_plot]), header=header)
+                                                 tau_plot, PradPgas_Plot, varkappa_c_plot,
+                                                 varkappa_ph_plot, T_ph_plot, free_e_ph_plot, free_e_c_plot]),
+                   header=header)
 
     if not make_pic:
         if structure not in ['Kramers', 'BellLin']:
