@@ -398,18 +398,18 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
     if savedots:
         rg = 2 * G * M / c ** 2
-        header_start = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c ' \
-                       '\nAll values a in CGS units.'
+        header_start = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c '
         header_end = '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, abundance = {}, structure = {} ' \
                      '\nSigma_plus_index = {:d} \tSigma_minus_index = {:d}'.format(
             M / M_sun, alpha, r, r / rg, abundance, structure, Sigma_plus_index, Sigma_minus_index)
         dots_table = np.c_[Sigma_plot, Teff_plot, Mdot_plot, F_plot, z0r_plot, rho_c_plot,
                            T_c_plot, P_c_plot, tau_plot, PradPgas_Plot, varkappa_c_plot]
         if len(free_e_plot) != 0:
-            header = header_start + ' \tfree_e \tconv_param_z0 \tconv_param_sigma' + header_end
+            header = header_start + ' \tfree_e \tconv_param_z0 \tconv_param_sigma' + \
+                     '\nAll values a in CGS units.' + header_end
             dots_table = np.c_[dots_table, free_e_plot, conv_param_z0_plot, conv_param_sigma_plot]
         else:
-            header = header_start + header_end
+            header = header_start + '\nAll values a in CGS units.' + header_end
         np.savetxt(path_dots, dots_table, header=header)
 
     if not make_pic:
