@@ -186,7 +186,8 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     except AttributeError:
         header = 't\t S\t P\t Q\t T\t rho\t varkappa\t grad'
         header_conv = ''
-    header_input = '\nS, P, Q, T -- normalized values, rho -- in g/cm^3, varkappa -- in cm^2/g \nt = 1 - z/z0 ' \
+    header_input = '\nS, P, Q, T -- normalized values, rho -- normalized to the rho_C, ' \
+                   'varkappa -- normalized to the varkappa_C \nt = 1 - z/z0 ' \
                    '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, Teff = {} K, Mdot = {:e} g/s, ' \
                    'F = {:e} g*cm^2/s^2, abundance = {}, structure = {}'.format(M / M_sun, alpha, r, r / rg, Teff,
                                                                                 Mdot, F, abundance, structure)
