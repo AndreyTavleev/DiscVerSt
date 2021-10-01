@@ -98,8 +98,23 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
             if np.isnan(mesa_vs):
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
-            vs = mesa_vs.MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(M, alpha, r, F,
+            vs = mesa_vs.MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(M, alpha, r, F, C_irr=0.0014,
                                                                                        abundance=abundance)
+    elif structure == 'MesaRadConvIrr':
+        try:
+            if np.isnan(mesa_vs):
+                raise ModuleNotFoundError('Mesa2py is not installed')
+        except TypeError:
+            # nu_irr = 7.3e15
+            nu_irr = 2.4e18
+            # nu_irr = np.geomspace(7.3e15, 2.4e18, 100)  # from 0.03 to 10 keV
+            # nu_irr = np.linspace(2.4e17, 2.4e18, 2)
+            eta_accr = 0.1
+            # E = (const.h * nu_irr * Hz).to('keV').value
+            # spectra = (E / 7.5) ** (-0.4) * np.exp(-E/7.5)
+            F_nu_irr = eta_accr * Mdot * c ** 2 / (4 * np.pi * r ** 2)
+            vs = mesa_vs.MesaVerticalStructureRadConvExternalIrradiation(M, alpha, r, F, nu_irr, F_nu_irr,
+                                                                         abundance=abundance)
     elif structure == 'MesaRadConvAdv':
         try:
             if np.isnan(mesa_vs):
@@ -320,6 +335,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     z0r_plot, tau_plot, PradPgas_Plot = [], [], []
     conv_param_z0_plot, conv_param_sigma_plot = [], []
     free_e_plot = []
+    QirrQvis_plot = []
 
     PradPgas10_index = 0  # where Prad = Pgas
     tau_index = n  # where tau < 1
@@ -418,6 +434,11 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
                 Sigma_minus_key = False
         except AttributeError:
             pass
+        if structure in ['MesaRadConvIrrZero', 'MesaRadConvIrr']:
+            ttt = np.linspace(0, 1, 100)
+            S, P, Q, T = vs.integrate(ttt)[0]
+            QirrQvis = Q[0] - 1
+            QirrQvis_plot.append(QirrQvis)
         print(i + 1)
 
     if savedots:
@@ -432,8 +453,10 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         if len(free_e_plot) != 0:
             header = header_start + ' \tfree_e \tconv_param_z0 \tconv_param_sigma' + header_end
             dots_table = np.c_[dots_table, free_e_plot, conv_param_z0_plot, conv_param_sigma_plot]
-        else:
-            header = header_start + header_end
+        if structure in ['MesaRadConvIrrZero', 'MesaRadConvIrr']:
+            header_start += ' \tQirrQvis'
+            dots_table = np.c_[dots_table, QirrQvis_plot]
+        header = header_start + '\nAll values are in CGS units.' + header_end
         np.savetxt(path_dots, dots_table, header=header)
 
     if not make_pic:

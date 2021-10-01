@@ -18,12 +18,14 @@ from scipy.integrate import simps, solve_ivp
 from scipy.optimize import newton
 
 from vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient, BellLin1994TwoComponentOpacityMixin
+from vs import KramersOpacityMixin
 
 sigmaSB = const.sigma_sb.cgs.value
 sigmaT = const.sigma_T.cgs.value
 mu = const.u.cgs.value
 c = const.c.cgs.value
 pl_const = const.h
+proton_mass = const.m_p.cgs.value
 
 try:
     from opacity import Opac
@@ -183,7 +185,7 @@ class Advection:
 
 class ExternalIrradiation:
 
-    def k_d_nu(self, nu):  # cross-section in cm2
+    def sigma_d_nu(self, nu):  # cross-section in cm2 (Morisson & McCammon, 1983)
         E = (pl_const * nu * Hz).to('keV').value
 
         if 0.030 <= E <= 0.100:
@@ -248,11 +250,16 @@ class ExternalIrradiation:
 
     def J_tot(self, F_nu, y, tau_0):
         sigma = 0.34
-        k_d_nu = 2
-        tau = (sigma + k_d_nu) * y[Vars.S] * self.sigma_norm
+        # k_d_nu = 1  # cross-section per proton mass
+        try:
+            _ = len(self.nu_irr)
+            k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass
+        except TypeError:
+            k_d_nu = self.sigma_d_nu(self.nu_irr) / proton_mass  # cross-section per proton mass
+        tau = (sigma + k_d_nu) * y[Vars.S] * self.sigma_norm / 2  # tau = varkappa * mass_coord (Sigma / 2)
         lamb = sigma / (sigma + k_d_nu)
         k = np.sqrt(3 * (1 - lamb))
-        zeta_0 = np.cos(self.theta_irr)
+        zeta_0 = self.cos_theta_irr
 
         D_nu = 3 * lamb * zeta_0 ** 2 / (1 - k ** 2 * zeta_0 ** 2)
 
@@ -268,17 +275,23 @@ class ExternalIrradiation:
 
     def H_tot(self, F_nu, tau_0):
         sigma = 0.34
-        k_d_nu = 2
-        tau = (sigma + k_d_nu) * 0.1
-        # tau = (sigma + k_d_nu) * self.P_ph() / (self.z0 * self.omegaK ** 2)
+        # k_d_nu = 1  # cross-section per proton mass
+        try:
+            _ = len(self.nu_irr)
+            k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass
+        except TypeError:
+            k_d_nu = self.sigma_d_nu(self.nu_irr) / proton_mass  # cross-section per proton mass
+        tau = (sigma + k_d_nu) * self.P_ph() / (self.z0 * self.omegaK ** 2)  # varkappa * Sigma_ph
         lamb = sigma / (sigma + k_d_nu)
         k = np.sqrt(3 * (1 - lamb))
-        zeta_0 = np.cos(self.theta_irr)
+        zeta_0 = self.cos_theta_irr
 
         D_nu = 3 * lamb * zeta_0 ** 2 / (1 - k ** 2 * zeta_0 ** 2)
 
         C_nu = D_nu * (1 + np.exp(-tau_0 / zeta_0) + 2 / (3 * zeta_0) * (1 + np.exp(-tau_0 / zeta_0))) / (
                 1 + np.exp(-k * tau_0) + 2 * k / 3 * (1 + np.exp(-k * tau_0)))
+
+        # print('k_d_nu = ', k_d_nu)
 
         H_tot = F_nu * (
                 k * C_nu / 3 * (np.exp(-k * tau) - np.exp(-k * (tau_0 - tau))) +
@@ -288,15 +301,23 @@ class ExternalIrradiation:
         return H_tot
 
     def epsilon(self, y):
-        rho = self.rho(y)
+        rho = self.rho(y, full_output=False)
         tau_0 = np.infty
-        k_d_nu = 2
-        epsilon = 4 * np.pi * rho * simps(k_d_nu * self.J_tot(self.F_nu_irr, y, tau_0), self.nu_irr)
+        # k_d_nu = 1  # cross-section per proton mass
+        # k_d_nu = self.sigma_d_nu(self.nu_irr) / proton_mass  # cross-section per proton mass
+        try:
+            _ = len(self.nu_irr)
+            k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass
+        except TypeError:
+            k_d_nu = self.sigma_d_nu(self.nu_irr) / proton_mass  # cross-section per proton mass
+        # epsilon = 4 * np.pi * rho * simps(k_d_nu * self.J_tot(self.F_nu_irr, y, tau_0), self.nu_irr)
+        epsilon = 4 * np.pi * rho * k_d_nu * self.J_tot(self.F_nu_irr, y, tau_0)
         return epsilon
 
     def Q_irr_ph(self):
         tau_0 = np.infty
-        Qirr = simps(self.H_tot(self.F_nu_irr, tau_0), self.nu_irr)
+        # Qirr = simps(self.H_tot(self.F_nu_irr, tau_0), self.nu_irr)
+        Qirr = self.H_tot(self.F_nu_irr, tau_0)
         return Qirr
 
     def Q_initial(self):
@@ -305,16 +326,38 @@ class ExternalIrradiation:
         # print('Initial =', result)
         return result
 
+    def initial(self):
+        """
+        Initial conditions.
+
+        Returns
+        -------
+        array
+
+        """
+
+        Q_initial = self.Q_initial()
+        y = np.empty(4, dtype=np.float64)
+        y[Vars.S] = 2 * self.P_ph() / (self.z0 * self.omegaK ** 2) / self.sigma_norm  # 2 -> full mass coordinate Sigma
+        y[Vars.P] = self.P_ph() / self.P_norm
+        y[Vars.Q] = Q_initial
+        y[Vars.T] = (Q_initial * self.Q_norm / sigmaSB) ** (1 / 4) / self.T_norm
+        return y
+
     def dQdz(self, y, t):
         w_r_phi = self.viscosity(y)
         result = -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm - self.epsilon(y) * self.z0 / self.Q_norm
-        # print('dQdz =', result, -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm, self.epsilon(y))
+        # print('dQdz =', result)
+        # print('dQdz_non = ', -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm)
+        # print('epsilon = ', self.epsilon(y))
         return result
 
 
 class ExternalIrradiationZeroAssumption:
     def Q_initial(self):
-        return 1 + self.Q_irr / self.Q_norm
+        result = 1 + self.Q_irr / self.Q_norm
+        # print('Initial = ', result)
+        return result
 
 
 class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseMesaVerticalStructure):
@@ -360,35 +403,39 @@ class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGr
 
 class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,
                                                       ExternalIrradiation, BaseMesaVerticalStructure):
-    def __init__(self, Mx, alpha, r, F, nu_irr, F_nu_irr, theta_irr=None, eps=1e-5, abundance='solar'):
+    def __init__(self, Mx, alpha, r, F, nu_irr, F_nu_irr, cos_theta_irr=None, eps=1e-5, abundance='solar'):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
         self.nu_irr = nu_irr
         self.F_nu_irr = F_nu_irr
-        if theta_irr is None:
-            self.theta_irr = np.arccos(1 / 8 * (self.z0 / self.r))
+        if cos_theta_irr is None:
+            self.cos_theta_irr = 1 / 8 * (self.z0 / self.r)
         else:
-            self.theta_irr = theta_irr
+            self.cos_theta_irr = cos_theta_irr
 
 
 class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,
                                                                     ExternalIrradiationZeroAssumption,
                                                                     BaseMesaVerticalStructure):
-    def __init__(self, Mx, alpha, r, F, eps=1e-5, abundance='solar'):
+    def __init__(self, Mx, alpha, r, F, C_irr=None, eps=1e-5, abundance='solar'):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
         h = np.sqrt(self.GM * self.r)
-        albedo = 0.5
         eta_accr = 0.1
         rg = 2 * self.GM / c ** 2
         r_in = 3 * rg
         func = 1 - np.sqrt(r_in / r)
         Mdot = self.F / (h * func)
-        q = 1 / 8
-        C_irr = (1 - albedo) * q * self.z0 / self.r
-        self.Q_irr = C_irr * eta_accr * Mdot * c ** 2 / (4 * np.pi * self.r ** 2)
+        if C_irr is None:
+            albedo = 0.5
+            q = 1 / 8
+            self.C_irr = (1 - albedo) * q * self.z0 / self.r
+        else:
+            self.C_irr = C_irr
+        self.Q_irr = self.C_irr * eta_accr * Mdot * c ** 2 / (4 * np.pi * self.r ** 2)
 
         self.Teff = ((self.Q0 + self.Q_irr) / sigmaSB) ** (1 / 4)
         self.Tirr = (self.Q_irr / sigmaSB) ** (1 / 4)
         self.Tvis = (self.Q0 / sigmaSB) ** (1 / 4)
+        print('C_irr = ', self.C_irr)
 
 
 class MesaVerticalStructureAdvection(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, Advection,
