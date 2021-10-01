@@ -5,12 +5,12 @@ and make plots of structure or S-curve.
 
 Structure_Plot -- calculates vertical structure and makes table with disc parameters as functions of vertical
     coordinate. Table also contains input parameters of structure, parameters in the symmetry plane and
-    parameter normalisations. Also makes a plot of structure.
+    parameter normalisations. Also makes a plot of structure (if 'make_pic' parameter is True).
 S_curve -- Calculates S-curve and makes table with disc parameters on the S-curve.
     Table contains input parameters of system, surface density Sigma0, viscous torque F,
     accretion rate Mdot, effective temperature Teff, geometrical thickness of the disc z0r,
     parameters in the symmetry plane of disc on the S-curve.
-    Also makes a table with Pi values on S-curve and makes a plot of S-curve.
+    Also makes a plot of S-curve (if 'make_pic' parameter is True).
 
 """
 import numpy as np
@@ -36,8 +36,9 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
     h = np.sqrt(G * M * r)
     rg = 2 * G * M / c ** 2
     r_in = 3 * rg
-    if r < r_in:
-        raise Exception('Radius r should be greater than inner radius r_in = 3*rg. Actual radius r = {:g} rg'.format(r / rg))
+    if r <= r_in:
+        raise Exception('Radius r should be greater than inner radius r_in = 3*rg. '
+                        'Actual radius r = {:g} rg'.format(r / rg))
     func = 1 - np.sqrt(r_in / r)
     if input == 'Teff':
         Teff = Par
@@ -101,6 +102,22 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
 
 
 def Convective_parameter(vs):
+    """
+    Calculates convective parameter of structure. This parameter shows what part of disc is convective.
+
+    Parameters
+    ----------
+    vs : vertical structure
+        Fitted vertical structure, for which convective parameter is calculated.
+
+    Returns
+    -------
+    conv_param_z : double
+        z_convective / z0, z-fraction of convective region, from 0 to 1.
+    conv_param_sigma : double
+        sigma_convective / sigma0, mass fraction of convective region, from 0 to 1.
+
+    """
     n = 1000
     t = np.linspace(0, 1, n)
     y = vs.integrate(t)[0]
@@ -114,17 +131,17 @@ def Convective_parameter(vs):
         raise Exception
     conv_param_sigma = simps(2 * rho * (grad_plot(np.log(P)) > eos.grad_ad), t * vs.z0) / (
             S[-1] * vs.sigma_norm)
-    conv_param_z0 = simps(grad_plot(np.log(P)) > eos.grad_ad, t * vs.z0) / vs.z0
-    return conv_param_z0, conv_param_sigma
+    conv_param_z = simps(grad_plot(np.log(P)) > eos.grad_ad, t * vs.z0) / vs.z0
+    return conv_param_z, conv_param_sigma
 
 
-def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', abundance='solar', n=100, savedots=True,
-                   path_dots='vs.dat', make_pic=True, save_plot=True, path_plot='vs.pdf', set_title=True,
-                   title='Vertical structure'):
+def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', abundance='solar', n=100,
+                   add_Pi_values=True, savedots=True, path_dots='vs.dat', make_pic=True,
+                   save_plot=True, path_plot='vs.pdf', set_title=True, title='Vertical structure'):
     """
     Calculates vertical structure and makes table with disc parameters as functions of vertical coordinate.
     Table also contains input parameters of structure, parameters in the symmetry plane and parameter normalisations.
-    Also makes a plot of structure.
+    Also makes a plot of structure (if 'make_pic' parameter is True).
 
     Parameters
     ----------
@@ -151,6 +168,8 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         Use 'solar' str in case of solar composition.
     n : int
         Number of dots to calculate.
+    add_Pi_values : bool
+        Whether to write Pi-parameters (see Ketsaris & Shakura, 1998) to the output file header.
     savedots : bool
         Whether to save data in table.
     path_dots : str
@@ -177,26 +196,29 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
     rho, eos = vs.law_of_rho(P * vs.P_norm, T * vs.T_norm, True)
     varkappa = vs.law_of_opacity(rho, T * vs.T_norm, lnfree_e=eos.lnfree_e)
-    dots_arr = np.c_[t, S, P, Q, T, rho / rho_C, varkappa / varkappa_C, grad_plot(np.log(P))]
+    dots_arr = np.c_[t, S, P, Q, T, rho, varkappa, grad_plot(np.log(P))]
     try:
         dots_arr = np.c_[dots_arr, eos.grad_ad, np.exp(eos.lnfree_e)]
         header = 't\t S\t P\t Q\t T\t rho\t varkappa\t grad\t grad_ad\t free_e'
-        conv_param_z0, conv_param_sigma = Convective_parameter(vs)
-        header_conv = '\nconv_param_z0 = {} \tconv_param_sigma = {}'.format(conv_param_z0, conv_param_sigma)
+        conv_param_z, conv_param_sigma = Convective_parameter(vs)
+        header_conv = '\nconv_param_z = {} \tconv_param_sigma = {}'.format(conv_param_z, conv_param_sigma)
     except AttributeError:
         header = 't\t S\t P\t Q\t T\t rho\t varkappa\t grad'
         header_conv = ''
-    header_input = '\nS, P, Q, T -- normalized values, rho -- normalized to the rho_C, ' \
-                   'varkappa -- normalized to the varkappa_C \nt = 1 - z/z0 ' \
+    header_input = '\nS, P, Q, T -- normalized values, rho -- in g/cm^3, ' \
+                   'varkappa -- in cm^2/g \nt = 1 - z/z0 ' \
                    '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, Teff = {} K, Mdot = {:e} g/s, ' \
                    'F = {:e} g*cm^2/s^2, abundance = {}, structure = {}'.format(M / M_sun, alpha, r, r / rg, Teff,
                                                                                 Mdot, F, abundance, structure)
+    if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
+        header_input += ', mu = {}'.format(mu)
     header_C = '\nvarkappa_C = {:e} cm^2/g, rho_C = {:e} g/cm^3, T_C = {:e} K, P_C = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
                'PradPgas = {:e}, z0r = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r)
     header_norm = '\nSigma_norm = {:e}, P_norm = {:e}, T_norm = {:e}, Q_norm = {:e}'.format(
         vs.sigma_norm, vs.P_norm, vs.T_norm, vs.Q_norm)
     header = header + header_input + header_C + header_norm + header_conv
-
+    if add_Pi_values:
+        header += '\nPi1 = {:f}, Pi2 = {:f}, Pi3 = {:f}, Pi4 = {:f}'.format(*vs.Pi_finder())
     if savedots:
         np.savetxt(path_dots, dots_arr, header=header)
     if not make_pic:
@@ -217,15 +239,15 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
 
 
 def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu=0.6, abundance='solar', n=100,
-            tau_break=True, savedots=True, path_dots='S_curve.dat', make_Pi_table=True, Pi_table_path='Pi_table.dat',
-            make_pic=True, output='Mdot', xscale='log', yscale='log', save_plot=True, path_plot='S-curve.pdf',
+            tau_break=True, savedots=True, path_dots='S_curve.dat', add_Pi_values=True, make_pic=True,
+            output='Mdot', xscale='log', yscale='log', save_plot=True, path_plot='S-curve.pdf',
             set_title=True, title='S-curve'):
     """
     Calculates S-curve and makes table with disc parameters on the S-curve.
     Table contains input parameters of system, surface density Sigma0, viscous torque F,
     accretion rate Mdot, effective temperature Teff, geometrical thickness of the disc z0r,
     parameters in the symmetry plane of disc on the S-curve.
-    Also makes a table with Pi values on S-curve and makes a plot of S-curve.
+    Also makes a plot of S-curve (if 'make_pic' parameter is True).
 
     Parameters
     ----------
@@ -262,10 +284,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         Whether to save data in table.
     path_dots : str
         Where to save data table.
-    make_Pi_table : bool
-        Whether to make table with Pi values on the S-curve.
-    Pi_table_path : str
-        Where to save Pi table.
+    add_Pi_values : bool
+        Whether to write Pi-parameters (see Ketsaris & Shakura, 1998) to the output file.
     make_pic : bool
         Whether to make S-curve plot.
     output : str
@@ -294,8 +314,9 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     Output_Plot = []
     varkappa_c_plot, T_c_plot, P_c_plot, rho_c_plot = [], [], [], []
     z0r_plot, tau_plot, PradPgas_Plot = [], [], []
-    conv_param_z0_plot, conv_param_sigma_plot = [], []
+    conv_param_z_plot, conv_param_sigma_plot = [], []
     free_e_plot = []
+    Pi_plot = []
 
     PradPgas10_index = 0  # where Prad = Pgas
     tau_index = n  # where tau < 1
@@ -307,11 +328,6 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     Sigma_plus_key = True  # for Sigma_plus
     Sigma_plus_index = 0  # for Sigma_plus
     delta_Sigma_plus = -1
-
-    if make_Pi_table:
-        nomer = -1
-        with open(Pi_table_path, 'w') as g:
-            g.write('#pi1 pi2 pi3 pi4 Prad/Pgas r/3rg setNo Mx alpha\n')
 
     for i, Par in enumerate(np.geomspace(Par_max, Par_min, n)):
         vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
@@ -326,23 +342,23 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             tau_index = i
             tau_key = False
 
-        y = vs.parameters_C()
-        Sigma_plot.append(y[4])
-        varkappa_c_plot.append(y[0])
-        T_c_plot.append(y[2])
-        rho_c_plot.append(y[1])
+        varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
+        Sigma_plot.append(Sigma0)
+        varkappa_c_plot.append(varkappa_C)
+        T_c_plot.append(T_C)
+        rho_c_plot.append(rho_C)
         z0r_plot.append(z0r)
         tau_plot.append(vs.tau())
-        P_c_plot.append(y[3])
+        P_c_plot.append(P_C)
         Mdot_plot.append(Mdot)
         Teff_plot.append(Teff)
         F_plot.append(F)
 
         if i == 0:
-            sigma_temp = y[4]
+            sigma_temp = Sigma0
         else:
-            delta_Sigma_plus = y[4] - sigma_temp
-            sigma_temp = y[4]
+            delta_Sigma_plus = Sigma0 - sigma_temp
+            sigma_temp = Sigma0
 
         if make_pic:
             if output == 'Teff':
@@ -357,22 +373,16 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             elif output == 'z0r':
                 Output_Plot.append(z0r)
             elif output == 'T_C':
-                Output_Plot.append(y[2])
+                Output_Plot.append(T_C)
             else:
                 print('Incorrect output, try Teff, Mdot, Mdot_Mdot_edd, F, z0r or T_C')
                 raise Exception
 
-        delta = (4 * sigmaSB) / (3 * c) * y[2] ** 4 / y[3]
+        delta = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
         PradPgas_Plot.append(delta)
 
-        if make_Pi_table:
-            pi1, pi2, pi3, pi4 = vs.Pi_finder()
-            rg = 2 * G * M / c ** 2
-            string_for_Pi = str(pi1) + ' ' + str(pi2) + ' ' + str(pi3) + ' ' + str(pi4) + ' ' + str(delta) + ' ' + str(
-                r / (3 * rg)) + ' ' + str(nomer) + ' ' + str(M / M_sun) + ' ' + str(alpha) + '\n'
-            nomer -= 1
-            with open(Pi_table_path, 'a') as g:
-                g.write(string_for_Pi)
+        if add_Pi_values:
+            Pi_plot.append(vs.Pi_finder())
 
         if delta < 1.0 and key:
             PradPgas10_index = i
@@ -381,13 +391,13 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             Sigma_plus_index = i
             Sigma_plus_key = False
 
-        rho, eos = vs.law_of_rho(y[3], y[2], full_output=True)
+        rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
             var = eos.grad_ad
             free_e = np.exp(eos.lnfree_e)
             free_e_plot.append(free_e)
-            conv_param_z0, conv_param_sigma = Convective_parameter(vs)
-            conv_param_z0_plot.append(conv_param_z0)
+            conv_param_z, conv_param_sigma = Convective_parameter(vs)
+            conv_param_z_plot.append(conv_param_z)
             conv_param_sigma_plot.append(conv_param_sigma)
             if free_e < (1 + vs.mesaop.X) / 4 and Sigma_minus_key:
                 Sigma_minus_index = i
@@ -398,18 +408,21 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
     if savedots:
         rg = 2 * G * M / c ** 2
-        header_start = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c '
-        header_end = '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, abundance = {}, structure = {} ' \
-                     '\nSigma_plus_index = {:d} \tSigma_minus_index = {:d}'.format(
-            M / M_sun, alpha, r, r / rg, abundance, structure, Sigma_plus_index, Sigma_minus_index)
+        header = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c'
+        header_end = '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, abundance = {}, structure = {}'.format(
+            M / M_sun, alpha, r, r / rg, abundance, structure)
+        if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
+            header_end += ', mu = {}'.format(mu)
+        header_end += '\nSigma_plus_index = {:d} \tSigma_minus_index = {:d}'.format(Sigma_plus_index, Sigma_minus_index)
         dots_table = np.c_[Sigma_plot, Teff_plot, Mdot_plot, F_plot, z0r_plot, rho_c_plot,
                            T_c_plot, P_c_plot, tau_plot, PradPgas_Plot, varkappa_c_plot]
         if len(free_e_plot) != 0:
-            header = header_start + ' \tfree_e \tconv_param_z0 \tconv_param_sigma' + \
-                     '\nAll values a in CGS units.' + header_end
-            dots_table = np.c_[dots_table, free_e_plot, conv_param_z0_plot, conv_param_sigma_plot]
-        else:
-            header = header_start + '\nAll values a in CGS units.' + header_end
+            header += ' \tfree_e \tconv_param_z \tconv_param_sigma'
+            dots_table = np.c_[dots_table, free_e_plot, conv_param_z_plot, conv_param_sigma_plot]
+        if add_Pi_values:
+            header += ' \tPi1 \tPi2 \tPi3 \tPi4'
+            dots_table = np.c_[dots_table, Pi_plot]
+        header = header + '\nAll values are in CGS units.' + header_end
         np.savetxt(path_dots, dots_table, header=header)
 
     if not make_pic:
@@ -471,7 +484,7 @@ def main():
     print('Calculation of vertical structure. Return structure table and plot.')
     print('M = {:g} M_sun \nr = {:g} cm \nalpha = {:g} \nTeff = {:g} K'.format(M / M_sun, r, alpha, Teff))
 
-    Structure_Plot(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100,
+    Structure_Plot(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100, add_Pi_values=True,
                    savedots=True, path_dots='vs.dat', make_pic=True, save_plot=True, path_plot='vs.pdf',
                    set_title=True,
                    title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, T_{{\rm eff}} = {:g} \, '
@@ -481,7 +494,7 @@ def main():
     print('Calculation of S-curve for Teff from 4e3 K to 1e4 K. Return S-curve table and Sigma0-Mdot plot.\n')
 
     S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False, savedots=True,
-            path_dots='S-curve.dat', make_Pi_table=True, Pi_table_path='Pi_table.dat', make_pic=True, output='Mdot',
+            path_dots='S-curve.dat', add_Pi_values=True, make_pic=True, output='Mdot',
             xscale='parlog', yscale='parlog', save_plot=True, path_plot='S-curve.pdf', set_title=True,
             title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / M_sun, r, alpha))
     print('S-curve is calculated successfully.')

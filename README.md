@@ -80,7 +80,7 @@ help(mesa_vs)
 ## Make plots and tables with disc parameters
 
 Module 'plots_vs' contains functions, that calculate structure and S-curve and return tables with disc parameters and make plots.
-With plots_vs.main() the structure, S-curves and Pi-parameters can be calculated for default parameters, stored as a plot and tables.  
+With plots_vs.main() the structure and S-curves can be calculated for default parameters, stored as a plot and tables.  
 Try it
 ``` shell
 $ python3 -m plots_vs
@@ -97,16 +97,16 @@ alpha = 0.2
 r = 1e10
 Teff = 1e4
 
-plots_vs.Structure_Plot(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100,
-                   	savedots=True, path_dots='vs.dat', make_pic=True, save_plot=True, path_plot='vs.pdf',
-                   	set_title=True,
-                   	title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, T_{{\rm eff}} = {:g} \, '
-                        	 r'{{\rm K}}$'.format(M / 2e33, r, alpha, Teff))
+plots_vs.Structure_Plot(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100, add_Pi_values=True,
+                    savedots=True, path_dots='vs.dat', make_pic=True, save_plot=True, path_plot='vs.pdf',
+                    set_title=True,
+                    title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, T_{{\rm eff}} = {:g} \, '
+                          r'{{\rm K}}$'.format(M / 2e33, r, alpha, Teff))
 
 plots_vs.S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False, savedots=True,
-            	 path_dots='S-curve.dat', make_Pi_table=True, Pi_table_path='Pi_table.dat', make_pic=True, output='Mdot',
-            	 xscale='parlog', yscale='parlog', save_plot=True, path_plot='S-curve.pdf', set_title=True,
-            	 title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / 2e33, r, alpha))
+                 path_dots='S-curve.dat', add_Pi_values=True, make_pic=True, output='Mdot',
+                 xscale='parlog', yscale='parlog', save_plot=True, path_plot='S-curve.pdf', set_title=True,
+                 title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / 2e33, r, alpha))
 ```
 Both 'plots_vs' module and functions in it have help
 ``` python3
