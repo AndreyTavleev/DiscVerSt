@@ -421,14 +421,17 @@ def main():
     t = np.linspace(0, 1, 100)
     S, P, Q, T = vs.integrate(t)[0]
     import matplotlib.pyplot as plt
-    plt.plot(1 - t, S, label='S/S0')
-    plt.plot(1 - t, P, label='P/P0')
-    plt.plot(1 - t, Q, label='Q/Q0')
-    plt.plot(1 - t, T, label='T/T0')
-    plt.xlabel('z/z0')
+    plt.plot(1 - t, S, label=r'$\hat{\Sigma}$')
+    plt.plot(1 - t, P, label=r'$\hat{P}$')
+    plt.plot(1 - t, Q, label=r'$\hat{Q}$')
+    plt.plot(1 - t, T, label=r'$\hat{T}$')
+    plt.xlabel('$z / z_0$')
+    plt.title(r'$M = {:g}\, M_{{\odot}},\, \dot{{M}} = {:g}\, {{\rm g/s}},\, \alpha = {:g}, r = {:g} \,\rm cm$'.format(
+        M / M_sun, Mdot, alpha, r))
     plt.grid()
     plt.legend()
-    plt.show()
+    plt.savefig('vs.pdf')
+    print('Plot of structure is successfully saved.')
     return
 
 

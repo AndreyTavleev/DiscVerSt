@@ -39,6 +39,8 @@ $ python3 -m vs
 	The vertical structure has been calculated successfully.
 	Pi parameters = [7.10271534 0.4859551  1.13097882 0.3985615 ]
 	z0/r =  0.028869666211114635
+	Plot of structure is successfully saved.
+The plot of structure 'vs.pdf' is created in the same directory after that.
 
 ## Calculate structure
 

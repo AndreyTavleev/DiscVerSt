@@ -8,7 +8,7 @@ Structure_Plot -- calculates vertical structure and makes table with disc parame
     parameter normalisations. Also makes a plot of structure (if 'make_pic' parameter is True).
 S_curve -- Calculates S-curve and makes table with disc parameters on the S-curve.
     Table contains input parameters of system, surface density Sigma0, viscous torque F,
-    accretion rate Mdot, effective temperature Teff, geometrical thickness of the disc z0r,
+    accretion rate Mdot, effective temperature Teff, geometrical half-thickness of the disc z0r,
     parameters in the symmetry plane of disc on the S-curve.
     Also makes a plot of S-curve (if 'make_pic' parameter is True).
 
@@ -125,7 +125,7 @@ def Convective_parameter(vs):
     grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
     rho, eos = vs.law_of_rho(P * vs.P_norm, T * vs.T_norm, True)
     try:
-        var = eos.grad_ad
+        _ = eos.grad_ad
     except AttributeError:
         print('Incorrect vertical structure. Use vertical structure with Mesa EOS.')
         raise Exception
@@ -192,6 +192,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     t = np.linspace(0, 1, n)
     S, P, Q, T = vs.integrate(t)[0]
     varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
+    tau = vs.tau()
     delta = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
     grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
     rho, eos = vs.law_of_rho(P * vs.P_norm, T * vs.T_norm, True)
@@ -213,7 +214,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
         header_input += ', mu = {}'.format(mu)
     header_C = '\nvarkappa_C = {:e} cm^2/g, rho_C = {:e} g/cm^3, T_C = {:e} K, P_C = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
-               'PradPgas = {:e}, z0r = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r)
+               'PradPgas_C = {:e}, z0r = {:e}, tau = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r, tau)
     header_norm = '\nSigma_norm = {:e}, P_norm = {:e}, T_norm = {:e}, Q_norm = {:e}'.format(
         vs.sigma_norm, vs.P_norm, vs.T_norm, vs.Q_norm)
     header = header + header_input + header_C + header_norm + header_conv
@@ -245,7 +246,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     """
     Calculates S-curve and makes table with disc parameters on the S-curve.
     Table contains input parameters of system, surface density Sigma0, viscous torque F,
-    accretion rate Mdot, effective temperature Teff, geometrical thickness of the disc z0r,
+    accretion rate Mdot, effective temperature Teff, geometrical half-thickness of the disc z0r,
     parameters in the symmetry plane of disc on the S-curve.
     Also makes a plot of S-curve (if 'make_pic' parameter is True).
 
@@ -336,11 +337,11 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         print('Teff = {:g}, tau = {:g}, z0r = {:g}'.format(Teff, vs.tau(), z0r))
 
         if vs.tau() < 1 and tau_key:
+            tau_index = i
+            tau_key = False
             if tau_break:
                 print('Note: tau<1, tau_break=True. Cycle ends, when tau<1.')
                 break
-            tau_index = i
-            tau_key = False
 
         varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
         Sigma_plot.append(Sigma0)
@@ -393,7 +394,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
-            var = eos.grad_ad
+            _ = eos.grad_ad
             free_e = np.exp(eos.lnfree_e)
             free_e_plot.append(free_e)
             conv_param_z, conv_param_sigma = Convective_parameter(vs)
