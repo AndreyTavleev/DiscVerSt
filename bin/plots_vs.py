@@ -11,6 +11,10 @@ S_curve -- Calculates S-curve and makes table with disc parameters on the S-curv
     accretion rate Mdot, effective temperature Teff, geometrical half-thickness of the disc z0r,
     parameters in the symmetry plane of disc on the S-curve.
     Also makes a plot of S-curve (if 'make_pic' parameter is True).
+Radial_Plot -- Calculates radial structure of disc. Return table, which contains input parameters of the system,
+    surface density Sigma0, viscous torque F, accretion rate Mdot, effective temperature Teff,
+    geometrical half-thickness of the disc z0r and parameters in the symmetry plane of disc
+    as functions of radius.
 
 """
 import numpy as np
@@ -162,7 +166,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     structure : str
         Type of vertical structure. Can be 'Kramers', 'BellLin',
         'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst' or 'MesaRadConv'.
-    abundance : dict
+    abundance : dict or str
         Chemical composition of disc. Use in case of Mesa EOS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
@@ -209,10 +213,11 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     header_input = '\nS, P, Q, T -- normalized values, rho -- in g/cm^3, ' \
                    'varkappa -- in cm^2/g \nt = 1 - z/z0 ' \
                    '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, Teff = {} K, Mdot = {:e} g/s, ' \
-                   'F = {:e} g*cm^2/s^2, abundance = {}, structure = {}'.format(M / M_sun, alpha, r, r / rg, Teff,
-                                                                                Mdot, F, abundance, structure)
+                   'F = {:e} g*cm^2/s^2, structure = {}'.format(M / M_sun, alpha, r, r / rg, Teff, Mdot, F, structure)
     if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
         header_input += ', mu = {}'.format(mu)
+    if structure in ['Mesa', 'MesaAd', 'MesaFirst', 'MesaRadConv']:
+        header_input += ', abundance = {}'.format(abundance)
     header_C = '\nvarkappa_C = {:e} cm^2/g, rho_C = {:e} g/cm^3, T_C = {:e} K, P_C = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
                'PradPgas_C = {:e}, z0r = {:e}, tau = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r, tau)
     header_norm = '\nSigma_norm = {:e}, P_norm = {:e}, T_norm = {:e}, Q_norm = {:e}'.format(
@@ -273,7 +278,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst' or 'MesaRadConv'.
     mu : double
         Molecular weight. Use in case of ideal gas EOS.
-    abundance : dict
+    abundance : dict or str
         Chemical composition of disc. Use in case of Mesa EOS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
@@ -410,10 +415,12 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     if savedots:
         rg = 2 * G * M / c ** 2
         header = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c'
-        header_end = '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, abundance = {}, structure = {}'.format(
-            M / M_sun, alpha, r, r / rg, abundance, structure)
+        header_end = '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, structure = {}'.format(
+            M / M_sun, alpha, r, r / rg, structure)
         if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
             header_end += ', mu = {}'.format(mu)
+        if structure in ['Mesa', 'MesaAd', 'MesaFirst', 'MesaRadConv']:
+            header_end += ', abundance = {}'.format(abundance)
         header_end += '\nSigma_plus_index = {:d} \tSigma_minus_index = {:d}'.format(Sigma_plus_index, Sigma_minus_index)
         dots_table = np.c_[Sigma_plot, Teff_plot, Mdot_plot, F_plot, z0r_plot, rho_c_plot,
                            T_c_plot, P_c_plot, tau_plot, PradPgas_Plot, varkappa_c_plot]
@@ -433,7 +440,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
     if xscale == 'parlog':
         Sigma_plot = np.log10(Sigma_plot)
-        xlabel = r'${\rm log} \,$' + xlabel
+        xlabel = r'$\log \,$' + xlabel
     if yscale == 'parlog':
         Output_Plot = np.log10(Output_Plot)
 
@@ -463,7 +470,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     elif output == 'T_C':
         ylabel = r'$T_{\rm c}, \rm K$'
     if yscale == 'parlog':
-        ylabel = r'${\rm log} \,$' + ylabel
+        ylabel = r'$\log \,$' + ylabel
     plt.ylabel(ylabel)
     plt.xlabel(xlabel)
     plt.grid(True, which='both', ls='-')
@@ -474,6 +481,116 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     if save_plot:
         plt.savefig(path_plot)
         plt.close()
+
+
+def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin', mu=0.6, abundance='solar',
+                n=100, tau_break=True, savedots=True, path_dots='radial_struct.dat'):
+    """
+    Calculates radial structure of disc. Return table, which contains input parameters of the system,
+    surface density Sigma0, viscous torque F, accretion rate Mdot, effective temperature Teff,
+    geometrical half-thickness of the disc z0r and parameters in the symmetry plane of disc
+    as functions of radius.
+
+    Parameters
+    ----------
+    M : double
+        Mass of central object in grams.
+    alpha : double
+        Alpha parameter for alpha-prescription of viscosity.
+    r_start : double
+        The starting value of radius. Radius (in cylindrical coordinate system, in cm)
+        is the distance from central star.
+    r_end : double
+        The end value of radius. Radius (in cylindrical coordinate system, in cm)
+        is the distance from central star.
+    Par : double
+        Par can be accretion rate in g/s or in eddington limits. Choice depends on 'input' parameter.
+    input : str
+        Define the choice of 'Par' parameter.
+        Can be 'Mdot' (accretion rate) or 'Mdot_Mdot_edd' (Mdot in eddington limits).
+    structure : str
+        Type of vertical structure. Can be 'Kramers', 'BellLin',
+        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst' or 'MesaRadConv'.
+    mu : double
+        Molecular weight. Use in case of ideal gas EOS.
+    abundance : dict or str
+        Chemical composition of disc. Use in case of Mesa EOS.
+        Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
+        Use 'solar' str in case of solar composition.
+    n : int
+        Number of dots to calculate.
+    tau_break : bool
+        Whether to end calculation, when tau<1.
+    savedots : bool
+        Whether to save data in table.
+    path_dots : str
+        Where to save data table.
+
+    """
+    Sigma_plot, Teff_plot, F_plot = [], [], []
+    varkappa_c_plot, T_c_plot, P_c_plot, rho_c_plot = [], [], [], []
+    z0r_plot, tau_plot, PradPgas_Plot = [], [], []
+    conv_param_z_plot, conv_param_sigma_plot = [], []
+    free_e_plot = []
+    r_plot = np.geomspace(r_start, r_end, n)
+    tau_key = True
+    tau_index = n
+    for i, r in enumerate(r_plot):
+        vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
+        z0r, result = vs.fit()
+        print('Teff = {:g}, tau = {:g}, z0r = {:g}'.format(Teff, vs.tau(), z0r))
+
+        if vs.tau() < 1 and tau_key:
+            tau_index = i
+            tau_key = False
+            if tau_break:
+                print('Note: tau<1, tau_break=True. Cycle ends, when tau<1.')
+                break
+
+        varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
+        Sigma_plot.append(Sigma0)
+        varkappa_c_plot.append(varkappa_C)
+        T_c_plot.append(T_C)
+        rho_c_plot.append(rho_C)
+        z0r_plot.append(z0r)
+        tau_plot.append(vs.tau())
+        P_c_plot.append(P_C)
+        Teff_plot.append(Teff)
+        F_plot.append(F)
+
+        delta = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
+        PradPgas_Plot.append(delta)
+
+        rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
+        try:
+            _ = eos.grad_ad
+            free_e = np.exp(eos.lnfree_e)
+            free_e_plot.append(free_e)
+            conv_param_z, conv_param_sigma = Convective_parameter(vs)
+            conv_param_z_plot.append(conv_param_z)
+            conv_param_sigma_plot.append(conv_param_sigma)
+        except AttributeError:
+            pass
+        print(i + 1)
+
+    if savedots:
+        rg = 2 * G * M / c ** 2
+        header_start = 'r \tr/rg \tSigma0 \tTeff \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c'
+        header_end = '\nM = {:e} Msun, alpha = {}, Mdot = {} g/s, structure = {}'.format(
+            M / M_sun, alpha, Mdot, structure)
+        if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
+            header_end += ', mu = {}'.format(mu)
+        if structure in ['Mesa', 'MesaAd', 'MesaFirst', 'MesaRadConv']:
+            header_end += ', abundance = {}'.format(abundance)
+        dots_table = np.c_[r_plot[:tau_index], r_plot[:tau_index] / rg, Sigma_plot, Teff_plot, F_plot,
+                           z0r_plot, rho_c_plot, T_c_plot, P_c_plot, tau_plot, PradPgas_Plot, varkappa_c_plot]
+        if len(free_e_plot) != 0:
+            header = header_start + ' \tfree_e \tconv_param_z \tconv_param_sigma' + \
+                     '\nAll values a in CGS units.' + header_end
+            dots_table = np.c_[dots_table, free_e_plot, conv_param_z_plot, conv_param_sigma_plot]
+        else:
+            header = header_start + '\nAll values a in CGS units.' + header_end
+        np.savetxt(path_dots, dots_table, header=header)
 
 
 def main():
@@ -499,6 +616,15 @@ def main():
             xscale='parlog', yscale='parlog', save_plot=True, path_plot='S-curve.pdf', set_title=True,
             title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / M_sun, r, alpha))
     print('S-curve is calculated successfully.')
+
+    print('Calculation of radial structure of disc for radius from 3.1*rg to 1e3*rg and Mdot = Mdot_edd. '
+          'Return radial structure table.\n')
+
+    rg = 2 * G * M / c ** 2
+    Radial_Plot(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200,
+                tau_break=True, savedots=True, path_dots='radial_struct.dat')
+    print('Radial structure is calculated successfully.')
+
     return
 
 

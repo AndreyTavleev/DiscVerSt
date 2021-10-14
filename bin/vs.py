@@ -328,6 +328,7 @@ class RadiativeTempGradient:
     Temperature gradient class. Calculate radiative d(lnT)/d(lnP) in the Eddington approximation.
 
     """
+
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, full_output=True)
         varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
