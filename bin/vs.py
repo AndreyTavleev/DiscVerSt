@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+"""
+Module contains several classes that represent vertical structure of accretion disc in case
+of analytical opacity and ideal gas EOS.
+
+Class IdealKramersVerticalStructure --  for Kramers opacity law and ideal gas EOS.
+Class IdealBellLin1994VerticalStructure -- for opacity laws from (Bell & Lin, 1994) and ideal gas EOS.
+
+"""
 from collections import namedtuple
 from enum import IntEnum
 
@@ -68,6 +77,10 @@ class BaseVerticalStructure:
         Integrate the system and return values of four dimensionless functions.
     Pi_finder()
         Return the Pi values (see Ketsaris & Shakura, 1998).
+    parameters_C()
+        Calculates parameters of disc in the symmetry plane.
+    tau()
+        Calculates optical thickness of the disc.
 
     """
 
@@ -215,10 +228,18 @@ class BaseVerticalStructure:
         """
         assert t[0] == 0
         solution = solve_ivp(self.dydt, (t[0], t[-1]), self.initial(), t_eval=t, rtol=self.eps, method='RK23')
-        # assert solution.success
         return [solution.y, solution.message]
 
     def tau(self):
+        """
+        Calculates optical thickness of the disc.
+
+        Returns
+        -------
+        double
+            Optical thickness.
+
+        """
         t = np.linspace(0, 1, 100)
         y = self.integrate(t)[0]
         rho, eos = self.rho(y, full_output=True)
@@ -231,13 +252,22 @@ class BaseVerticalStructure:
         return y[0][:, -1]
 
     def parameters_C(self):
+        """
+        Calculates parameters of disc in the symmetry plane.
+
+        Returns
+        -------
+        array
+            Opacity, bulk density, temperature, gas pressure and surface density of disc.
+
+        """
         y_c = self.y_c()
         Sigma0 = y_c[Vars.S] * self.sigma_norm
         T_C = y_c[Vars.T] * self.T_norm
         P_C = y_c[Vars.P] * self.P_norm
         rho_C, eos = self.rho(y_c, full_output=True)
         varkappa_C = self.opacity(y_c, lnfree_e=eos.lnfree_e)
-        return varkappa_C, rho_C, T_C, P_C, Sigma0
+        return np.array([varkappa_C, rho_C, T_C, P_C, Sigma0])
 
     def tau0(self):
         y = self.parameters_C()
@@ -304,6 +334,11 @@ class BaseVerticalStructure:
 
 
 class RadiativeTempGradient:
+    """
+    Temperature gradient class. Calculate radiative d(lnT)/d(lnP) in the Eddington approximation.
+
+    """
+
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, full_output=True)
         varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
@@ -462,7 +497,7 @@ class IdealKramersVerticalStructure(IdealGasMixin, KramersOpacityMixin, Radiativ
 class IdealBellLin1994VerticalStructure(IdealGasMixin, BellLin1994TwoComponentOpacityMixin, RadiativeTempGradient,
                                         BaseVerticalStructure):
     """
-        Vertical structure class for opacity laws from (Bell & Lin, 1994) and ideal gas EOS.
+    Vertical structure class for opacity laws from (Bell & Lin, 1994) and ideal gas EOS.
 
     """
     pass
@@ -484,8 +519,9 @@ def main():
     Mdot = 1e17
     rg = 2 * G * M / c ** 2
     r = 400 * rg
-    print('Finding Pi parameters of structure and making a structure plot.')
-    print('M = {:g} grams \nr = {:g} cm \nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, alpha, Mdot))
+    print('Finding Pi parameters of structure and making a structure plot. '
+          '\nStructure with Kramers opacity and ideal gas EOS.')
+    print('M = {:g} grams \nr = {:g} cm = {:g} rg \nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, r / rg, alpha, Mdot))
     h = np.sqrt(G * M * r)
     r_in = 3 * rg
     F = Mdot * h * (1 - np.sqrt(r_in / r))
@@ -495,16 +531,22 @@ def main():
         print('The vertical structure has been calculated successfully.')
     Pi = vs.Pi_finder()
     print('Pi parameters =', Pi)
+    print('z0/r = ', z0r)
     t = np.linspace(0, 1, 100)
     S, P, Q, T = vs.integrate(t)[0]
     import matplotlib.pyplot as plt
-    plt.plot(1 - t, S, label='S')
-    plt.plot(1 - t, P, label='P')
-    plt.plot(1 - t, Q, label='Q')
-    plt.plot(1 - t, T, label='T')
+    plt.plot(1 - t, S, label=r'$\hat{\Sigma}$')
+    plt.plot(1 - t, P, label=r'$\hat{P}$')
+    plt.plot(1 - t, Q, label=r'$\hat{Q}$')
+    plt.plot(1 - t, T, label=r'$\hat{T}$')
+    plt.xlabel('$z / z_0$')
+    plt.title(r'$M = {:g}\, M_{{\odot}},\, \dot{{M}} = {:g}\, {{\rm g/s}},\, \alpha = {:g}, r = {:g} \,\rm cm$'.format(
+        M / M_sun, Mdot, alpha, r))
     plt.grid()
     plt.legend()
-    plt.show()
+    plt.savefig('vs.pdf')
+    print('Plot of structure is successfully saved.')
+    return
 
 
 if __name__ == '__main__':
