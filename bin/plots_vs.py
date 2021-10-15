@@ -216,7 +216,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
                    'F = {:e} g*cm^2/s^2, structure = {}'.format(M / M_sun, alpha, r, r / rg, Teff, Mdot, F, structure)
     if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
         header_input += ', mu = {}'.format(mu)
-    if structure in ['Mesa', 'MesaAd', 'MesaFirst', 'MesaRadConv']:
+    else:
         header_input += ', abundance = {}'.format(abundance)
     header_C = '\nvarkappa_C = {:e} cm^2/g, rho_C = {:e} g/cm^3, T_C = {:e} K, P_C = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
                'PradPgas_C = {:e}, z0r = {:e}, tau = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r, tau)
@@ -419,7 +419,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             M / M_sun, alpha, r, r / rg, structure)
         if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
             header_end += ', mu = {}'.format(mu)
-        if structure in ['Mesa', 'MesaAd', 'MesaFirst', 'MesaRadConv']:
+        else:
             header_end += ', abundance = {}'.format(abundance)
         header_end += '\nSigma_plus_index = {:d} \tSigma_minus_index = {:d}'.format(Sigma_plus_index, Sigma_minus_index)
         dots_table = np.c_[Sigma_plot, Teff_plot, Mdot_plot, F_plot, z0r_plot, rho_c_plot,
@@ -580,7 +580,7 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
             M / M_sun, alpha, Mdot, structure)
         if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
             header_end += ', mu = {}'.format(mu)
-        if structure in ['Mesa', 'MesaAd', 'MesaFirst', 'MesaRadConv']:
+        else:
             header_end += ', abundance = {}'.format(abundance)
         dots_table = np.c_[r_plot[:tau_index], r_plot[:tau_index] / rg, Sigma_plot, Teff_plot, F_plot,
                            z0r_plot, rho_c_plot, T_c_plot, P_c_plot, tau_plot, PradPgas_Plot, varkappa_c_plot]
