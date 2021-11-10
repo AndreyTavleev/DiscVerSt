@@ -44,18 +44,18 @@ The plot of structure 'vs.pdf' is created in the same directory after that.
 
 ## Calculate structure
 
-Module 'vs' contains several classes that represent the vertical 
+Module `vs` contains several classes that represent the vertical 
 structure of accretion discs in X-ray binaries for different assumptions 
 of opacity law. For given parameters the vertical structure of 
 disc is calculated and can be used for research of disc stability.
 
-Module 'mesa_vs' contains some additional classes, that represent 
+Module `mesa_vs` contains some additional classes, that represent 
 the vertical structure for tabular opacities and convective energy transport.
 
-'mesa2py' (https://github.com/hombit/mesa2py) is required for 'mesa_vs' structure for work.
+'mesa2py' (https://github.com/hombit/mesa2py) is required for `mesa_vs` structure for work.
 
 ### Usage:
-You can use 'vs' module with different output parameters: mass of central object, alpha, radius and viscous torque
+You can use `vs` module with different output parameters: mass of central object, alpha, radius and viscous torque
 
 ``` python3
 import vs
@@ -73,7 +73,7 @@ print(varkappa_C, rho_C, T_C, P_C)  # Opacity, bulk density, temperature and gas
 print(Sigma0)  # Surface density of disc
 print(vertstr.tau())  # optical thickness of disc
 ```
-Both 'vs' and 'mesa_vs' modules have help
+Both `vs` and `mesa_vs` modules have help
 ``` python3
 help(vs)
 help(mesa_vs)
@@ -81,17 +81,20 @@ help(mesa_vs)
 
 ## Make plots and tables with disc parameters
 
-Module 'plots_vs' contains functions, that calculate vertical and radial structure and S-curve and return tables with disc parameters and make plots.
+Module `plots_vs` contains functions, that calculate vertical and radial structure and S-curve and return tables with disc parameters and make plots.
 With plots_vs.main() the vartical structure, S-curve and radial structure can be calculated for default parameters, stored as a plot and tables.  
 Try it
 ``` shell
 $ python3 -m plots_vs
 ```
 
-'plots_vs' contains three functions: 'Structure_Plot', 'S_curve' and 'Radial_Plot'. 
-'Structure_Plot' returns table with parameters of disc as functions of vertical coordinate at specific radius. Also makes plot of structure.
-'S_curve' calculates S-curve and return table with disc parameters on the curve. Also makes plot of S-curve.
-'Radial_Plot' returns table with parameters of disc as functions of radius for a given radius range.
+`plots_vs` contains three functions: `Structure_Plot`, `S_curve` and `Radial_Plot`. 
+
+`Structure_Plot` returns table with parameters of disc as functions of vertical coordinate at specific radius. Also makes plot of structure.
+
+`S_curve` calculates S-curve and return table with disc parameters on the curve. Also makes plot of S-curve.
+
+`Radial_Plot` returns table with parameters of disc as functions of radius for a given radius range.
 
 ### Usage:
 ``` python3
@@ -115,7 +118,7 @@ rg = 3e5 * (M / 2e33)  # Schwarzschild radius
 plots_vs.Radial_Plot(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200, 
 		     tau_break=True, savedots=True, path_dots='radial_struct.dat')
 ```
-Both 'plots_vs' module and functions in it have help
+Both `plots_vs` module and functions in it have help
 ``` python3
 help(plots_vs)
 help(plots_vs.Structure_Plot)
