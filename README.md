@@ -4,6 +4,8 @@ This code can calculate vertical structure of accretion discs around neutron sta
 
 ### Installation
 
+If you want to use tabular values of opacity and EOS to calculate the structure, you should use Docker to install 'mesa2py' (https://github.com/hombit/mesa2py) and then install this code. 
+
 1. Create and activate virtual environment
 
 ``` shell
@@ -39,8 +41,7 @@ $ python3 -m vs
 	The vertical structure has been calculated successfully.
 	Pi parameters = [7.10271534 0.4859551  1.13097882 0.3985615 ]
 	z0/r =  0.028869666211114635
-	Plot of structure is successfully saved.
-The plot of structure 'vs.pdf' is created in the same directory after that.
+	Plot of structure is successfully saved to fig/vs.pdf.
 
 ## Calculate structure
 
@@ -82,7 +83,7 @@ help(mesa_vs)
 ## Make plots and tables with disc parameters
 
 Module `plots_vs` contains functions, that calculate vertical and radial structure and S-curve and return tables with disc parameters and make plots.
-With plots_vs.main() the vartical structure, S-curve and radial structure can be calculated for default parameters, stored as a plot and tables.  
+With plots_vs.main() the vertical structure, S-curve and radial structure can be calculated for default parameters, stored as a plot and tables.  
 Try it
 ``` shell
 $ python3 -m plots_vs
@@ -124,4 +125,60 @@ help(plots_vs)
 help(plots_vs.Structure_Plot)
 help(plots_vs.S_curve)
 help(plots_vs.Radial_Plot)
+```
+
+## Tabular opacities and EOS
+
+Module `mesa_vs` contains some additional classes, that represent 
+the vertical structure for tabular opacities and convective energy transport.
+
+'mesa2py' (https://github.com/hombit/mesa2py) is required for `mesa_vs` structure for work.
+After you install 'mesa2py' using Docker, build Docker image 'vs':
+
+``` shell
+$ docker build -t vs .
+```
+
+Now you can try mesa_vs.main() 
+
+``` shell
+$ docker run -v$(pwd)/fig:/app/fig --rm -ti vs python3 -m mesa_vs
+```
+
+	Calculating structure and making a structure plot.
+	Structure with tabular MESA opacity and EOS.
+	M = 1.98841e+34 grams
+	r = 1.1813e+09 cm = 400 rg
+	alpha = 0.01
+	Mdot = 1e+17 g/s
+	The vertical structure has been calculated successfully.
+	z0/r =  0.029767073742636044
+	Plot of structure is successfully saved to fig/vs_mesa.pdf.
+
+You can use `mesa_vs` module inside the Docker with different output parameters: mass of central object, alpha, radius and viscous torque
+
+``` shell
+$ docker run -v$(pwd)/fig:/app/fig --rm -ti vs python3
+```
+
+``` python3
+import mesa_vs
+
+M = 2e33  # Mass of central object in grams
+alpha = 0.01  # alpha parameter
+r = 2e9  # radius in cm
+F = 2e34  # viscous torque
+
+vertstr = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F)  # create structure with tabular MESA opacities and EOS and both radiative and convective energy transport
+z0r, result = vertstr.fit()  # calculate structure
+varkappa_C, rho_C, T_C, P_C, Sigma0 = vertstr.parameters_C()
+print(z0r)  # semi-thickness z0/r of disc
+print(varkappa_C, rho_C, T_C, P_C)  # Opacity, bulk density, temperature and gas pressure in the symmetry plane of disc
+print(Sigma0)  # Surface density of disc
+print(vertstr.tau())  # optical thickness of disc
+```
+
+Use`mesa_vs` help to learn more about additional structure classes
+``` python3
+help(mesa_vs)
 ```
