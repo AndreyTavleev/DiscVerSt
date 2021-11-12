@@ -50,7 +50,14 @@ $ python3 -m vs
 ['mesa2py'](https://github.com/hombit/mesa2py) is used to bind tabular opacities and EOS from [MESA code](http://mesa.sourceforge.net) with Python3.
 If you want to use tabular values of opacity and EOS to calculate the structure, you should use Docker.
 
-1. Build Docker image 
+You can use the latest pre-build Docker image:
+
+``` shell
+$ docker pull ghcr.io/andrey890/vertical-structure-of-accretion-discs:latest
+$ docker tag ghcr.io/andrey890/vertical-structure-of-accretion-discs vertstr
+```
+
+Or build a docker image by yourself
 
 ``` shell
 $ git clone https://github.com/Andrey890/Vertical-structure-of-accretion-discs.git
@@ -58,7 +65,7 @@ $ cd Vertical-structure-of-accretion-discs
 $ docker build -t vertstr .
 ```
 
-2. Run 'vertstr' image as a container and try vs.main()
+Then run 'vertstr' image as a container and try vs.main()
 
 ``` shell
 $ docker run -v$(pwd)/fig:/app/fig --rm -ti vertstr python3 -m vs
