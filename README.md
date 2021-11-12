@@ -45,9 +45,10 @@ $ python3 -m vs
 	z0/r =  0.028869666211114635
 	Plot of structure is successfully saved to fig/vs.pdf.
 
-#### Tabular MESA opacities and EOS
+#### Tabular tabular opacities and EOS
 
-If you want to use tabular values of opacity and EOS to calculate the structure, you should use Docker to install ['mesa2py'](https://github.com/hombit/mesa2py). 
+['mesa2py'](https://github.com/hombit/mesa2py) is used to bind tabular opacities and EOS from [MESA code](http://mesa.sourceforge.net) with Python3.
+If you want to use tabular values of opacity and EOS to calculate the structure, you should use Docker.
 
 1. Build Docker image 
 
@@ -86,8 +87,6 @@ disc is calculated and can be used for research of disc stability.
 Module `mesa_vs` contains some additional classes, that represent 
 the vertical structure for tabular opacities and convective energy transport.
 
-'mesa2py' (https://github.com/hombit/mesa2py) is required for `mesa_vs` structure for work.
-
 ### Usage:
 You can use `vs` module with different output parameters: mass of central object, alpha, radius and viscous torque
 
@@ -117,8 +116,6 @@ help(mesa_vs)
 
 Module `mesa_vs` contains some additional classes, that represent 
 the vertical structure for tabular opacities and convective energy transport.
-
-['mesa2py'](https://github.com/hombit/mesa2py) is required for `mesa_vs` structure for work.
 
 After you install this code with Docker (see [Installation](#Tabular-MESA-opacities-and-EOS)). You can try mesa_vs.main() 
 
@@ -161,7 +158,7 @@ print(Sigma0)  # Surface density of disc
 print(vertstr.tau())  # optical thickness of disc
 ```
 
-You can run your own files, that use this code, through Docker
+You can run your own files, that use this code, inside Docker
 
 ``` shell
 $ docker run -v/path_to/your_file/file.py:/app/your_code.py --rm -ti vertstr python3 file.py
