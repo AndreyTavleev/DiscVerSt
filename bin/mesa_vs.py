@@ -11,6 +11,8 @@ Class MesaVerticalStructureFirstAssumption -- for (tabular) Mesa opacities and E
 Class MesaVerticalStructureRadConv -- for (tabular) Mesa opacities and EOS with radiative+convective energy transport.
 
 """
+import os
+
 import numpy as np
 from astropy import constants as const
 
@@ -21,6 +23,8 @@ sigmaT = const.sigma_T.cgs.value
 mu = const.u.cgs.value
 c = const.c.cgs.value
 pl_const = const.h
+G = const.G.cgs.value
+M_sun = const.M_sun.cgs.value
 
 try:
     from opacity import Opac
@@ -53,6 +57,7 @@ class AdiabaticTempGradient:
     Temperature gradient class. Return adiabatic d(lnT)/d(lnP) from Mesa.
 
     """
+
     def dlnTdlnP(self, y, t):
         rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, full_output=True)
         return eos.grad_ad
@@ -64,6 +69,7 @@ class FirstAssumptionRadiativeConvectiveGradient:
     If gradient is over-adiabatic, then return adiabatic gradient, else calculate radiative gradient.
 
     """
+
     def dlnTdlnP(self, y, t):
         varkappa = self.opacity(y)
         rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
@@ -89,6 +95,7 @@ class RadConvTempGradient:
     Temperature gradient class. Calculate d(lnT)/d(lnP) in presence of convection according to mixing length theory.
 
     """
+
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, True)
         varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
@@ -176,3 +183,43 @@ class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGr
 
     """
     pass
+
+
+def main():
+    M = 10 * M_sun
+    alpha = 0.01
+    Mdot = 1e17
+    rg = 2 * G * M / c ** 2
+    r = 400 * rg
+    print('Calculating structure and making a structure plot. '
+          '\nStructure with tabular MESA opacity and EOS.')
+    print('M = {:g} grams \nr = {:g} cm = {:g} rg \nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, r / rg, alpha, Mdot))
+    h = np.sqrt(G * M * r)
+    r_in = 3 * rg
+    F = Mdot * h * (1 - np.sqrt(r_in / r))
+    vs = MesaVerticalStructureRadConv(M, alpha, r, F)
+    z0r, result = vs.fit()
+    if result.converged:
+        print('The vertical structure has been calculated successfully.')
+    print('z0/r = ', z0r)
+    t = np.linspace(0, 1, 100)
+    S, P, Q, T = vs.integrate(t)[0]
+    import matplotlib.pyplot as plt
+    plt.plot(1 - t, S, label=r'$\hat{\Sigma}$')
+    plt.plot(1 - t, P, label=r'$\hat{P}$')
+    plt.plot(1 - t, Q, label=r'$\hat{Q}$')
+    plt.plot(1 - t, T, label=r'$\hat{T}$')
+    plt.xlabel('$z / z_0$')
+    plt.title(r'$M = {:g}\, M_{{\odot}},\, \dot{{M}} = {:g}\, {{\rm g/s}},\, \alpha = {:g}, r = {:g} \,\rm cm$'.format(
+        M / M_sun, Mdot, alpha, r))
+    plt.grid()
+    plt.legend()
+    if not os.path.exists('fig/'):
+        os.makedirs('fig/')
+    plt.savefig('fig/vs_mesa.pdf')
+    print('Plot of structure is successfully saved to fig/vs_mesa.pdf.')
+    return
+
+
+if __name__ == '__main__':
+    main()
