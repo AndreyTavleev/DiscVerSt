@@ -4,7 +4,9 @@ This code can calculate vertical structure of accretion discs around neutron sta
 
 ### Installation
 
-If you want to use tabular values of opacity and EOS to calculate the structure, you should use Docker to install 'mesa2py' (https://github.com/hombit/mesa2py) and then install this code. 
+#### Only analitical opacities and EOS
+
+If you want to use only analitical formulas for opacity and EOS to calculate structures, choose this installation way.
 
 1. Create and activate virtual environment
 
@@ -43,6 +45,37 @@ $ python3 -m vs
 	z0/r =  0.028869666211114635
 	Plot of structure is successfully saved to fig/vs.pdf.
 
+#### Tabular MESA opacities and EOS
+
+If you want to use tabular values of opacity and EOS to calculate the structure, you should use Docker to install ['mesa2py'](https://github.com/hombit/mesa2py). 
+
+1. Build Docker image 
+
+``` shell
+$ git clone https://github.com/Andrey890/Vertical-structure-of-accretion-discs.git
+$ cd Vertical-structure-of-accretion-discs
+$ docker build -t vertstr .
+```
+
+2. Run 'vertstr' image as a container and try vs.main()
+
+``` shell
+$ docker run -v$(pwd)/fig:/app/fig --rm -ti vertstr python3 -m vs
+```
+
+	Finding Pi parameters of structure and making a structure plot. 
+	Structure with Kramers opacity and ideal gas EOS.
+	M = 1.98841e+34 grams
+	r = 1.1813e+09 cm = 400 rg
+	alpha = 0.01
+	Mdot = 1e+17 g/s
+	The vertical structure has been calculated successfully.
+	Pi parameters = [7.10271534 0.4859551  1.13097882 0.3985615 ]
+	z0/r =  0.028869666211114635
+	Plot of structure is successfully saved to fig/vs.pdf.
+
+As the result, the plot `vs.pdf` is saved to the `/app/fig/` (`/app/` is a WORKDIR) in the container and to the `$(pwd)/fig/` in the host machine. 
+
 ## Calculate structure
 
 Module `vs` contains several classes that represent the vertical 
@@ -77,6 +110,65 @@ print(vertstr.tau())  # optical thickness of disc
 Both `vs` and `mesa_vs` modules have help
 ``` python3
 help(vs)
+help(mesa_vs)
+```
+
+## Tabular opacities and EOS
+
+Module `mesa_vs` contains some additional classes, that represent 
+the vertical structure for tabular opacities and convective energy transport.
+
+['mesa2py'](https://github.com/hombit/mesa2py) is required for `mesa_vs` structure for work.
+
+After you install this code with Docker (see [Installation](#Tabular-MESA-opacities-and-EOS)). You can try mesa_vs.main() 
+
+``` shell
+$ docker run -v$(pwd)/fig:/app/fig --rm -ti vertstr python3 -m mesa_vs
+```
+
+	Calculating structure and making a structure plot.
+	Structure with tabular MESA opacity and EOS.
+	M = 1.98841e+34 grams
+	r = 1.1813e+09 cm = 400 rg
+	alpha = 0.01
+	Mdot = 1e+17 g/s
+	The vertical structure has been calculated successfully.
+	z0/r =  0.029767073742636044
+	Plot of structure is successfully saved to fig/vs_mesa.pdf.
+
+As the result, the plot `mesa_vs.pdf` is saved to the `/app/fig/` (`/app/` is a WORKDIR) in the container and to the `$(pwd)/fig/` in the host machine. 
+
+You can use `mesa_vs` module inside the Docker with different output parameters: mass of central object, alpha, radius and viscous torque
+
+``` shell
+$ docker run --rm -ti vertstr python3
+```
+
+``` python3
+import mesa_vs
+
+M = 2e33  # Mass of central object in grams
+alpha = 0.01  # alpha parameter
+r = 2e9  # radius in cm
+F = 2e34  # viscous torque
+
+vertstr = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F)  # create structure with tabular MESA opacities and EOS and both radiative and convective energy transport
+z0r, result = vertstr.fit()  # calculate structure
+varkappa_C, rho_C, T_C, P_C, Sigma0 = vertstr.parameters_C()
+print(z0r)  # semi-thickness z0/r of disc
+print(varkappa_C, rho_C, T_C, P_C)  # Opacity, bulk density, temperature and gas pressure in the symmetry plane of disc
+print(Sigma0)  # Surface density of disc
+print(vertstr.tau())  # optical thickness of disc
+```
+
+You can run your own files, that use this code, through Docker
+
+``` shell
+$ docker run -v/path_to/your_file/file.py:/app/your_code.py --rm -ti vertstr python3 file.py
+```
+
+Use`mesa_vs` help to learn more about additional structure classes
+``` python3
 help(mesa_vs)
 ```
 
@@ -125,60 +217,4 @@ help(plots_vs)
 help(plots_vs.Structure_Plot)
 help(plots_vs.S_curve)
 help(plots_vs.Radial_Plot)
-```
-
-## Tabular opacities and EOS
-
-Module `mesa_vs` contains some additional classes, that represent 
-the vertical structure for tabular opacities and convective energy transport.
-
-'mesa2py' (https://github.com/hombit/mesa2py) is required for `mesa_vs` structure for work.
-After you install 'mesa2py' using Docker, build Docker image 'vs':
-
-``` shell
-$ docker build -t vs .
-```
-
-Now you can try mesa_vs.main() 
-
-``` shell
-$ docker run -v$(pwd)/fig:/app/fig --rm -ti vs python3 -m mesa_vs
-```
-
-	Calculating structure and making a structure plot.
-	Structure with tabular MESA opacity and EOS.
-	M = 1.98841e+34 grams
-	r = 1.1813e+09 cm = 400 rg
-	alpha = 0.01
-	Mdot = 1e+17 g/s
-	The vertical structure has been calculated successfully.
-	z0/r =  0.029767073742636044
-	Plot of structure is successfully saved to fig/vs_mesa.pdf.
-
-You can use `mesa_vs` module inside the Docker with different output parameters: mass of central object, alpha, radius and viscous torque
-
-``` shell
-$ docker run -v$(pwd)/fig:/app/fig --rm -ti vs python3
-```
-
-``` python3
-import mesa_vs
-
-M = 2e33  # Mass of central object in grams
-alpha = 0.01  # alpha parameter
-r = 2e9  # radius in cm
-F = 2e34  # viscous torque
-
-vertstr = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F)  # create structure with tabular MESA opacities and EOS and both radiative and convective energy transport
-z0r, result = vertstr.fit()  # calculate structure
-varkappa_C, rho_C, T_C, P_C, Sigma0 = vertstr.parameters_C()
-print(z0r)  # semi-thickness z0/r of disc
-print(varkappa_C, rho_C, T_C, P_C)  # Opacity, bulk density, temperature and gas pressure in the symmetry plane of disc
-print(Sigma0)  # Surface density of disc
-print(vertstr.tau())  # optical thickness of disc
-```
-
-Use`mesa_vs` help to learn more about additional structure classes
-``` python3
-help(mesa_vs)
 ```
