@@ -17,6 +17,8 @@ Radial_Plot -- Calculates radial structure of disc. Return table, which contains
     as functions of radius.
 
 """
+import os
+
 import numpy as np
 from astropy import constants as const
 from matplotlib import pyplot as plt
@@ -153,8 +155,8 @@ def Convective_parameter(vs):
 
 
 def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', abundance='solar', n=100,
-                   add_Pi_values=True, savedots=True, path_dots='vs.dat', make_pic=True,
-                   save_plot=True, path_plot='vs.pdf', set_title=True, title='Vertical structure'):
+                   add_Pi_values=True, savedots=True, path_dots=None, make_pic=True,
+                   save_plot=True, path_plot=None, set_title=True, title='Vertical structure'):
     """
     Calculates vertical structure and makes table with disc parameters as functions of vertical coordinate.
     Table also contains input parameters of structure, parameters in the symmetry plane and parameter normalisations.
@@ -203,6 +205,10 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         The title of the plot.
 
     """
+    if savedots and path_dots is None:
+        raise Exception("Structure_Plot() missing 1 required positional argument: 'path_dots'")
+    if save_plot and path_plot is None:
+        raise Exception("Structure_Plot() missing 1 required positional argument: 'path_plot'")
     vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
     z0r, result = vs.fit()
     rg = 2 * G * M / c ** 2
@@ -229,7 +235,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
                    'F = {:e} g*cm^2/s^2, structure = {}'.format(M / M_sun, alpha, r, r / rg, Teff, Mdot, F, structure)
     if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
         header_input += ', mu = {}'.format(mu)
-    if structure in ['Mesa', 'MesaAd', 'MesaFirst', 'MesaRadConv']:
+    else:
         header_input += ', abundance = {}'.format(abundance)
     header_C = '\nvarkappa_C = {:e} cm^2/g, rho_C = {:e} g/cm^3, T_C = {:e} K, P_C = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
                'PradPgas_C = {:e}, z0r = {:e}, tau = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r, tau)
@@ -258,8 +264,8 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
 
 
 def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu=0.6, abundance='solar', n=100,
-            tau_break=True, savedots=True, path_dots='S_curve.dat', add_Pi_values=True, make_pic=True,
-            output='Mdot', xscale='log', yscale='log', save_plot=True, path_plot='S-curve.pdf',
+            tau_break=True, savedots=True, path_dots=None, add_Pi_values=True, make_pic=True,
+            output='Mdot', xscale='log', yscale='log', save_plot=True, path_plot=None,
             set_title=True, title='S-curve'):
     """
     Calculates S-curve and makes table with disc parameters on the S-curve.
@@ -323,6 +329,10 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         The title of the plot.
 
     """
+    if savedots and path_dots is None:
+        raise Exception("S_curve() missing 1 required positional argument: 'path_dots'")
+    if save_plot and path_plot is None:
+        raise Exception("S_curve() missing 1 required positional argument: 'path_plot'")
     if xscale not in ['linear', 'log', 'parlog']:
         print('Incorrect xscale, try linear, log or parlog')
         raise Exception
@@ -432,7 +442,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             M / M_sun, alpha, r, r / rg, structure)
         if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
             header_end += ', mu = {}'.format(mu)
-        if structure in ['Mesa', 'MesaAd', 'MesaFirst', 'MesaRadConv']:
+        else:
             header_end += ', abundance = {}'.format(abundance)
         header_end += '\nSigma_plus_index = {:d} \tSigma_minus_index = {:d}'.format(Sigma_plus_index, Sigma_minus_index)
         dots_table = np.c_[Sigma_plot, Teff_plot, Mdot_plot, F_plot, z0r_plot, rho_c_plot,
@@ -497,7 +507,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
 
 def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin', mu=0.6, abundance='solar',
-                n=100, tau_break=True, savedots=True, path_dots='radial_struct.dat'):
+                n=100, tau_break=True, savedots=True, path_dots=None):
     """
     Calculates radial structure of disc. Return table, which contains input parameters of the system,
     surface density Sigma0, viscous torque F, accretion rate Mdot, effective temperature Teff,
@@ -540,6 +550,8 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         Where to save data table.
 
     """
+    if savedots and path_dots is None:
+        raise Exception("Radial_Plot() missing 1 required positional argument: 'path_dots'")
     Sigma_plot, Teff_plot, F_plot = [], [], []
     varkappa_c_plot, T_c_plot, P_c_plot, rho_c_plot = [], [], [], []
     z0r_plot, tau_plot, PradPgas_Plot = [], [], []
@@ -593,7 +605,7 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
             M / M_sun, alpha, Mdot, structure)
         if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
             header_end += ', mu = {}'.format(mu)
-        if structure in ['Mesa', 'MesaAd', 'MesaFirst', 'MesaRadConv']:
+        else:
             header_end += ', abundance = {}'.format(abundance)
         dots_table = np.c_[r_plot[:tau_index], r_plot[:tau_index] / rg, Sigma_plot, Teff_plot, F_plot,
                            z0r_plot, rho_c_plot, T_c_plot, P_c_plot, tau_plot, PradPgas_Plot, varkappa_c_plot]
@@ -611,32 +623,34 @@ def main():
     alpha = 0.2
     r = 1e10
     Teff = 1e4
+    if not os.path.exists('fig/'):
+        os.makedirs('fig/')
 
     print('Calculation of vertical structure. Return structure table and plot.')
     print('M = {:g} M_sun \nr = {:g} cm \nalpha = {:g} \nTeff = {:g} K'.format(M / M_sun, r, alpha, Teff))
 
     Structure_Plot(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100, add_Pi_values=True,
-                   savedots=True, path_dots='vs.dat', make_pic=True, save_plot=True, path_plot='vs.pdf',
+                   savedots=True, path_dots='fig/vs.dat', make_pic=True, save_plot=True, path_plot='fig/vs.pdf',
                    set_title=True,
                    title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, T_{{\rm eff}} = {:g} \, '
                          r'{{\rm K}}$'.format(M / M_sun, r, alpha, Teff))
-    print('Structure is calculated successfully. \n')
+    print('Structure is calculated successfully. Plot is saved to fig/vs.pdf, table is saved to fig/vs.dat. \n')
 
     print('Calculation of S-curve for Teff from 4e3 K to 1e4 K. Return S-curve table and Sigma0-Mdot plot.\n')
 
     S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False, savedots=True,
-            path_dots='S-curve.dat', add_Pi_values=True, make_pic=True, output='Mdot',
-            xscale='parlog', yscale='parlog', save_plot=True, path_plot='S-curve.pdf', set_title=True,
+            path_dots='fig/S-curve.dat', add_Pi_values=True, make_pic=True, output='Mdot',
+            xscale='parlog', yscale='parlog', save_plot=True, path_plot='fig/S-curve.pdf', set_title=True,
             title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / M_sun, r, alpha))
-    print('S-curve is calculated successfully.')
+    print('S-curve is calculated successfully. Plot is saved to fig/S-curve.pdf, table is saved to fig/S-curve.dat.')
 
     print('Calculation of radial structure of disc for radius from 3.1*rg to 1e3*rg and Mdot = Mdot_edd. '
           'Return radial structure table.\n')
 
     rg = 2 * G * M / c ** 2
     Radial_Plot(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200,
-                tau_break=True, savedots=True, path_dots='radial_struct.dat')
-    print('Radial structure is calculated successfully.')
+                tau_break=True, savedots=True, path_dots='fig/radial_struct.dat')
+    print('Radial structure is calculated successfully. Table is saved to fig/radial_struct.dat.')
 
     return
 

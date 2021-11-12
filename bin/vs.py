@@ -7,6 +7,7 @@ Class IdealKramersVerticalStructure --  for Kramers opacity law and ideal gas EO
 Class IdealBellLin1994VerticalStructure -- for opacity laws from (Bell & Lin, 1994) and ideal gas EOS.
 
 """
+import os
 from collections import namedtuple
 from enum import IntEnum
 
@@ -544,8 +545,10 @@ def main():
         M / M_sun, Mdot, alpha, r))
     plt.grid()
     plt.legend()
-    plt.savefig('vs.pdf')
-    print('Plot of structure is successfully saved.')
+    if not os.path.exists('fig/'):
+        os.makedirs('fig/')
+    plt.savefig('fig/vs.pdf')
+    print('Plot of structure is successfully saved to fig/vs.pdf.')
     return
 
 
