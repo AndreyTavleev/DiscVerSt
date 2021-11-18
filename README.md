@@ -2,9 +2,18 @@
 
 This code can calculate vertical structure of accretion discs around neutron stars and black holes.
 
-### Installation
+## Contents
 
-#### Only analitical opacities and EOS
+   * [Installation](#Installation)
+      * [Only analitical opacities and EOS](#Only-analitical-opacities-and-EOS)
+      * [Tabular opacities and EOS](#Tabular-opacities-and-EOS)
+   * [Calculate structure](#Calculate-structure)
+   * [Tabular opacities and EOS](#Tabular-opacities-and-EOS)
+   * [Make plots and tables with disc parameters](#Make-plots-and-tables-with-disc-parameters)
+
+## Installation
+
+### Only analitical opacities and EOS
 
 If you want to use only analitical formulas for opacity and EOS to calculate structures, choose this installation way.
 
@@ -45,7 +54,7 @@ $ python3 -m vs
 	z0/r =  0.028869666211114635
 	Plot of structure is successfully saved to fig/vs.pdf.
 
-#### Tabular tabular opacities and EOS
+### Tabular opacities and EOS
 
 ['mesa2py'](https://github.com/hombit/mesa2py) is used to bind tabular opacities and EOS from [MESA code](http://mesa.sourceforge.net) with Python3.
 If you want to use tabular values of opacity and EOS to calculate the structure, you should use Docker.
@@ -124,7 +133,7 @@ help(mesa_vs)
 Module `mesa_vs` contains some additional classes, that represent 
 the vertical structure for tabular opacities and convective energy transport.
 
-After you install this code with Docker (see [Installation](#Tabular-MESA-opacities-and-EOS)). You can try mesa_vs.main() 
+After you install this code with Docker (see [Installation](#Tabular-opacities-and-EOS)). You can try mesa_vs.main() 
 
 ``` shell
 $ docker run -v$(pwd)/fig:/app/fig --rm -ti vertstr python3 -m mesa_vs
