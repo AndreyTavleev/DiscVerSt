@@ -194,7 +194,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     """
     if savedots and path_dots is None:
         raise Exception("Structure_Plot() missing 1 required positional argument: 'path_dots'")
-    if save_plot and path_plot is None:
+    if make_pic and save_plot and path_plot is None:
         raise Exception("Structure_Plot() missing 1 required positional argument: 'path_plot'")
     vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
     z0r, result = vs.fit()
@@ -318,7 +318,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     """
     if savedots and path_dots is None:
         raise Exception("S_curve() missing 1 required positional argument: 'path_dots'")
-    if save_plot and path_plot is None:
+    if make_pic and save_plot and path_plot is None:
         raise Exception("S_curve() missing 1 required positional argument: 'path_plot'")
     if xscale not in ['linear', 'log', 'parlog']:
         print('Incorrect xscale, try linear, log or parlog')
