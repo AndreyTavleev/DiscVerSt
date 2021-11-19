@@ -1,12 +1,9 @@
-FROM mesa2py
+FROM ghcr.io/hombit/mesa2py:latest
 
-COPY /requirements.txt /requirements.txt
-RUN pip install -r /requirements.txt
-
-COPY bin /app
+COPY bin /app/bin/
+COPY requirements.txt README.md setup.py /app/
 WORKDIR /app
 
-RUN mkdir -pv /app/fig
-VOLUME /app/fig
-
-CMD ["python", "vs.py"]
+RUN pip3 install -U pip
+RUN pip3 install -r requirements.txt
+RUN python3 setup.py install
