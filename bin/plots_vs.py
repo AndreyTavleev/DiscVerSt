@@ -63,8 +63,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
         F = Mdot * h * func
         Teff = (3 / (8 * np.pi) * (G * M) ** 4 * F / (sigmaSB * h ** 7)) ** (1 / 4)
     else:
-        print('Incorrect input, try Teff, Mdot, F of Mdot_Mdot_edd')
-        raise Exception
+        raise Exception('Incorrect input, try Teff, Mdot, F of Mdot_Mdot_edd')
 
     if structure == 'Kramers':
         vs = vert.IdealKramersVerticalStructure(M, alpha, r, F, mu=mu)
@@ -101,8 +100,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
         except TypeError:
             vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F, abundance=abundance)
     else:
-        print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
-        raise Exception
+        raise Exception('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
 
     return vs, F, Teff, Mdot
 
@@ -133,8 +131,7 @@ def Convective_parameter(vs):
     try:
         _ = eos.grad_ad
     except AttributeError:
-        print('Incorrect vertical structure. Use vertical structure with Mesa EOS.')
-        raise Exception
+        raise Exception('Incorrect vertical structure. Use vertical structure with Mesa EOS.')
     conv_param_sigma = simps(2 * rho * (grad_plot(np.log(P)) > eos.grad_ad), t * vs.z0) / (
             S[-1] * vs.sigma_norm)
     conv_param_z = simps(grad_plot(np.log(P)) > eos.grad_ad, t * vs.z0) / vs.z0
@@ -321,11 +318,9 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     if make_pic and save_plot and path_plot is None:
         raise Exception("S_curve() missing 1 required positional argument: 'path_plot'")
     if xscale not in ['linear', 'log', 'parlog']:
-        print('Incorrect xscale, try linear, log or parlog')
-        raise Exception
+        raise Exception('Incorrect xscale, try linear, log or parlog')
     if yscale not in ['linear', 'log', 'parlog']:
-        print('Incorrect yscale, try linear, log or parlog')
-        raise Exception
+        raise Exception('Incorrect yscale, try linear, log or parlog')
     Sigma_plot, Mdot_plot, Teff_plot, F_plot = [], [], [], []
     Output_Plot = []
     varkappa_c_plot, T_c_plot, P_c_plot, rho_c_plot = [], [], [], []
@@ -349,7 +344,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
         z0r, result = vs.fit()
 
-        print('Teff = {:g}, tau = {:g}, z0r = {:g}'.format(Teff, vs.tau(), z0r))
+        print('Mdot = {:1.3e} g/s, Teff = {:g} K, tau = {:g}, z0r = {:g}'.format(Mdot, Teff, vs.tau(), z0r))
 
         if vs.tau() < 1 and tau_key:
             tau_index = i
@@ -391,8 +386,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             elif output == 'T_C':
                 Output_Plot.append(T_C)
             else:
-                print('Incorrect output, try Teff, Mdot, Mdot_Mdot_edd, F, z0r or T_C')
-                raise Exception
+                raise Exception('Incorrect output, try Teff, Mdot, Mdot_Mdot_edd, F, z0r or T_C')
 
         delta = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
         PradPgas_Plot.append(delta)
@@ -550,7 +544,8 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
     for i, r in enumerate(r_plot):
         vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
         z0r, result = vs.fit()
-        print('Teff = {:g}, tau = {:g}, z0r = {:g}'.format(Teff, vs.tau(), z0r))
+        rg = 2 * G * M / c ** 2
+        print('r = {:1.3e} cm = {:g} rg, Teff = {:g} K, tau = {:g}, z0r = {:g}'.format(r, r / rg, Teff, vs.tau(), z0r))
 
         if vs.tau() < 1 and tau_key:
             tau_index = i
