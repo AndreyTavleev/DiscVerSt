@@ -210,19 +210,19 @@ r = 1e10
 Teff = 1e4
 
 plots_vs.Structure_Plot(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100, add_Pi_values=True,
-                    	savedots=True, path_dots='vs.dat', make_pic=True, save_plot=True, path_plot='vs.pdf',
+                    	path_dots='vs.dat', make_pic=True, path_plot='vs.pdf',
                     	set_title=True,
                     	title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, T_{{\rm eff}} = {:g} \, '
                           	r'{{\rm K}}$'.format(M / 2e33, r, alpha, Teff))
 
-plots_vs.S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False, savedots=True,
+plots_vs.S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False,
                  path_dots='S-curve.dat', add_Pi_values=True, make_pic=True, output='Mdot',
-                 xscale='parlog', yscale='parlog', save_plot=True, path_plot='S-curve.pdf', set_title=True,
+                 xscale='parlog', yscale='parlog', path_plot='S-curve.pdf', set_title=True,
                  title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / 2e33, r, alpha))
 
 rg = 3e5 * (M / 2e33)  # Schwarzschild radius
 plots_vs.Radial_Plot(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200, 
-		     tau_break=True, savedots=True, path_dots='radial_struct.dat')
+		     tau_break=True, path_dots='radial_struct.dat', add_Pi_values=True)
 ```
 Both `plots_vs` module and functions in it have help
 ``` python3
