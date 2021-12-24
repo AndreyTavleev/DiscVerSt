@@ -604,7 +604,7 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
             header += ' \tPi1 \tPi2 \tPi3 \tPi4'
             dots_table = np.c_[dots_table, Pi_plot]
 
-        header = header + '\nAll values a in CGS units.' + header_end
+        header = header + '\nAll values are in CGS units.' + header_end
 
         np.savetxt(path_dots, dots_table, header=header)
 
