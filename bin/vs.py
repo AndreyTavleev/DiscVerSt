@@ -292,7 +292,7 @@ class BaseVerticalStructure:
         return (self.r * 2.86e-7 * self.F ** (3 / 20) * (self.Mx / M_sun) ** (-9 / 20)
                 * self.alpha ** (-1 / 10) * (self.r / 1e10) ** (1 / 20))
 
-    def fit(self):
+    def fit(self, start_estimation_z0r=None):
         """
         Solve optimization problem and calculate the vertical structure.
 
@@ -308,7 +308,10 @@ class BaseVerticalStructure:
             q_c = self.y_c()[Vars.Q]
             return q_c
 
-        z0r = self.z0 / self.r
+        if start_estimation_z0r is None:
+            z0r = self.z0 / self.r
+        else:
+            z0r = start_estimation_z0r
         sign_dq = dq(z0r)
         if sign_dq > 0:
             factor = 2.0

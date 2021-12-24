@@ -63,8 +63,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
         F = Mdot * h * func
         Teff = (3 / (8 * np.pi) * (G * M) ** 4 * F / (sigmaSB * h ** 7)) ** (1 / 4)
     else:
-        print('Incorrect input, try Teff, Mdot, F of Mdot_Mdot_edd')
-        raise Exception
+        raise Exception('Incorrect input, try Teff, Mdot, F of Mdot_Mdot_edd')
 
     if structure == 'Kramers':
         vs = vert.IdealKramersVerticalStructure(M, alpha, r, F, mu=mu)
@@ -141,8 +140,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
         except TypeError:
             vs = mesa_vs.MesaIdealVerticalStructureAdvection(M, alpha, r, F, abundance=abundance, mu=mu)
     else:
-        print('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
-        raise Exception
+        raise Exception('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
 
     return vs, F, Teff, Mdot
 
@@ -173,8 +171,7 @@ def Convective_parameter(vs):
     try:
         _ = eos.grad_ad
     except AttributeError:
-        print('Incorrect vertical structure. Use vertical structure with Mesa EOS.')
-        raise Exception
+        raise Exception('Incorrect vertical structure. Use vertical structure with Mesa EOS.')
     conv_param_sigma = simps(2 * rho * (grad_plot(np.log(P)) > eos.grad_ad), t * vs.z0) / (
             S[-1] * vs.sigma_norm)
     conv_param_z = simps(grad_plot(np.log(P)) > eos.grad_ad, t * vs.z0) / vs.z0
@@ -182,8 +179,8 @@ def Convective_parameter(vs):
 
 
 def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', abundance='solar', n=100,
-                   add_Pi_values=True, savedots=True, path_dots=None, make_pic=True,
-                   save_plot=True, path_plot=None, set_title=True, title='Vertical structure'):
+                   z0r_estimation=None, add_Pi_values=True, path_dots=None, make_pic=True,
+                   path_plot=None, set_title=True, title='Vertical structure'):
     """
     Calculates vertical structure and makes table with disc parameters as functions of vertical coordinate.
     Table also contains input parameters of structure, parameters in the symmetry plane and parameter normalisations.
@@ -214,16 +211,15 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         Use 'solar' str in case of solar composition.
     n : int
         Number of dots to calculate.
+    z0r_estimation : double
+        Start estimation of z0r free parameter to fit the structure. Default is None,
+        the estimation is calculated automatically.
     add_Pi_values : bool
         Whether to write Pi-parameters (see Ketsaris & Shakura, 1998) to the output file header.
-    savedots : bool
-        Whether to save data in table.
     path_dots : str
         Where to save data table.
     make_pic : bool
         Whether to make plot of structure.
-    save_plot : bool
-        Whether to save plot.
     path_plot : str
         Where to save structure plot.
     set_title : bool
@@ -232,12 +228,12 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         The title of the plot.
 
     """
-    if savedots and path_dots is None:
-        raise Exception("Structure_Plot() missing 1 required positional argument: 'path_dots'")
-    if make_pic and save_plot and path_plot is None:
-        raise Exception("Structure_Plot() missing 1 required positional argument: 'path_plot'")
+    if path_dots is None:
+        print("ATTENTION: the data wil not be saved, since 'path_dots' is None")
+    if make_pic and path_plot is None:
+        print("ATTENTION: the plot will only be created, but not be saved, since 'path_plot' is None")
     vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
-    z0r, result = vs.fit()
+    z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
     rg = 2 * G * M / c ** 2
     t = np.linspace(0, 1, n)
     S, P, Q, T = vs.integrate(t)[0]
@@ -271,7 +267,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     header = header + header_input + header_C + header_norm + header_conv
     if add_Pi_values:
         header += '\nPi1 = {:f}, Pi2 = {:f}, Pi3 = {:f}, Pi4 = {:f}'.format(*vs.Pi_finder())
-    if savedots:
+    if path_dots is not None:
         np.savetxt(path_dots, dots_arr, header=header)
     if not make_pic:
         return
@@ -285,14 +281,14 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     if set_title:
         plt.title(title)
     plt.tight_layout()
-    if save_plot:
+    if path_plot is not None:
         plt.savefig(path_plot)
         plt.close()
 
 
 def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu=0.6, abundance='solar', n=100,
-            tau_break=True, savedots=True, path_dots=None, add_Pi_values=True, make_pic=True,
-            output='Mdot', xscale='log', yscale='log', save_plot=True, path_plot=None,
+            tau_break=True, path_dots=None, add_Pi_values=True, make_pic=True,
+            output='Mdot', xscale='log', yscale='log', path_plot=None,
             set_title=True, title='S-curve'):
     """
     Calculates S-curve and makes table with disc parameters on the S-curve.
@@ -332,8 +328,6 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         Number of dots to calculate.
     tau_break : bool
         Whether to end calculation, when tau<1.
-    savedots : bool
-        Whether to save data in table.
     path_dots : str
         Where to save data table.
     add_Pi_values : bool
@@ -346,26 +340,22 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         Scale of x-axis. Can be 'linear', 'log' or 'parlog' (linear scale, but logarithmic values).
     yscale : str
         Scale of y-axis. Can be 'linear', 'log' or 'parlog' (linear scale, but logarithmic values).
-    save_plot : bool
-        Whether to save plot.
     path_plot : str
-        Where to save structure plot.
+        Where to save S-curve plot.
     set_title : bool
         Whether to make title of the plot.
     title : str
         The title of the plot.
 
     """
-    if savedots and path_dots is None:
-        raise Exception("S_curve() missing 1 required positional argument: 'path_dots'")
-    if make_pic and save_plot and path_plot is None:
-        raise Exception("S_curve() missing 1 required positional argument: 'path_plot'")
+    if path_dots is None:
+        print("ATTENTION: the data wil not be saved, since 'path_dots' is None")
+    if make_pic and path_plot is None:
+        print("ATTENTION: the plot will only be created, but not be saved, since 'path_plot' is None")
     if xscale not in ['linear', 'log', 'parlog']:
-        print('Incorrect xscale, try linear, log or parlog')
-        raise Exception
+        raise Exception('Incorrect xscale, try linear, log or parlog')
     if yscale not in ['linear', 'log', 'parlog']:
-        print('Incorrect yscale, try linear, log or parlog')
-        raise Exception
+        raise Exception('Incorrect yscale, try linear, log or parlog')
     Sigma_plot, Mdot_plot, Teff_plot, F_plot = [], [], [], []
     Output_Plot = []
     varkappa_c_plot, T_c_plot, P_c_plot, rho_c_plot = [], [], [], []
@@ -385,14 +375,17 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     Sigma_plus_key = True  # for Sigma_plus
     Sigma_plus_index = 0  # for Sigma_plus
     delta_Sigma_plus = -1
+    z0r_estimation = None
 
     for i, Par in enumerate(np.geomspace(Par_max, Par_min, n)):
         vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
-        z0r, result = vs.fit()
+        z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+        z0r_estimation = z0r
+        tau = vs.tau()
 
-        print('Teff = {:g}, tau = {:g}, z0r = {:g}'.format(Teff, vs.tau(), z0r))
+        print('Mdot = {:1.3e} g/s, Teff = {:g} K, tau = {:g}, z0r = {:g}'.format(Mdot, Teff, tau, z0r))
 
-        if vs.tau() < 1 and tau_key:
+        if tau < 1 and tau_key:
             tau_index = i
             tau_key = False
             if tau_break:
@@ -405,7 +398,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         T_c_plot.append(T_C)
         rho_c_plot.append(rho_C)
         z0r_plot.append(z0r)
-        tau_plot.append(vs.tau())
+        tau_plot.append(tau)
         P_c_plot.append(P_C)
         Mdot_plot.append(Mdot)
         Teff_plot.append(Teff)
@@ -432,8 +425,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             elif output == 'T_C':
                 Output_Plot.append(T_C)
             else:
-                print('Incorrect output, try Teff, Mdot, Mdot_Mdot_edd, F, z0r or T_C')
-                raise Exception
+                raise Exception('Incorrect output, try Teff, Mdot, Mdot_Mdot_edd, F, z0r or T_C')
 
         delta = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
         PradPgas_Plot.append(delta)
@@ -468,7 +460,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             QirrQvis_plot.append(QirrQvis)
         print(i + 1)
 
-    if savedots:
+    if path_dots is not None:
         rg = 2 * G * M / c ** 2
         header = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c'
         header_end = '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, structure = {}'.format(
@@ -537,13 +529,13 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     if set_title:
         plt.title(title)
     plt.tight_layout()
-    if save_plot:
+    if path_plot is not None:
         plt.savefig(path_plot)
         plt.close()
 
 
 def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin', mu=0.6, abundance='solar',
-                n=100, tau_break=True, savedots=True, path_dots=None):
+                n=100, tau_break=True, path_dots=None, add_Pi_values=True):
     """
     Calculates radial structure of disc. Return table, which contains input parameters of the system,
     surface density Sigma0, viscous torque F, accretion rate Mdot, effective temperature Teff,
@@ -580,28 +572,34 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         Number of dots to calculate.
     tau_break : bool
         Whether to end calculation, when tau<1.
-    savedots : bool
-        Whether to save data in table.
     path_dots : str
         Where to save data table.
+    add_Pi_values : bool
+        Whether to write Pi-parameters (see Ketsaris & Shakura, 1998) to the output file.
 
     """
-    if savedots and path_dots is None:
-        raise Exception("Radial_Plot() missing 1 required positional argument: 'path_dots'")
+    if path_dots is None:
+        print("ATTENTION: the data wil not be saved, since 'path_dots' is None")
     Sigma_plot, Teff_plot, F_plot = [], [], []
     varkappa_c_plot, T_c_plot, P_c_plot, rho_c_plot = [], [], [], []
     z0r_plot, tau_plot, PradPgas_Plot = [], [], []
     conv_param_z_plot, conv_param_sigma_plot = [], []
+    Pi_plot = []
     free_e_plot = []
     r_plot = np.geomspace(r_start, r_end, n)
     tau_key = True
     tau_index = n
+    z0r_estimation = None
+
     for i, r in enumerate(r_plot):
         vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
-        z0r, result = vs.fit()
-        print('Teff = {:g}, tau = {:g}, z0r = {:g}'.format(Teff, vs.tau(), z0r))
+        z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+        z0r_estimation = z0r
+        tau = vs.tau()
+        rg = 2 * G * M / c ** 2
+        print('r = {:1.3e} cm = {:g} rg, Teff = {:g} K, tau = {:g}, z0r = {:g}'.format(r, r / rg, Teff, tau, z0r))
 
-        if vs.tau() < 1 and tau_key:
+        if tau < 1 and tau_key:
             tau_index = i
             tau_key = False
             if tau_break:
@@ -614,13 +612,16 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         T_c_plot.append(T_C)
         rho_c_plot.append(rho_C)
         z0r_plot.append(z0r)
-        tau_plot.append(vs.tau())
+        tau_plot.append(tau)
         P_c_plot.append(P_C)
         Teff_plot.append(Teff)
         F_plot.append(F)
 
         delta = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
         PradPgas_Plot.append(delta)
+
+        if add_Pi_values:
+            Pi_plot.append(vs.Pi_finder())
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
@@ -634,9 +635,9 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
             pass
         print(i + 1)
 
-    if savedots:
+    if path_dots is not None:
         rg = 2 * G * M / c ** 2
-        header_start = 'r \tr/rg \tSigma0 \tTeff \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c'
+        header = 'r \tr/rg \tSigma0 \tTeff \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c'
         header_end = '\nM = {:e} Msun, alpha = {}, Mdot = {} g/s, structure = {}'.format(
             M / M_sun, alpha, Mdot, structure)
         if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
@@ -646,11 +647,14 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         dots_table = np.c_[r_plot[:tau_index], r_plot[:tau_index] / rg, Sigma_plot, Teff_plot, F_plot,
                            z0r_plot, rho_c_plot, T_c_plot, P_c_plot, tau_plot, PradPgas_Plot, varkappa_c_plot]
         if len(free_e_plot) != 0:
-            header = header_start + ' \tfree_e \tconv_param_z \tconv_param_sigma' + \
-                     '\nAll values a in CGS units.' + header_end
+            header += ' \tfree_e \tconv_param_z \tconv_param_sigma'
             dots_table = np.c_[dots_table, free_e_plot, conv_param_z_plot, conv_param_sigma_plot]
-        else:
-            header = header_start + '\nAll values a in CGS units.' + header_end
+        if add_Pi_values:
+            header += ' \tPi1 \tPi2 \tPi3 \tPi4'
+            dots_table = np.c_[dots_table, Pi_plot]
+
+        header = header + '\nAll values a in CGS units.' + header_end
+
         np.savetxt(path_dots, dots_table, header=header)
 
 
@@ -666,7 +670,7 @@ def main():
     print('M = {:g} M_sun \nr = {:g} cm \nalpha = {:g} \nTeff = {:g} K'.format(M / M_sun, r, alpha, Teff))
 
     Structure_Plot(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100, add_Pi_values=True,
-                   savedots=True, path_dots='fig/vs.dat', make_pic=True, save_plot=True, path_plot='fig/vs.pdf',
+                   path_dots='fig/vs.dat', make_pic=True, path_plot='fig/vs.pdf',
                    set_title=True,
                    title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, T_{{\rm eff}} = {:g} \, '
                          r'{{\rm K}}$'.format(M / M_sun, r, alpha, Teff))
@@ -674,9 +678,9 @@ def main():
 
     print('Calculation of S-curve for Teff from 4e3 K to 1e4 K. Return S-curve table and Sigma0-Mdot plot.\n')
 
-    S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False, savedots=True,
+    S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False,
             path_dots='fig/S-curve.dat', add_Pi_values=True, make_pic=True, output='Mdot',
-            xscale='parlog', yscale='parlog', save_plot=True, path_plot='fig/S-curve.pdf', set_title=True,
+            xscale='parlog', yscale='parlog', path_plot='fig/S-curve.pdf', set_title=True,
             title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / M_sun, r, alpha))
     print('S-curve is calculated successfully. Plot is saved to fig/S-curve.pdf, table is saved to fig/S-curve.dat.')
 
@@ -685,7 +689,7 @@ def main():
 
     rg = 2 * G * M / c ** 2
     Radial_Plot(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200,
-                tau_break=True, savedots=True, path_dots='fig/radial_struct.dat')
+                tau_break=True, path_dots='fig/radial_struct.dat', add_Pi_values=True)
     print('Radial structure is calculated successfully. Table is saved to fig/radial_struct.dat.')
 
     return
