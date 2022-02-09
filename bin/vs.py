@@ -324,6 +324,7 @@ class BaseVerticalStructure:
                 break
 
         z0r, result = brentq(dq, z0r, z0r / factor, full_output=True)
+        self.z0 = z0r * self.r
         return z0r, result
 
 

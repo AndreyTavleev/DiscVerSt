@@ -38,7 +38,8 @@ M_sun = const.M_sun.cgs.value
 c = const.c.cgs.value
 
 
-def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar'):
+def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar', nu_irr=None, F_nu_irr=None,
+                    C_irr=None, T_irr=None, cos_theta_irr=None):
     h = np.sqrt(G * M * r)
     rg = 2 * G * M / c ** 2
     r_in = 3 * rg
@@ -104,22 +105,15 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
             if np.isnan(mesa_vs):
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
-            vs = mesa_vs.MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(M, alpha, r, F, C_irr=0.0014,
-                                                                                       abundance=abundance)
+            vs = mesa_vs.MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(M, alpha, r, F, C_irr=C_irr,
+                                                                                       T_irr=T_irr, abundance=abundance)
     elif structure == 'MesaRadConvIrr':
         try:
             if np.isnan(mesa_vs):
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
-            # nu_irr = 7.3e15
-            nu_irr = 2.4e18
-            # nu_irr = np.geomspace(7.3e15, 2.4e18, 100)  # from 0.03 to 10 keV
-            # nu_irr = np.linspace(2.4e17, 2.4e18, 2)
-            eta_accr = 0.1
-            # E = (const.h * nu_irr * Hz).to('keV').value
-            # spectra = (E / 7.5) ** (-0.4) * np.exp(-E/7.5)
-            F_nu_irr = eta_accr * Mdot * c ** 2 / (4 * np.pi * r ** 2)
-            vs = mesa_vs.MesaVerticalStructureRadConvExternalIrradiation(M, alpha, r, F, nu_irr, F_nu_irr,
+            vs = mesa_vs.MesaVerticalStructureRadConvExternalIrradiation(M, alpha, r, F, nu_irr=nu_irr,
+                                                                         F_nu_irr=F_nu_irr, cos_theta_irr=cos_theta_irr,
                                                                          abundance=abundance)
     elif structure == 'MesaRadConvAdv':
         try:
@@ -140,7 +134,8 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
         except TypeError:
             vs = mesa_vs.MesaIdealVerticalStructureAdvection(M, alpha, r, F, abundance=abundance, mu=mu)
     else:
-        raise Exception('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
+        raise Exception('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst, MesaRadConv,'
+                        ' MesaRadConvIrrZero or MesaRadConvIrr')
 
     return vs, F, Teff, Mdot
 
@@ -178,9 +173,10 @@ def Convective_parameter(vs):
     return conv_param_z, conv_param_sigma
 
 
-def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', abundance='solar', n=100,
-                   z0r_estimation=None, add_Pi_values=True, path_dots=None, make_pic=True,
-                   path_plot=None, set_title=True, title='Vertical structure'):
+def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', abundance='solar', nu_irr=None,
+                   F_nu_irr=None, cos_theta_irr=None, C_irr=None, T_irr=None, z0r_estimation=None,
+                   Sigma0_estimation=None, n=100, add_Pi_values=True, path_dots=None,
+                   make_pic=True, path_plot=None, set_title=True, title='Vertical structure'):
     """
     Calculates vertical structure and makes table with disc parameters as functions of vertical coordinate.
     Table also contains input parameters of structure, parameters in the symmetry plane and parameter normalisations.
@@ -204,16 +200,32 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         Molecular weight. Use in case of ideal gas EOS.
     structure : str
         Type of vertical structure. Can be 'Kramers', 'BellLin',
-        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst' or 'MesaRadConv'.
+        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst', 'MesaRadConv', 'MesaRadConvIrrZero' or 'MesaRadConvIrr'.
     abundance : dict or str
         Chemical composition of disc. Use in case of Mesa EOS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
+    nu_irr : array-like
+        If structure == 'MesaRadConvIrr', nu_irr is the (X-ray) frequency array for spectral external irradiation flux.
+        Size of nu_irr must be equal to F_nu_irr.size.
+    F_nu_irr : array-like
+        If structure == 'MesaRadConvIrr', F_nu_irr is the spectral (X-ray) external irradiation flux.
+        Size of F_nu_irr must be equal to nu_irr.size.
+    cos_theta_irr : double
+        If structure == 'MesaRadConvIrr',cos_theta_irr is the cosine of angle
+        of incidence for external irradiation flux.
+    C_irr : double
+        If structure == 'MesaRadConvIrrZero', C_irr is the irradiation constant.
+    T_irr : double
+        If structure == 'MesaRadConvIrrZero', T_irr is the irradiation temperature.
     n : int
         Number of dots to calculate.
     z0r_estimation : double
         Start estimation of z0r free parameter to fit the structure. Default is None,
         the estimation is calculated automatically.
+    Sigma0_estimation : double
+        If structure == 'MesaRadConvIrr', it's the start estimation of Sigma0 free parameter to fit the structure.
+        Default is None, the estimation is calculated automatically.
     add_Pi_values : bool
         Whether to write Pi-parameters (see Ketsaris & Shakura, 1998) to the output file header.
     path_dots : str
@@ -232,8 +244,15 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         print("ATTENTION: the data wil not be saved, since 'path_dots' is None")
     if make_pic and path_plot is None:
         print("ATTENTION: the plot will only be created, but not be saved, since 'path_plot' is None")
-    vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
-    z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+    vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance,
+                                        nu_irr=nu_irr, F_nu_irr=F_nu_irr, cos_theta_irr=cos_theta_irr,
+                                        C_irr=C_irr, T_irr=T_irr)
+    if structure == 'MesaRadConvIrr':
+        result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=Sigma0_estimation)
+        z0r, sigma_par = result.x
+        print('{}\n{}\n{}, {}\n\n'.format(result.x, result.fun, result.success, result.message))
+    else:
+        z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
     rg = 2 * G * M / c ** 2
     t = np.linspace(0, 1, n)
     S, P, Q, T = vs.integrate(t)[0]
@@ -260,6 +279,9 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         header_input += ', mu = {}'.format(mu)
     else:
         header_input += ', abundance = {}'.format(abundance)
+    if structure in ['MesaRadConvIrr', 'MesaRadConvIrrZero']:
+        header_input += ', T_irr = {:g} K, C_irr = {:g}, tau_Xray = {:g}, QirrQvis = {:g}'.format(
+            vs.T_irr, vs.C_irr, vs.tau_Xray, vs.Q_irr / vs.Q0)
     header_C = '\nvarkappa_C = {:e} cm^2/g, rho_C = {:e} g/cm^3, T_C = {:e} K, P_C = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
                'PradPgas_C = {:e}, z0r = {:e}, tau = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r, tau)
     header_norm = '\nSigma_norm = {:e}, P_norm = {:e}, T_norm = {:e}, Q_norm = {:e}'.format(
@@ -286,10 +308,10 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         plt.close()
 
 
-def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu=0.6, abundance='solar', n=100,
-            tau_break=True, path_dots=None, add_Pi_values=True, make_pic=True,
-            output='Mdot', xscale='log', yscale='log', path_plot=None,
-            set_title=True, title='S-curve'):
+def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu=0.6, abundance='solar', nu_irr=None,
+            F_nu_irr=None, cos_theta_irr=None, C_irr=None, T_irr=None, n=100, tau_break=True,
+            path_dots=None, add_Pi_values=True, make_pic=True, output='Mdot', xscale='log', yscale='log',
+            path_plot=None, set_title=True, title='S-curve'):
     """
     Calculates S-curve and makes table with disc parameters on the S-curve.
     Table contains input parameters of system, surface density Sigma0, viscous torque F,
@@ -317,13 +339,26 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         'Mdot' (accretion rate) or 'Mdot_Mdot_edd' (Mdot in eddington limits).
     structure : str
         Type of vertical structure. Can be 'Kramers', 'BellLin',
-        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst' or 'MesaRadConv'.
+        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst', 'MesaRadConv', 'MesaRadConvIrrZero' or 'MesaRadConvIrr'.
     mu : double
         Molecular weight. Use in case of ideal gas EOS.
     abundance : dict or str
         Chemical composition of disc. Use in case of Mesa EOS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
+    nu_irr : array-like
+        If structure == 'MesaRadConvIrr', nu_irr is the (X-ray) frequency array for spectral external irradiation flux.
+        Size of nu_irr must be equal to F_nu_irr.size.
+    F_nu_irr : array-like
+        If structure == 'MesaRadConvIrr', F_nu_irr is the spectral (X-ray) external irradiation flux.
+        Size of F_nu_irr must be equal to nu_irr.size.
+    cos_theta_irr : double
+        If structure == 'MesaRadConvIrr',cos_theta_irr is the cosine of angle
+        of incidence for external irradiation flux.
+    C_irr : double
+        If structure == 'MesaRadConvIrrZero', C_irr is the irradiation constant.
+    T_irr : double
+        If structure == 'MesaRadConvIrrZero', T_irr is the irradiation temperature.
     n : int
         Number of dots to calculate.
     tau_break : bool
@@ -364,6 +399,10 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     free_e_plot = []
     Pi_plot = []
     QirrQvis_plot = []
+    fun_plot = []
+    success_plot = []
+    T_irr_plot, C_irr_plot, tau_Xray_plot = [], [], []
+    values_plot = []
 
     PradPgas10_index = 0  # where Prad = Pgas
     tau_index = n  # where tau < 1
@@ -376,13 +415,30 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     Sigma_plus_index = 0  # for Sigma_plus
     delta_Sigma_plus = -1
     z0r_estimation = None
+    sigma_par_estimation = None
+    sigma_temp = np.infty
+    except_fits = 0
 
     for i, Par in enumerate(np.geomspace(Par_max, Par_min, n)):
-        vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
-        z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
-        z0r_estimation = z0r
-        tau = vs.tau()
+        vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance,
+                                            nu_irr=nu_irr, F_nu_irr=F_nu_irr, cos_theta_irr=cos_theta_irr,
+                                            C_irr=C_irr, T_irr=T_irr)
+        if structure == 'MesaRadConvIrr':
+            # result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=sigma_par_estimation)
+            try:
+                result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=sigma_par_estimation)
+            except:
+                print('Except fit')
+                except_fits += 1
+                continue
+            z0r, sigma_par = result.x
+            z0r_estimation, sigma_par_estimation = z0r, 2 * sigma_par
+            z0r_estimation = z0r
+        else:
+            z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+            z0r_estimation = z0r
 
+        tau = vs.tau()
         print('Mdot = {:1.3e} g/s, Teff = {:g} K, tau = {:g}, z0r = {:g}'.format(Mdot, Teff, tau, z0r))
 
         if tau < 1 and tau_key:
@@ -393,6 +449,24 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
                 break
 
         varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
+        if structure == 'MesaRadConvIrr':
+            print('sigma/sigma_init = {}, sigma/sigma0 = {}, {}'.format(
+                vs.Sigma0_par / vs.Sigma0_init(), vs.Sigma0_par / Sigma0, result.success))
+            # print('fun = ', result.fun)
+            # print('mes = ', result.message)
+            print(result)
+
+            success_plot.append(result.success)
+            fun_plot.append(np.array([*result.fun, result.cost * 2]))
+            tau_Xray_plot.append(vs.tau_Xray)
+            values_plot.append(vs.values)
+
+        if structure in ['MesaRadConvIrrZero', 'MesaRadConvIrr']:
+            QirrQvis = vs.Q_irr / vs.Q0
+            QirrQvis_plot.append(QirrQvis)
+            T_irr_plot.append(vs.T_irr)
+            C_irr_plot.append(vs.C_irr)
+
         Sigma_plot.append(Sigma0)
         varkappa_c_plot.append(varkappa_C)
         T_c_plot.append(T_C)
@@ -453,11 +527,6 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
                 Sigma_minus_key = False
         except AttributeError:
             pass
-        if structure in ['MesaRadConvIrrZero', 'MesaRadConvIrr']:
-            ttt = np.linspace(0, 1, 100)
-            S, P, Q, T = vs.integrate(ttt)[0]
-            QirrQvis = Q[0] - 1
-            QirrQvis_plot.append(QirrQvis)
         print(i + 1)
 
     if path_dots is not None:
@@ -476,12 +545,24 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             header += ' \tfree_e \tconv_param_z \tconv_param_sigma'
             dots_table = np.c_[dots_table, free_e_plot, conv_param_z_plot, conv_param_sigma_plot]
         if structure in ['MesaRadConvIrrZero', 'MesaRadConvIrr']:
-            header += ' \tQirrQvis'
-            dots_table = np.c_[dots_table, QirrQvis_plot]
+            header += ' \tQirrQvis \tT_irr \tC_irr'
+            dots_table = np.c_[dots_table, QirrQvis_plot, T_irr_plot, C_irr_plot]
+        if structure == 'MesaRadConvIrr':
+            header += ' \ttau_Xray'
+            dots_table = np.c_[dots_table, tau_Xray_plot]
         if add_Pi_values:
             header += ' \tPi1 \tPi2 \tPi3 \tPi4'
             dots_table = np.c_[dots_table, Pi_plot]
+
+        if structure == 'MesaRadConvIrr':
+            dots_table = np.c_[dots_table, fun_plot, success_plot, values_plot]
+            # header += ' \tfun1 \tfun2 \tcost \tsuccess \tC_nu \tD_nu \tlamb \tk \tH_tot \ttau_Xray_minus_tau ' \
+            #           '\tcoeff_2 \tcoeff_1 \ttau_ph \ttau_Xray_1 \tSigma_ph \tT_irr_abs'
+            header += ' \tfun1 \tfun2 \tcost \tsuccess \tSigma_ph'
+
         header = header + '\nAll values are in CGS units.' + header_end
+        if structure == 'MesaRadConvIrr':
+            header += '\nExcept_fits = {}'.format(except_fits)
         np.savetxt(path_dots, dots_table, header=header)
 
     if not make_pic:
@@ -535,6 +616,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
 
 def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin', mu=0.6, abundance='solar',
+                nu_irr=None, F_nu_irr=None, cos_theta_irr=None, C_irr=None, T_irr=None,
                 n=100, tau_break=True, path_dots=None, add_Pi_values=True):
     """
     Calculates radial structure of disc. Return table, which contains input parameters of the system,
@@ -561,13 +643,26 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         Can be 'Mdot' (accretion rate) or 'Mdot_Mdot_edd' (Mdot in eddington limits).
     structure : str
         Type of vertical structure. Can be 'Kramers', 'BellLin',
-        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst' or 'MesaRadConv'.
+        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst', 'MesaRadConv', 'MesaRadConvIrrZero' or 'MesaRadConvIrr'.
     mu : double
         Molecular weight. Use in case of ideal gas EOS.
     abundance : dict or str
         Chemical composition of disc. Use in case of Mesa EOS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
+    nu_irr : array-like
+        If structure == 'MesaRadConvIrr', nu_irr is the (X-ray) frequency array for spectral external irradiation flux.
+        Size of nu_irr must be equal to F_nu_irr.size.
+    F_nu_irr : array-like
+        If structure == 'MesaRadConvIrr', F_nu_irr is the spectral (X-ray) external irradiation flux.
+        Size of F_nu_irr must be equal to nu_irr.size.
+    cos_theta_irr : double
+        If structure == 'MesaRadConvIrr',cos_theta_irr is the cosine of angle
+        of incidence for external irradiation flux.
+    C_irr : double
+        If structure == 'MesaRadConvIrrZero', C_irr is the irradiation constant.
+    T_irr : double
+        If structure == 'MesaRadConvIrrZero', T_irr is the irradiation temperature.
     n : int
         Number of dots to calculate.
     tau_break : bool
@@ -581,31 +676,49 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
     if path_dots is None:
         print("ATTENTION: the data wil not be saved, since 'path_dots' is None")
     Sigma_plot, Teff_plot, F_plot = [], [], []
+    r_plot = []
     varkappa_c_plot, T_c_plot, P_c_plot, rho_c_plot = [], [], [], []
     z0r_plot, tau_plot, PradPgas_Plot = [], [], []
     conv_param_z_plot, conv_param_sigma_plot = [], []
     Pi_plot = []
     free_e_plot = []
-    r_plot = np.geomspace(r_start, r_end, n)
-    tau_key = True
-    tau_index = n
-    z0r_estimation = None
+    QirrQvis_plot = []
+    fun_plot = []
+    success_plot = []
+    T_irr_plot, C_irr_plot, tau_Xray_plot = [], [], []
 
-    for i, r in enumerate(r_plot):
-        vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
-        z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
-        z0r_estimation = z0r
+    tau_key = True
+    z0r_estimation = None
+    sigma_par_estimation = None
+
+    for i, r in enumerate(np.geomspace(r_start, r_end, n)):
+        vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance,
+                                            nu_irr=nu_irr, F_nu_irr=F_nu_irr, cos_theta_irr=cos_theta_irr,
+                                            C_irr=C_irr, T_irr=T_irr)
+
+        if structure == 'MesaRadConvIrr':
+            try:
+                result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=sigma_par_estimation)
+            except:
+                print('Except fit')
+                continue
+            z0r, sigma_par = result.x
+            z0r_estimation, sigma_par_estimation = z0r, 2 * sigma_par
+        else:
+            z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+            z0r_estimation = z0r
+
         tau = vs.tau()
         rg = 2 * G * M / c ** 2
         print('r = {:1.3e} cm = {:g} rg, Teff = {:g} K, tau = {:g}, z0r = {:g}'.format(r, r / rg, Teff, tau, z0r))
 
         if tau < 1 and tau_key:
-            tau_index = i
             tau_key = False
             if tau_break:
                 print('Note: tau<1, tau_break=True. Cycle ends, when tau<1.')
                 break
 
+        r_plot.append(r)
         varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
         Sigma_plot.append(Sigma0)
         varkappa_c_plot.append(varkappa_C)
@@ -622,6 +735,22 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
 
         if add_Pi_values:
             Pi_plot.append(vs.Pi_finder())
+
+        if structure == 'MesaRadConvIrr':
+            print('sigma/sigma_init = {}, sigma/sigma0 = {}, {}'.format(
+                vs.Sigma0_par / vs.Sigma0_init(), vs.Sigma0_par / Sigma0, result.success))
+            print('fun = ', result.fun)
+            print('mes = ', result.message)
+
+            success_plot.append(result.success)
+            fun_plot.append(result.fun)
+            tau_Xray_plot.append(vs.tau_Xray)
+
+        if structure in ['MesaRadConvIrr', 'MesaRadConvIrrZero']:
+            QirrQvis = vs.Q_irr / vs.Q0
+            QirrQvis_plot.append(QirrQvis)
+            T_irr_plot.append(vs.T_irr)
+            C_irr_plot.append(vs.C_irr)
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
@@ -644,16 +773,25 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
             header_end += ', mu = {}'.format(mu)
         else:
             header_end += ', abundance = {}'.format(abundance)
-        dots_table = np.c_[r_plot[:tau_index], r_plot[:tau_index] / rg, Sigma_plot, Teff_plot, F_plot,
+        dots_table = np.c_[r_plot, np.array(r_plot) / rg, Sigma_plot, Teff_plot, F_plot,
                            z0r_plot, rho_c_plot, T_c_plot, P_c_plot, tau_plot, PradPgas_Plot, varkappa_c_plot]
         if len(free_e_plot) != 0:
             header += ' \tfree_e \tconv_param_z \tconv_param_sigma'
             dots_table = np.c_[dots_table, free_e_plot, conv_param_z_plot, conv_param_sigma_plot]
+        if structure in ['MesaRadConvIrrZero', 'MesaRadConvIrr']:
+            header += ' \tQirrQvis \tT_irr \tC_irr'
+            dots_table = np.c_[dots_table, QirrQvis_plot, T_irr_plot, C_irr_plot]
+        if structure == 'MesaRadConvIrr':
+            header += ' \ttau_Xray'
+            dots_table = np.c_[dots_table, tau_Xray_plot]
         if add_Pi_values:
             header += ' \tPi1 \tPi2 \tPi3 \tPi4'
             dots_table = np.c_[dots_table, Pi_plot]
+        if structure == 'MesaRadConvIrr':
+            dots_table = np.c_[dots_table, fun_plot, success_plot]
+            header += '\t fun1 \tfun2 \tsuccess'
 
-        header = header + '\nAll values a in CGS units.' + header_end
+        header = header + '\nAll values are in CGS units.' + header_end
 
         np.savetxt(path_dots, dots_table, header=header)
 
