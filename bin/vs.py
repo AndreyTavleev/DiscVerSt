@@ -296,6 +296,12 @@ class BaseVerticalStructure:
         """
         Solve optimization problem and calculate the vertical structure.
 
+        Parameters
+        ----------
+        start_estimation_z0r : double
+            Start estimation of z0r free parameter to fit the structure. Default is None,
+            the estimation is calculated automatically.
+
         Returns
         -------
         double and result
