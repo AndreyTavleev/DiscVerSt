@@ -259,14 +259,14 @@ class ExternalIrradiation:
         return result
 
     def J_tot(self, F_nu, y, tau_Xray, t):
-        sigma = 0.34
+        sigma_sc = 0.34
         try:
             _ = len(self.nu_irr)
             k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass
         except TypeError:
             k_d_nu = self.sigma_d_nu(self.nu_irr) / proton_mass  # cross-section per proton mass
-        tau = (sigma + k_d_nu) * y[Vars.S] * self.sigma_norm / 2  # tau = varkappa * mass_coord (Sigma / 2)
-        lamb = sigma / (sigma + k_d_nu)
+        tau = (sigma_sc + k_d_nu) * y[Vars.S] * self.sigma_norm / 2  # tau = varkappa * mass_coord (Sigma / 2)
+        lamb = sigma_sc / (sigma_sc + k_d_nu)
         k = np.sqrt(3 * (1 - lamb))
         zeta_0 = self.cos_theta_irr
 
@@ -282,7 +282,7 @@ class ExternalIrradiation:
 
         i = 0
         if (tau_Xray[i] - tau[i]) < 0:
-            print('tau0 < tau, J, min nu: ', t, sigma + k_d_nu[i],
+            print('tau0 < tau, J, min nu: ', t, sigma_sc + k_d_nu[i],
                   self.Sigma0_par, y[Vars.S] * self.sigma_norm / 2,
                   self.Sigma0_par - y[Vars.S] * self.sigma_norm / 2,
                   tau_Xray[0], tau[0], tau_Xray[i] - tau[i],
@@ -306,15 +306,14 @@ class ExternalIrradiation:
         return J_tot
 
     def H_tot(self, F_nu, tau_Xray):
-        sigma = 0.34
+        sigma_sc = 0.34
         try:
             _ = len(self.nu_irr)
             k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass
         except TypeError:
             k_d_nu = self.sigma_d_nu(self.nu_irr) / proton_mass  # cross-section per proton mass
-        Sigma_ph = self.P_ph() / (self.z0 * self.omegaK ** 2)
-        tau = (sigma + k_d_nu) * Sigma_ph  # varkappa * Sigma_ph
-        lamb = sigma / (sigma + k_d_nu)
+        tau = (sigma_sc + k_d_nu) * self.Sigma_ph
+        lamb = sigma_sc / (sigma_sc + k_d_nu)
         k = np.sqrt(3 * (1 - lamb))
         zeta_0 = self.cos_theta_irr
 
@@ -330,8 +329,8 @@ class ExternalIrradiation:
 
         i = 0
         if (tau_Xray[i] - tau[i]) < 0:
-            print('tau0 < tau, H, min nu: ', self.nu_irr[i], sigma + k_d_nu[i],
-                  self.Sigma0_par - Sigma_ph,
+            print('tau0 < tau, H, min nu: ', self.nu_irr[i], sigma_sc + k_d_nu[i],
+                  self.Sigma0_par - self.Sigma_ph,
                   tau_Xray[i], tau[i], tau_Xray[i] - tau[i],
                   -k[i] * (tau_Xray[i] - tau[i]), -(tau_Xray[i] - tau[i]) / zeta_0, H_tot[i])
             raise Exception
@@ -355,8 +354,6 @@ class ExternalIrradiation:
         #                         np.exp(-k * tau) - np.exp(-k * (tau_Xray - tau)),
         #                         tau, tau_Xray, self.P_ph() / (self.z0 * self.omegaK ** 2)])
 
-        self.values = Sigma_ph
-
         # print('coeff_tot2 = ', (np.exp(-tau / zeta_0) - np.exp(-(tau_Xray - tau) / zeta_0)))
         # print('coeff_tot1 = ', (np.exp(-k * tau) - np.exp(-k * (tau_Xray - tau))))
 
@@ -364,14 +361,14 @@ class ExternalIrradiation:
 
     def epsilon(self, y, t):
         rho = self.rho(y, full_output=False)
-        sigma = 0.34
+        sigma_sc = 0.34
         try:
             _ = len(self.nu_irr)
             k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass
         except TypeError:
             k_d_nu = self.sigma_d_nu(self.nu_irr) / proton_mass  # cross-section per proton mass
 
-        tau_Xray = (sigma + k_d_nu) * self.Sigma0_par
+        tau_Xray = (sigma_sc + k_d_nu) * self.Sigma0_par
 
         try:
             _ = len(self.F_nu_irr)
@@ -383,14 +380,14 @@ class ExternalIrradiation:
         return epsilon
 
     def Q_irr_ph(self):
-        sigma = 0.34
+        sigma_sc = 0.34
         try:
             _ = len(self.nu_irr)
             k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass
         except TypeError:
             k_d_nu = self.sigma_d_nu(self.nu_irr) / proton_mass  # cross-section per proton mass
 
-        tau_Xray = (sigma + k_d_nu) * self.Sigma0_par
+        tau_Xray = (sigma_sc + k_d_nu) * self.Sigma0_par
 
         try:
             _ = len(self.F_nu_irr)
@@ -400,17 +397,13 @@ class ExternalIrradiation:
             Qirr = self.H_tot(self.F_nu_irr, tau_Xray)
             self.tau_Xray = tau_Xray
 
-        print('T_irr = {:g}'.format((Qirr / sigmaSB) ** (1 / 4)))
-
-        h = np.sqrt(self.GM * self.r)
-        eta_accr = 0.1
-        rg = 2 * self.GM / c ** 2
-        r_in = 3 * rg
-        func = 1 - np.sqrt(r_in / self.r)
-        Mdot = self.F / (h * func)
-
         self.T_irr = (Qirr / sigmaSB) ** (1 / 4)
-        self.C_irr = Qirr / (eta_accr * Mdot * c ** 2) * (4 * np.pi * self.r ** 2)
+        print('T_irr = {:g}'.format(self.T_irr))
+        try:
+            _ = len(self.F_nu_irr)
+            self.C_irr = Qirr / simps(self.F_nu_irr, self.nu_irr)
+        except TypeError:
+            self.C_irr = Qirr / self.F_nu_irr
         self.Q_irr = Qirr
         return Qirr
 
@@ -431,10 +424,12 @@ class ExternalIrradiation:
 
         """
 
+        P_ph = self.P_ph()
+        self.Sigma_ph = P_ph / (self.z0 * self.omegaK ** 2)
         Q_initial = self.Q_initial()
         y = np.empty(4, dtype=np.float64)
-        y[Vars.S] = 2 * self.P_ph() / (self.z0 * self.omegaK ** 2) / self.sigma_norm  # 2 -> full mass coordinate Sigma
-        y[Vars.P] = self.P_ph() / self.P_norm
+        y[Vars.S] = 2 * self.Sigma_ph / self.sigma_norm  # 2 -> full mass coordinate Sigma
+        y[Vars.P] = P_ph / self.P_norm
         y[Vars.Q] = Q_initial
         y[Vars.T] = (Q_initial * self.Q_norm / sigmaSB) ** (1 / 4) / self.T_norm  # Tph^4 = Teff^4 + Tirr^4
         return y
@@ -480,11 +475,11 @@ class ExternalIrradiation:
         else:
             norm = start_estimation_Sigma0
 
-        # result = root(self.dq, x0=np.array([x0_z0r, 1]), args=norm, method='hybr')
+        result = root(self.dq, x0=np.array([x0_z0r, 1]), args=norm, method='hybr')
         # print(result)
 
-        result = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
-                               verbose=2, loss='linear')
+        # result = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
+        #                        verbose=2, loss='linear')
         result.x = abs(result.x) * np.array([1, norm])
         self.Sigma0_par = result.x[1]
         self.z0 = result.x[0] * self.r
@@ -502,14 +497,15 @@ class ExternalIrradiationZeroAssumption:
 
         """
 
+        P_ph = self.P_ph()
+        self.Sigma_ph = P_ph / (self.z0 * self.omegaK ** 2)
         Q_initial = self.Q_initial()
         y = np.empty(4, dtype=np.float64)
         # y[Vars.S] = 0  # Whether to take into account Sigma_ph
-        y[Vars.S] = 2 * self.P_ph() / (self.z0 * self.omegaK ** 2) / self.sigma_norm  # 2 -> full mass coordinate Sigma
-        y[Vars.P] = self.P_ph() / self.P_norm
+        y[Vars.S] = 2 * self.Sigma_ph / self.sigma_norm  # 2 -> full mass coordinate Sigma
+        y[Vars.P] = P_ph / self.P_norm
         y[Vars.Q] = Q_initial
         y[Vars.T] = (self.Teff ** 4 + self.T_irr ** 4) ** (1 / 4) / self.T_norm
-        self.values = self.P_ph() / (self.z0 * self.omegaK ** 2)
         return y
 
 
@@ -569,7 +565,7 @@ class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityM
         self.C_irr = None
         self.tau_Xray = None
         self.Q_irr = None
-        self.values = None
+        self.Sigma_ph = None
 
 
 class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,
@@ -596,6 +592,7 @@ class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin
         else:
             raise Exception('Only one of (C_irr, T_irr) is required.')
         print('C_irr, T_irr = ', self.C_irr, self.T_irr)
+        self.Sigma_ph = None
 
 
 class MesaVerticalStructureAdvection(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, Advection,

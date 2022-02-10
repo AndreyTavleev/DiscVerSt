@@ -402,7 +402,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     fun_plot = []
     success_plot = []
     T_irr_plot, C_irr_plot, tau_Xray_plot = [], [], []
-    values_plot = []
+    Sigma_ph_plot = []
 
     PradPgas10_index = 0  # where Prad = Pgas
     tau_index = n  # where tau < 1
@@ -457,9 +457,12 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             print(result)
 
             success_plot.append(result.success)
-            fun_plot.append(np.array([*result.fun, result.cost * 2]))
+            try:
+                fun_plot.append(np.array([*result.fun, result.cost * 2]))
+            except KeyError:
+                fun_plot.append(np.array([*result.fun, result.fun[0] ** 2 + result.fun[1] ** 2]))
             tau_Xray_plot.append(vs.tau_Xray)
-            values_plot.append(vs.values)
+            Sigma_ph_plot.append(vs.Sigma_ph)
 
         if structure in ['MesaRadConvIrrZero', 'MesaRadConvIrr']:
             QirrQvis = vs.Q_irr / vs.Q0
@@ -555,9 +558,9 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             dots_table = np.c_[dots_table, Pi_plot]
 
         if structure == 'MesaRadConvIrr':
-            dots_table = np.c_[dots_table, fun_plot, success_plot, values_plot]
+            dots_table = np.c_[dots_table, fun_plot, success_plot, Sigma_ph_plot]
             # header += ' \tfun1 \tfun2 \tcost \tsuccess \tC_nu \tD_nu \tlamb \tk \tH_tot \ttau_Xray_minus_tau ' \
-            #           '\tcoeff_2 \tcoeff_1 \ttau_ph \ttau_Xray_1 \tSigma_ph \tT_irr_abs'
+            #           '\tcoeff_2 \tcoeff_1 \ttau_ph \ttau_Xray_1 \tSigma_ph'
             header += ' \tfun1 \tfun2 \tcost \tsuccess \tSigma_ph'
 
         header = header + '\nAll values are in CGS units.' + header_end
