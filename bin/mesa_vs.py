@@ -59,7 +59,7 @@ class AdiabaticTempGradient:
     """
 
     def dlnTdlnP(self, y, t):
-        rho, eos = self.rho(y, True)
+        rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, full_output=True)
         return eos.grad_ad
 
 
