@@ -20,7 +20,6 @@ from vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient
 
 sigmaSB = const.sigma_sb.cgs.value
 sigmaT = const.sigma_T.cgs.value
-mu = const.u.cgs.value
 c = const.c.cgs.value
 pl_const = const.h
 G = const.G.cgs.value
