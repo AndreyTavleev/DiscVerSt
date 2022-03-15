@@ -316,13 +316,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         raise Exception('Incorrect xscale, try linear, log or parlog')
     if yscale not in ['linear', 'log', 'parlog']:
         raise Exception('Incorrect yscale, try linear, log or parlog')
-    Sigma_plot, Mdot_plot, Teff_plot, F_plot = [], [], [], []
+    Sigma_plot = []
     Output_Plot = []
-    varkappa_c_plot, T_c_plot, P_c_plot, rho_c_plot = [], [], [], []
-    z0r_plot, tau_plot, PradPgas_Plot = [], [], []
-    conv_param_z_plot, conv_param_sigma_plot = [], []
-    free_e_plot = []
-    Pi_plot = []
 
     PradPgas10_index = 0  # where Prad = Pgas
     tau_index = n  # where tau < 1
@@ -335,6 +330,21 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     Sigma_plus_index = 0  # for Sigma_plus
     delta_Sigma_plus = -1
     z0r_estimation = None
+
+    if path_dots is not None:
+        rg = 2 * G * M / c ** 2
+        header = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c'
+        header_end = '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, structure = {}'.format(
+            M / M_sun, alpha, r, r / rg, structure)
+        if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
+            header_end += ', mu = {}'.format(mu)
+        else:
+            header_end += ', abundance = {}'.format(abundance)
+            header += ' \tfree_e \tconv_param_z \tconv_param_sigma'
+        if add_Pi_values:
+            header += ' \tPi1 \tPi2 \tPi3 \tPi4'
+        header = header + '\nAll values are in CGS units.' + header_end
+        np.savetxt(path_dots, [], header=header)
 
     for i, Par in enumerate(np.geomspace(Par_max, Par_min, n)):
         vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
@@ -352,16 +362,26 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
                 break
 
         varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
+        PradPgas = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
+
+        output_string = [Sigma0, Teff, Mdot, F, z0r, rho_C, T_C, P_C, tau, PradPgas, varkappa_C]
+
+        rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
+        try:
+            _ = eos.grad_ad
+            free_e = np.exp(eos.lnfree_e)
+            conv_param_z, conv_param_sigma = Convective_parameter(vs)
+            output_string.extend([free_e, conv_param_z, conv_param_sigma])
+            if free_e < (1 + vs.mesaop.X) / 4 and Sigma_minus_key:
+                Sigma_minus_index = i
+                Sigma_minus_key = False
+        except AttributeError:
+            pass
+
+        if add_Pi_values:
+            output_string.extend(vs.Pi_finder())
+
         Sigma_plot.append(Sigma0)
-        varkappa_c_plot.append(varkappa_C)
-        T_c_plot.append(T_C)
-        rho_c_plot.append(rho_C)
-        z0r_plot.append(z0r)
-        tau_plot.append(tau)
-        P_c_plot.append(P_C)
-        Mdot_plot.append(Mdot)
-        Teff_plot.append(Teff)
-        F_plot.append(F)
 
         if i == 0:
             sigma_temp = Sigma0
@@ -386,54 +406,20 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             else:
                 raise Exception('Incorrect output, try Teff, Mdot, Mdot_Mdot_edd, F, z0r or T_C')
 
-        delta = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
-        PradPgas_Plot.append(delta)
-
-        if add_Pi_values:
-            Pi_plot.append(vs.Pi_finder())
-
-        if delta < 1.0 and key:
+        if PradPgas < 1.0 and key:
             PradPgas10_index = i
             key = False
         if delta_Sigma_plus > 0.0 and Sigma_plus_key:
             Sigma_plus_index = i
             Sigma_plus_key = False
 
-        rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
-        try:
-            _ = eos.grad_ad
-            free_e = np.exp(eos.lnfree_e)
-            free_e_plot.append(free_e)
-            conv_param_z, conv_param_sigma = Convective_parameter(vs)
-            conv_param_z_plot.append(conv_param_z)
-            conv_param_sigma_plot.append(conv_param_sigma)
-            if free_e < (1 + vs.mesaop.X) / 4 and Sigma_minus_key:
-                Sigma_minus_index = i
-                Sigma_minus_key = False
-        except AttributeError:
-            pass
+        output_string = np.array(output_string)
+        with open(path_dots, 'a') as file:
+            np.savetxt(file, output_string, newline=' ')
+            file.write('\n')
         print(i + 1)
-
-    if path_dots is not None:
-        rg = 2 * G * M / c ** 2
-        header = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c'
-        header_end = '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, structure = {}'.format(
-            M / M_sun, alpha, r, r / rg, structure)
-        if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
-            header_end += ', mu = {}'.format(mu)
-        else:
-            header_end += ', abundance = {}'.format(abundance)
-        header_end += '\nSigma_plus_index = {:d} \tSigma_minus_index = {:d}'.format(Sigma_plus_index, Sigma_minus_index)
-        dots_table = np.c_[Sigma_plot, Teff_plot, Mdot_plot, F_plot, z0r_plot, rho_c_plot,
-                           T_c_plot, P_c_plot, tau_plot, PradPgas_Plot, varkappa_c_plot]
-        if len(free_e_plot) != 0:
-            header += ' \tfree_e \tconv_param_z \tconv_param_sigma'
-            dots_table = np.c_[dots_table, free_e_plot, conv_param_z_plot, conv_param_sigma_plot]
-        if add_Pi_values:
-            header += ' \tPi1 \tPi2 \tPi3 \tPi4'
-            dots_table = np.c_[dots_table, Pi_plot]
-        header = header + '\nAll values are in CGS units.' + header_end
-        np.savetxt(path_dots, dots_table, header=header)
+    with open(path_dots, 'a') as file:
+        file.write('# Sigma_plus_index = {:d}  Sigma_minus_index = {:d}'.format(Sigma_plus_index, Sigma_minus_index))
 
     if not make_pic:
         return
@@ -531,16 +517,28 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
     """
     if path_dots is None:
         print("ATTENTION: the data wil not be saved, since 'path_dots' is None")
-    Sigma_plot, Teff_plot, F_plot = [], [], []
-    varkappa_c_plot, T_c_plot, P_c_plot, rho_c_plot = [], [], [], []
-    z0r_plot, tau_plot, PradPgas_Plot = [], [], []
-    conv_param_z_plot, conv_param_sigma_plot = [], []
-    Pi_plot = []
-    free_e_plot = []
     r_plot = np.geomspace(r_start, r_end, n)
     tau_key = True
-    tau_index = n
     z0r_estimation = None
+
+    if input == 'Mdot':
+        Mdot = Par
+    elif input == 'Mdot_Mdot_edd':
+        Mdot = Par * 1.39e18 * M / M_sun
+
+    if path_dots is not None:
+        header = 'r \tr/rg \tSigma0 \tTeff \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c'
+        header_end = '\nM = {:e} Msun, alpha = {}, Mdot = {} g/s, structure = {}'.format(
+            M / M_sun, alpha, Mdot, structure)
+        if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
+            header_end += ', mu = {}'.format(mu)
+        else:
+            header_end += ', abundance = {}'.format(abundance)
+            header += ' \tfree_e \tconv_param_z \tconv_param_sigma'
+        if add_Pi_values:
+            header += ' \tPi1 \tPi2 \tPi3 \tPi4'
+        header = header + '\nAll values are in CGS units.' + header_end
+        np.savetxt(path_dots, [], header=header)
 
     for i, r in enumerate(r_plot):
         vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
@@ -551,62 +549,33 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         print('r = {:1.3e} cm = {:g} rg, Teff = {:g} K, tau = {:g}, z0r = {:g}'.format(r, r / rg, Teff, tau, z0r))
 
         if tau < 1 and tau_key:
-            tau_index = i
             tau_key = False
             if tau_break:
                 print('Note: tau<1, tau_break=True. Cycle ends, when tau<1.')
                 break
 
         varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
-        Sigma_plot.append(Sigma0)
-        varkappa_c_plot.append(varkappa_C)
-        T_c_plot.append(T_C)
-        rho_c_plot.append(rho_C)
-        z0r_plot.append(z0r)
-        tau_plot.append(tau)
-        P_c_plot.append(P_C)
-        Teff_plot.append(Teff)
-        F_plot.append(F)
+        PradPgas = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
 
-        delta = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
-        PradPgas_Plot.append(delta)
-
-        if add_Pi_values:
-            Pi_plot.append(vs.Pi_finder())
+        output_string = [r, r / rg, Sigma0, Teff, F, z0r, rho_C, T_C, P_C, tau, PradPgas, varkappa_C]
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
             _ = eos.grad_ad
             free_e = np.exp(eos.lnfree_e)
-            free_e_plot.append(free_e)
             conv_param_z, conv_param_sigma = Convective_parameter(vs)
-            conv_param_z_plot.append(conv_param_z)
-            conv_param_sigma_plot.append(conv_param_sigma)
+            output_string.extend([free_e, conv_param_z, conv_param_sigma])
         except AttributeError:
             pass
-        print(i + 1)
 
-    if path_dots is not None:
-        rg = 2 * G * M / c ** 2
-        header = 'r \tr/rg \tSigma0 \tTeff \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c'
-        header_end = '\nM = {:e} Msun, alpha = {}, Mdot = {} g/s, structure = {}'.format(
-            M / M_sun, alpha, Mdot, structure)
-        if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
-            header_end += ', mu = {}'.format(mu)
-        else:
-            header_end += ', abundance = {}'.format(abundance)
-        dots_table = np.c_[r_plot[:tau_index], r_plot[:tau_index] / rg, Sigma_plot, Teff_plot, F_plot,
-                           z0r_plot, rho_c_plot, T_c_plot, P_c_plot, tau_plot, PradPgas_Plot, varkappa_c_plot]
-        if len(free_e_plot) != 0:
-            header += ' \tfree_e \tconv_param_z \tconv_param_sigma'
-            dots_table = np.c_[dots_table, free_e_plot, conv_param_z_plot, conv_param_sigma_plot]
         if add_Pi_values:
-            header += ' \tPi1 \tPi2 \tPi3 \tPi4'
-            dots_table = np.c_[dots_table, Pi_plot]
+            output_string.extend(vs.Pi_finder())
 
-        header = header + '\nAll values are in CGS units.' + header_end
-
-        np.savetxt(path_dots, dots_table, header=header)
+        output_string = np.array(output_string)
+        with open(path_dots, 'a') as file:
+            np.savetxt(file, output_string, newline=' ')
+            file.write('\n')
+        print(i + 1)
 
 
 def main():
