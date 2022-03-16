@@ -177,7 +177,7 @@ print(vertstr.tau())  # optical thickness of disc
 You can run your own files, that use this code, inside Docker
 
 ``` shell
-$ docker run -v/path_to/your_file/file.py:/app/your_code.py --rm -ti vertstr python3 file.py
+$ docker run -v/path_to/your_file/file.py:/app/file.py --rm -ti vertstr python3 file.py
 ```
 
 Use`mesa_vs` help to learn more about additional structure classes
