@@ -17,7 +17,7 @@ from types import FunctionType
 import numpy as np
 from astropy import constants as const
 from astropy import units
-from scipy.integrate import simps, solve_ivp
+from scipy.integrate import simps
 from scipy.optimize import root, least_squares, brentq
 
 from vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient
@@ -339,7 +339,7 @@ class ExternalIrradiation:
         return self.z0 * self.omegaK ** 2 / varkappa
 
     def P_ph_irr(self, Pph):
-        solution = self.photospheric_pressure_equation_irr(tau=2/3, P=Pph, Pph=Pph) * 2 / 3
+        solution = self.photospheric_pressure_equation_irr(tau=2 / 3, P=Pph, Pph=Pph) * 2 / 3
         return solution
 
     def Q_initial(self, Pph):
@@ -478,7 +478,7 @@ class ExternalIrradiationZeroAssumption:
         return self.z0 * self.omegaK ** 2 / varkappa
 
     def P_ph_irr(self, Pph):
-        solution = self.photospheric_pressure_equation(tau=2/3, P=Pph) * 2 / 3
+        solution = self.photospheric_pressure_equation(tau=2 / 3, P=Pph) * 2 / 3
         return solution
 
     def initial(self):
