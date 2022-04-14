@@ -122,6 +122,8 @@ class RadConvTempGradient:
         omega = varkappa * rho * H_ml
         A = 9 / 8 * omega ** 2 / (3 + omega ** 2)
         der = eos.dlnRho_dlnT_const_Pgas
+        if der > 0:
+            der = -1
 
         VV = -((3 + omega ** 2) / (
                 3 * omega)) ** 2 * eos.c_p ** 2 * rho ** 2 * H_ml ** 2 * self.omegaK ** 2 * self.z0 * (1 - t) / (
@@ -159,20 +161,24 @@ class RadConvTempGradientPrad:
         if t == 1:
             dTdz_der = (self.dQdz(y, t) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
                     16 * sigmaSB * self.T_norm ** 4)
-            A_der = - rho * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
-            B = 16 * sigmaSB / (3 * c) * self.T_norm ** 4 * y[Vars.T] ** 3 / self.P_norm
-            dPdz = A_der - B * dTdz_der
-            dlnTdlnP_rad = (y[Vars.P] / y[Vars.T]) * (dTdz_der / dPdz)
-            # if dlnTdlnP_rad < 0.0:
-            #     print('t = 1, ', dlnTdlnP_rad)
+            P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
+            dP_full_der = - rho * self.omegaK ** 2 * self.z0 ** 2
+            dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz_der / dP_full_der)
+            # # if dlnTdlnP_rad < 0.0:
+            # #     print('t = 1, ', dlnTdlnP_rad)
         else:
-            dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
-                    16 * sigmaSB * self.T_norm ** 4)
+            # dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
+            #         16 * sigmaSB * self.T_norm ** 4)
 
-            A = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
-            B = 16 * sigmaSB / (3 * c) * self.T_norm ** 4 * y[Vars.T] ** 3 / self.P_norm
-            dPdz = A - B * dTdz
-            dlnTdlnP_rad = (y[Vars.P] / y[Vars.T]) * (dTdz / dPdz)
+            # dTdz = (abs(y[Vars.Q] * self.Q_norm - self.Q_adv()) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 / (
+            #         16 * sigmaSB * self.T_norm ** 4)
+
+            dTdz = (abs(y[Vars.Q] * self.Q_norm - self.Q_adv(y[Vars.P] * self.P_norm)) / y[Vars.T] ** 3) * 3 * \
+                   varkappa * rho * self.z0 / (16 * sigmaSB * self.T_norm ** 4)
+
+            P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
+            dP_full = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2
+            dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz / dP_full)
 
             # if dlnTdlnP_rad < 0.0:
             #     print('t = {}, '.format(t), dlnTdlnP_rad)
@@ -189,6 +195,8 @@ class RadConvTempGradientPrad:
         omega = varkappa * rho * H_ml
         A = 9 / 8 * omega ** 2 / (3 + omega ** 2)
         der = eos.dlnRho_dlnT_const_Pgas
+        if der > 0:
+            der = -1
 
         VV = -((3 + omega ** 2) / (
                 3 * omega)) ** 2 * eos.c_p ** 2 * rho ** 2 * H_ml ** 2 * self.omegaK ** 2 * self.z0 * (1 - t) / (

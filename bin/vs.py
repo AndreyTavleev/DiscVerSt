@@ -14,7 +14,7 @@ from enum import IntEnum
 import numpy as np
 from astropy import constants as const
 from scipy.integrate import solve_ivp, simps
-from scipy.optimize import brentq
+from scipy.optimize import brentq, root
 
 sigmaSB = const.sigma_sb.cgs.value
 R_gas = const.R.cgs.value
@@ -142,9 +142,10 @@ class BaseVerticalStructure:
             self.photospheric_pressure_equation,
             [0, 2 / 3],
             [1e-7 * self.P_norm], rtol=self.eps
-            # [10], rtol=self.eps
+            # [self.P_norm], rtol=self.eps
         )
         # print(solution.y[0][-1])
+        # print(1e-7 * self.P_norm)
         return solution.y[0][-1]
 
     def Q_initial(self):
@@ -363,20 +364,24 @@ class RadiativeTempGradientPrad:
         if t == 1:
             dTdz_der = (self.dQdz(y, t) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
                     16 * sigmaSB * self.T_norm ** 4)
-            A_der = - rho * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
-            B = 16 * sigmaSB / (3 * c) * self.T_norm ** 4 * y[Vars.T] ** 3 / self.P_norm
-            dPdz = A_der - B * dTdz_der
-            dlnTdlnP_rad = (y[Vars.P] / y[Vars.T]) * (dTdz_der / dPdz)
+            P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
+            dP_full_der = - rho * self.omegaK ** 2 * self.z0 ** 2
+            dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz_der / dP_full_der)
             # # if dlnTdlnP_rad < 0.0:
             # #     print('t = 1, ', dlnTdlnP_rad)
         else:
-            dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
-                    16 * sigmaSB * self.T_norm ** 4)
+            # dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
+            #         16 * sigmaSB * self.T_norm ** 4)
 
-            A = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
-            B = 16 * sigmaSB / (3 * c) * self.T_norm ** 4 * y[Vars.T] ** 3 / self.P_norm
-            dPdz = A - B * dTdz
-            dlnTdlnP_rad = (y[Vars.P] / y[Vars.T]) * (dTdz / dPdz)
+            # dTdz = (abs(y[Vars.Q] * self.Q_norm - self.Q_adv()) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 / (
+            #         16 * sigmaSB * self.T_norm ** 4)
+
+            dTdz = (abs(y[Vars.Q] * self.Q_norm - self.Q_adv(y[Vars.P] * self.P_norm)) / y[Vars.T] ** 3) * 3 * \
+                   varkappa * rho * self.z0 / (16 * sigmaSB * self.T_norm ** 4)
+
+            P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
+            dP_full = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2
+            dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz / dP_full)
 
             # if dlnTdlnP_rad < 0.0:
             #     print('t = {}, '.format(t), dlnTdlnP_rad)
@@ -453,12 +458,19 @@ class Prad:
 
         A = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
         B = 16 * sigmaSB / (3 * c) * self.T_norm ** 4 * y[Vars.T] ** 3 / self.P_norm
+
+        P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
+        dP_full = A * self.P_norm
+
         grad = self.dlnTdlnP(y, t)
-        dTdz = grad * A * (y[Vars.T] / y[Vars.P]) / (1 + grad * B * y[Vars.T] / y[Vars.P])
+        dTdz = grad * dP_full * y[Vars.T] / P_full
         dy[Vars.S] = 2 * rho * self.z0 / self.sigma_norm
         dy[Vars.P] = A - B * dTdz
         dy[Vars.Q] = self.dQdz(y, t)
         dy[Vars.T] = dTdz
+
+        # if dy[Vars.P] < 0:
+        #     print(dy[Vars.P] < 0)
 
         # print(y, t, dy, grad)  # , self.z0 > 0, self.P_norm > 0, self.sigma_norm > 0)
         # print(rho, y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm)
@@ -527,12 +539,22 @@ def main():
     r_in = 3 * rg
     F = Mdot * h * (1 - np.sqrt(r_in / r))
     vs = IdealKramersVerticalStructure(M, alpha, r, F)
-    z0r, result = vs.fit()
-    if result.converged:
+    # z0r, result = vs.fit()
+    result = vs.fit()
+    # if result.converged:
+    if result.success:
         print('The vertical structure has been calculated successfully.')
+    z0r, sigma_par = result.x
     Pi = vs.Pi_finder()
     print('Pi parameters =', Pi)
     print('z0/r = ', z0r)
+    print(result)
+
+    varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
+    print(Sigma0 - sigma_par)
+    print(sigma_par)
+    print(vs.Sigma0_par)
+
     t = np.linspace(0, 1, 100)
     S, P, Q, T = vs.integrate(t)[0]
     import matplotlib.pyplot as plt

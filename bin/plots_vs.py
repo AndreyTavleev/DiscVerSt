@@ -409,6 +409,11 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
         delta = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
         PradPgas_Plot.append(delta)
+        print(delta)
+        if delta < 1:
+            print('Prad/Pgas = {}'.format(delta))
+            print(vs.Pi_finder())
+            return vs.Pi_finder(), delta
 
         if add_Pi_values:
             Pi_plot.append(vs.Pi_finder())
