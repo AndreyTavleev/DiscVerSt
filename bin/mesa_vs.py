@@ -12,18 +12,19 @@ Class MesaVerticalStructureRadConv -- for (tabular) Mesa opacities and EOS with 
 
 """
 import os
+from types import FunctionType
 
 import numpy as np
 from astropy import constants as const
-from astropy.units import Hz
-from scipy.integrate import simps
-from scipy.optimize import root, least_squares
+from astropy import units
+from scipy.integrate import simps, solve_ivp
+from scipy.optimize import root, least_squares, brentq
 
 from vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient
 
 sigmaSB = const.sigma_sb.cgs.value
 sigmaT = const.sigma_T.cgs.value
-mu = const.u.cgs.value
+atomic_mass = const.u.cgs.value
 c = const.c.cgs.value
 pl_const = const.h
 proton_mass = const.m_p.cgs.value
@@ -75,8 +76,8 @@ class FirstAssumptionRadiativeConvectiveGradient:
     """
 
     def dlnTdlnP(self, y, t):
-        varkappa = self.opacity(y)
-        rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
+        rho, eos = self.rho(y, True)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
 
         if t == 1:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
@@ -137,16 +138,18 @@ class RadConvTempGradient:
 
         coeff = [2 * A, V, V ** 2, - V]
         # print(coeff)
-        x = np.roots(coeff)
-        # try:
-        #     x = np.roots(coeff)
-        # except np.linalg.LinAlgError:
-        #     print('LinAlgError')
-        #     breakpoint()
+        # x = np.roots(coeff)
+        try:
+            x = np.roots(coeff)
+        except np.linalg.LinAlgError:
+            print('LinAlgError, coeff[2A, V, V ** 2, -V] = ', coeff)
+            raise
+            # breakpoint()
 
         x = [a.real for a in x if a.imag == 0 and 0.0 < a.real < 1.0]
-        # if len(x) != 1:
-        #     print('not one x of there is no right x')
+        if len(x) != 1:
+            print('not one x of there is no right x')
+            raise Exception
         #     breakpoint()
         x = x[0]
         # print(x)
@@ -195,8 +198,8 @@ class Advection:
 
 class ExternalIrradiation:
 
-    def sigma_d_nu(self, nu):  # cross-section in cm2 (Morrison & McCammon, 1983)
-        E = (pl_const * nu * Hz).to('keV').value
+    def sigma_d_nu(self, nu):  # cross-section in cm2 (Morrison & McCammon, 1983) from 0.03 to 10 keV
+        E = (pl_const * nu * units.Hz).to('keV').value
 
         if 0.030 <= E <= 0.100:
             c_0 = 17.3
@@ -259,12 +262,8 @@ class ExternalIrradiation:
         return result
 
     def J_tot(self, F_nu, y, tau_Xray, t):
-        sigma_sc = 0.34
-        try:
-            _ = len(self.nu_irr)
-            k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass
-        except TypeError:
-            k_d_nu = self.sigma_d_nu(self.nu_irr) / proton_mass  # cross-section per proton mass
+        sigma_sc = 0.34  # not exactly sigma_sc in case of not fully ionized gas
+        k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
         tau = (sigma_sc + k_d_nu) * y[Vars.S] * self.sigma_norm / 2  # tau = varkappa * mass_coord (Sigma / 2)
         lamb = sigma_sc / (sigma_sc + k_d_nu)
         k = np.sqrt(3 * (1 - lamb))
@@ -285,34 +284,16 @@ class ExternalIrradiation:
             print('tau0 < tau, J, min nu: ', t, sigma_sc + k_d_nu[i],
                   self.Sigma0_par, y[Vars.S] * self.sigma_norm / 2,
                   self.Sigma0_par - y[Vars.S] * self.sigma_norm / 2,
-                  tau_Xray[0], tau[0], tau_Xray[i] - tau[i],
+                  tau_Xray[i], tau[i], tau_Xray[i] - tau[i],
                   -k[i] * (tau_Xray[i] - tau[i]), -(tau_Xray[i] - tau[i]) / zeta_0, J_tot[i])
             raise Exception
-
-        # for i, JJ in enumerate(J_tot):
-        #     if (tau_Xray[i] - tau[i]) < 0:
-        #         print('tau0 < tau, J: ', self.nu_irr[i], sigma + k_d_nu[i],
-        #               self.Sigma0_par - y[Vars.S] * self.sigma_norm / 2,
-        #               tau_Xray[i], tau[i], tau_Xray[i] - tau[i],
-        #               -k[i] * (tau_Xray[i] - tau[i]), -(tau_Xray[i] - tau[i]) / zeta_0, JJ)
-        #     if np.isinf(JJ) or np.isnan(JJ) or JJ < 0:
-        #         print('J_tot = ', JJ, self.nu_irr[i], tau_Xray[i], tau[i],
-        #               -k[i] * (tau_Xray[i] - tau[i]), -tau[i] / zeta_0, -(tau_Xray[i] - tau[i]) / zeta_0)
-        #         raise Exception
-
-        # if np.isinf(J_tot) or np.isnan(J_tot) or J_tot < 0:
-        #     print('J_tot = ', J_tot, tau_Xray, tau, -k * (tau_Xray - tau), -tau / zeta_0, -(tau_Xray - tau) / zeta_0)
-
         return J_tot
 
-    def H_tot(self, F_nu, tau_Xray):
-        sigma_sc = 0.34
-        try:
-            _ = len(self.nu_irr)
-            k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass
-        except TypeError:
-            k_d_nu = self.sigma_d_nu(self.nu_irr) / proton_mass  # cross-section per proton mass
-        tau = (sigma_sc + k_d_nu) * self.Sigma_ph
+    def H_tot(self, F_nu, tau_Xray, Pph):
+        sigma_sc = 0.34  # not exactly sigma_sc in case of not fully ionized gas
+        k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
+        # tau = (sigma_sc + k_d_nu) * self.Sigma_ph
+        tau = (sigma_sc + k_d_nu) * Pph / (self.z0 * self.omegaK ** 2)
         lamb = sigma_sc / (sigma_sc + k_d_nu)
         k = np.sqrt(3 * (1 - lamb))
         zeta_0 = self.cos_theta_irr
@@ -330,88 +311,39 @@ class ExternalIrradiation:
         i = 0
         if (tau_Xray[i] - tau[i]) < 0:
             print('tau0 < tau, H, min nu: ', self.nu_irr[i], sigma_sc + k_d_nu[i],
-                  self.Sigma0_par - self.Sigma_ph,
+                  self.Sigma0_par - Pph / (self.z0 * self.omegaK ** 2),
                   tau_Xray[i], tau[i], tau_Xray[i] - tau[i],
                   -k[i] * (tau_Xray[i] - tau[i]), -(tau_Xray[i] - tau[i]) / zeta_0, H_tot[i])
             raise Exception
-
-        # for i, HH in enumerate(H_tot):
-        #     if (tau_Xray[i] - tau[i]) < 0:
-        #         print('tau0 < tau, H: ', self.nu_irr[i], sigma + k_d_nu[i],
-        #               self.Sigma0_par - Sigma_ph,
-        #               tau_Xray[i], tau[i], tau_Xray[i] - tau[i],
-        #               -k[i] * (tau_Xray[i] - tau[i]), -(tau_Xray[i] - tau[i]) / zeta_0, HH)
-        #     if np.isinf(HH) or np.isnan(HH) or HH < 0:
-        #         print('H_tot = ', HH, self.nu_irr[i], tau_Xray[i], tau[i],
-        #               -k[i] * (tau_Xray[i] - tau[i]), -tau[i] / zeta_0, -(tau_Xray[i] - tau[i]) / zeta_0)
-        #         raise Exception
-
-        # if np.isinf(H_tot) or np.isnan(H_tot) or H_tot < 0:
-        #     print('H_tot = ', H_tot, tau_Xray, tau, -k * (tau_Xray - tau), -tau / zeta_0, -(tau_Xray - tau) / zeta_0)
-
-        # self.values = np.array([C_nu, D_nu, lamb, k, H_tot, tau_Xray - tau,
-        #                         np.exp(-tau / zeta_0) - np.exp(-(tau_Xray - tau) / zeta_0),
-        #                         np.exp(-k * tau) - np.exp(-k * (tau_Xray - tau)),
-        #                         tau, tau_Xray, self.P_ph() / (self.z0 * self.omegaK ** 2)])
-
-        # print('coeff_tot2 = ', (np.exp(-tau / zeta_0) - np.exp(-(tau_Xray - tau) / zeta_0)))
-        # print('coeff_tot1 = ', (np.exp(-k * tau) - np.exp(-k * (tau_Xray - tau))))
-
         return H_tot
 
     def epsilon(self, y, t):
-        rho = self.rho(y, full_output=False)
-        sigma_sc = 0.34
-        try:
-            _ = len(self.nu_irr)
-            k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass
-        except TypeError:
-            k_d_nu = self.sigma_d_nu(self.nu_irr) / proton_mass  # cross-section per proton mass
-
+        rho, eos = self.rho(y, full_output=True)
+        sigma_sc = 0.34  # not exactly sigma_sc in case of not fully ionized gas
+        k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
         tau_Xray = (sigma_sc + k_d_nu) * self.Sigma0_par
-
-        try:
-            _ = len(self.F_nu_irr)
-            epsilon = 4 * np.pi * rho * simps(k_d_nu * self.J_tot(self.F_nu_irr, y, tau_Xray, t), self.nu_irr)
-            self.tau_Xray = simps(tau_Xray, self.nu_irr)
-        except TypeError:
-            epsilon = 4 * np.pi * rho * k_d_nu * self.J_tot(self.F_nu_irr, y, tau_Xray, t)
-            self.tau_Xray = tau_Xray
+        epsilon = 4 * np.pi * rho * simps(k_d_nu * self.J_tot(self.F_nu_irr, y, tau_Xray, t), self.nu_irr)
         return epsilon
 
-    def Q_irr_ph(self):
-        sigma_sc = 0.34
-        try:
-            _ = len(self.nu_irr)
-            k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass
-        except TypeError:
-            k_d_nu = self.sigma_d_nu(self.nu_irr) / proton_mass  # cross-section per proton mass
-
+    def Q_irr_ph(self, Pph):
+        sigma_sc = 0.34  # not exactly sigma_sc in case of not fully ionized gas
+        k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
         tau_Xray = (sigma_sc + k_d_nu) * self.Sigma0_par
-
-        try:
-            _ = len(self.F_nu_irr)
-            Qirr = simps(self.H_tot(self.F_nu_irr, tau_Xray), self.nu_irr)
-            self.tau_Xray = simps(tau_Xray, self.nu_irr)
-        except TypeError:
-            Qirr = self.H_tot(self.F_nu_irr, tau_Xray)
-            self.tau_Xray = tau_Xray
-
-        self.T_irr = (Qirr / sigmaSB) ** (1 / 4)
-        print('T_irr = {:g}'.format(self.T_irr))
-        try:
-            _ = len(self.F_nu_irr)
-            self.C_irr = Qirr / simps(self.F_nu_irr, self.nu_irr)
-        except TypeError:
-            self.C_irr = Qirr / self.F_nu_irr
-        self.Q_irr = Qirr
+        Qirr = simps(self.H_tot(self.F_nu_irr, tau_Xray, Pph), self.nu_irr)
         return Qirr
 
-    def Q_initial(self):
-        result = 1 + self.Q_irr_ph() / self.Q_norm
-        # print('Q_irr, Q_norm =', self.Q_irr_ph(), self.Q_norm)
-        # if result != 1:
-        #     print('Initial =', result)
+    def photospheric_pressure_equation_irr(self, tau, P, Pph):
+        T = (self.Teff ** 4 * (1 / 2 + 3 * tau / 4) + self.Q_irr_ph(Pph) / sigmaSB) ** (1 / 4)
+        rho, eos = self.law_of_rho(P, T, True)
+        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
+        return self.z0 * self.omegaK ** 2 / varkappa
+
+    def P_ph_irr(self, Pph):
+        solution = self.photospheric_pressure_equation_irr(tau=2/3, P=Pph, Pph=Pph) * 2 / 3
+        return solution
+
+    def Q_initial(self, Pph):
+        result = 1 + self.Q_irr_ph(Pph) / self.Q_norm
         return result
 
     def initial(self):
@@ -424,9 +356,49 @@ class ExternalIrradiation:
 
         """
 
-        P_ph = self.P_ph()
+        if self.P_ph_0 is None:
+            self.P_ph_0 = self.P_ph()
+        print('P_ph_0 = ', self.P_ph_0)
+        print('P_ph_0_0 = ', self.P_ph())
+
+        def fun_P_ph(x):
+            print(x, abs(x) - self.P_ph_irr(abs(x)))
+            return abs(x) - self.P_ph_irr(abs(x))
+
+        if not self.P_ph_key:
+            sign_P_ph = fun_P_ph(self.P_ph_0)
+            if sign_P_ph > 0:  # >
+                factor = 0.5
+            else:
+                factor = 2.0
+
+            while True:
+                self.P_ph_0 *= factor
+                if sign_P_ph * fun_P_ph(self.P_ph_0) < 0:
+                    break
+            P_ph, res = brentq(fun_P_ph, self.P_ph_0, self.P_ph_0 / factor, full_output=True)
+            fuuu = abs(fun_P_ph(P_ph))
+            if fuuu > 1e-8:
+                print('fun_Pph so big = ', fuuu)
+                raise Exception('fun_Pph is so big')
+            self.P_ph_0 = P_ph + 1
+            P_ph = abs(res.root)
+            print('P_ph\n', res)
+            if self.fitted:
+                self.P_ph_parameter = abs(res.root)
+                P_ph = self.P_ph_parameter
+                self.P_ph_key = True
+        else:
+            P_ph = self.P_ph_parameter
+        print('P_ph = ', P_ph)
+
         self.Sigma_ph = P_ph / (self.z0 * self.omegaK ** 2)
-        Q_initial = self.Q_initial()
+        Q_initial = self.Q_initial(Pph=P_ph)
+        Qirr = self.Q_irr_ph(Pph=P_ph)
+        self.C_irr = Qirr / simps(self.F_nu_irr, self.nu_irr)
+        self.T_irr = (Qirr / sigmaSB) ** (1 / 4)
+        self.Q_irr = Qirr
+        print('Tirr = ', self.T_irr)
         y = np.empty(4, dtype=np.float64)
         y[Vars.S] = 2 * self.Sigma_ph / self.sigma_norm  # 2 -> full mass coordinate Sigma
         y[Vars.P] = P_ph / self.P_norm
@@ -437,10 +409,6 @@ class ExternalIrradiation:
     def dQdz(self, y, t):
         w_r_phi = self.viscosity(y)
         result = -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm - self.epsilon(y, t) * self.z0 / self.Q_norm
-        # print('dQdz =', result)
-        # print('dQdz_non = ', -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm)
-        # if self.epsilon(y) != 0:
-        #     print('epsilon = ', self.epsilon(y))
         return result
 
     def Sigma0_init(self):
@@ -475,18 +443,44 @@ class ExternalIrradiation:
         else:
             norm = start_estimation_Sigma0
 
-        result = root(self.dq, x0=np.array([x0_z0r, 1]), args=norm, method='hybr')
+        cost_root = -1
+        try:
+            result = root(self.dq, x0=np.array([x0_z0r, 1]), args=norm, method='hybr')
+            cost_root = result.fun[0] ** 2 + result.fun[1] ** 2
+        except:
+            result = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
+                                   verbose=2, loss='linear')
+
+        if cost_root > 1e-16:
+            print('Cost_root > 1e-16')
+            try:
+                result_least_squares = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
+                                                     verbose=2, loss='linear')
+                if result_least_squares.cost * 2 < cost_root:
+                    result = result_least_squares
+            except:
+                pass
+
         # print(result)
 
-        # result = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
-        #                        verbose=2, loss='linear')
         result.x = abs(result.x) * np.array([1, norm])
         self.Sigma0_par = result.x[1]
         self.z0 = result.x[0] * self.r
+        self.fitted = True
         return result
 
 
 class ExternalIrradiationZeroAssumption:
+    def photospheric_pressure_equation(self, tau, P):
+        T = (self.Teff ** 4 * (1 / 2 + 3 * tau / 4) + self.T_irr) ** (1 / 4)
+        rho, eos = self.law_of_rho(P, T, True)
+        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
+        return self.z0 * self.omegaK ** 2 / varkappa
+
+    def P_ph_irr(self, Pph):
+        solution = self.photospheric_pressure_equation(tau=2/3, P=Pph) * 2 / 3
+        return solution
+
     def initial(self):
         """
         Initial conditions.
@@ -497,12 +491,47 @@ class ExternalIrradiationZeroAssumption:
 
         """
 
-        P_ph = self.P_ph()
+        if self.P_ph_0 is None:
+            self.P_ph_0 = self.P_ph()
+        print('P_ph_0 = ', self.P_ph_0)
+        print('P_ph_0_0 = ', self.P_ph())
+
+        def fun_P_ph(x):
+            print(x, abs(x) - self.P_ph_irr(abs(x)))
+            return abs(x) - self.P_ph_irr(abs(x))
+
+        if not self.P_ph_key:
+            sign_P_ph = fun_P_ph(self.P_ph_0)
+            if sign_P_ph > 0:  # >
+                factor = 0.5
+            else:
+                factor = 2.0
+
+            while True:
+                self.P_ph_0 *= factor
+                if sign_P_ph * fun_P_ph(self.P_ph_0) < 0:
+                    break
+            P_ph, res = brentq(fun_P_ph, self.P_ph_0, self.P_ph_0 / factor, full_output=True)
+            fuuu = abs(fun_P_ph(P_ph))
+            if fuuu > 1e-8:
+                print('fun_Pph so big = ', fuuu)
+                raise Exception('fun_Pph is so big')
+            self.P_ph_0 = P_ph + 1
+            P_ph = abs(res.root)
+            print('P_ph\n', res)
+            if self.fitted:
+                self.P_ph_parameter = abs(res.root)
+                P_ph = self.P_ph_parameter
+                self.P_ph_key = True
+        else:
+            P_ph = self.P_ph_parameter
+
+        print('P_ph = ', P_ph)
+
         self.Sigma_ph = P_ph / (self.z0 * self.omegaK ** 2)
         Q_initial = self.Q_initial()
         y = np.empty(4, dtype=np.float64)
-        # y[Vars.S] = 0  # Whether to take into account Sigma_ph
-        y[Vars.S] = 2 * self.Sigma_ph / self.sigma_norm  # 2 -> full mass coordinate Sigma
+        y[Vars.S] = 0
         y[Vars.P] = P_ph / self.P_norm
         y[Vars.Q] = Q_initial
         y[Vars.T] = (self.Teff ** 4 + self.T_irr ** 4) ** (1 / 4) / self.T_norm
@@ -552,9 +581,40 @@ class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGr
 
 class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,
                                                       ExternalIrradiation, BaseMesaVerticalStructure):
-    def __init__(self, Mx, alpha, r, F, nu_irr, F_nu_irr, cos_theta_irr=None, eps=1e-5, abundance='solar'):
+    def __init__(self, Mx, alpha, r, F, nu_irr, spectrum, L_X_irr, spectrum_par,
+                 args_spectrum=(), kwargs_spectrum={}, cos_theta_irr=None, eps=1e-5, abundance='solar', P_ph_0=None):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
-        self.nu_irr = nu_irr
+
+        if spectrum is None:
+            raise Exception("spectrum must be a function or an array-like, not None.")
+        if L_X_irr is None:
+            raise Exception("L_X_irr must be a double, not None.")
+        if nu_irr is None:
+            raise Exception("nu_irr must be an array-like, not None.")
+
+        if isinstance(spectrum, FunctionType):
+            if spectrum_par == 'nu':
+                self.nu_irr = nu_irr
+                spectrum_irr = spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
+                    spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum), self.nu_irr)
+            elif spectrum_par == 'E_in_keV':
+                self.nu_irr = (nu_irr * units.keV / const.h).to('Hz') / units.Hz
+                spectrum_irr = spectrum(nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
+                    spectrum(nu_irr, *args_spectrum, **kwargs_spectrum), nu_irr) * (
+                                       const.h * units.Hz).to('keV') / units.keV
+            else:
+                raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
+        else:
+            if spectrum_par == 'nu':
+                self.nu_irr = nu_irr
+                spectrum_irr = spectrum
+            elif spectrum_par == 'E_in_keV':
+                self.nu_irr = (nu_irr * units.keV / const.h).to('Hz') / units.Hz
+                spectrum_irr = spectrum * (const.h * units.Hz).to('keV') / units.keV
+            else:
+                raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
+
+        F_nu_irr = L_X_irr / (4 * np.pi * r ** 2) * spectrum_irr
         self.F_nu_irr = F_nu_irr
         self.Sigma0_par = self.Sigma0_init()
         if cos_theta_irr is None:
@@ -563,15 +623,69 @@ class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityM
             self.cos_theta_irr = cos_theta_irr
         self.T_irr = None
         self.C_irr = None
-        self.tau_Xray = None
         self.Q_irr = None
         self.Sigma_ph = None
+        self.P_ph_0 = P_ph_0
+        self.P_ph_key = False
+        self.P_ph_parameter = None
+
+
+class MesaVerticalStructureFirstAssumptionExternalIrradiation(MesaGasMixin, MesaOpacityMixin,
+                                                              FirstAssumptionRadiativeConvectiveGradient,
+                                                              ExternalIrradiation, BaseMesaVerticalStructure):
+    def __init__(self, Mx, alpha, r, F, nu_irr, spectrum, L_X_irr, spectrum_par,
+                 args_spectrum=(), kwargs_spectrum={}, cos_theta_irr=None, eps=1e-5, abundance='solar', P_ph_0=None):
+        super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
+
+        if spectrum is None:
+            raise Exception("spectrum must be a function or an array-like, not None.")
+        if L_X_irr is None:
+            raise Exception("L_X_irr must be a double, not None.")
+        if nu_irr is None:
+            raise Exception("nu_irr must be an array-like, not None.")
+
+        if isinstance(spectrum, FunctionType):
+            if spectrum_par == 'nu':
+                self.nu_irr = nu_irr
+                spectrum_irr = spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
+                    spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum), self.nu_irr)
+            elif spectrum_par == 'E_in_keV':
+                self.nu_irr = (nu_irr * units.keV / const.h).to('Hz') / units.Hz
+                spectrum_irr = spectrum(nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
+                    spectrum(nu_irr, *args_spectrum, **kwargs_spectrum), nu_irr) * (
+                                       const.h * units.Hz).to('keV') / units.keV
+            else:
+                raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
+        else:
+            if spectrum_par == 'nu':
+                self.nu_irr = nu_irr
+                spectrum_irr = spectrum
+            elif spectrum_par == 'E_in_keV':
+                self.nu_irr = (nu_irr * units.keV / const.h).to('Hz') / units.Hz
+                spectrum_irr = spectrum * (const.h * units.Hz).to('keV') / units.keV
+            else:
+                raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
+
+        F_nu_irr = L_X_irr / (4 * np.pi * r ** 2) * spectrum_irr
+        self.F_nu_irr = F_nu_irr
+        self.Sigma0_par = self.Sigma0_init()
+        if cos_theta_irr is None:
+            self.cos_theta_irr = 1 / 8 * (self.z0 / self.r)
+        else:
+            self.cos_theta_irr = cos_theta_irr
+        self.T_irr = None
+        self.C_irr = None
+        self.Q_irr = None
+        self.Sigma_ph = None
+        self.P_ph_0 = P_ph_0
+        self.P_ph_key = False
+        self.P_ph_parameter = None
 
 
 class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,
                                                                     ExternalIrradiationZeroAssumption,
                                                                     BaseMesaVerticalStructure):
-    def __init__(self, Mx, alpha, r, F, C_irr=None, T_irr=None, eps=1e-5, abundance='solar'):
+    def __init__(self, Mx, alpha, r, F, C_irr=None, T_irr=None, eps=1e-5, abundance='solar', P_ph_0=None):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
         h = np.sqrt(self.GM * self.r)
         eta_accr = 0.1
@@ -593,6 +707,9 @@ class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin
             raise Exception('Only one of (C_irr, T_irr) is required.')
         print('C_irr, T_irr = ', self.C_irr, self.T_irr)
         self.Sigma_ph = None
+        self.P_ph_0 = P_ph_0
+        self.P_ph_key = False
+        self.P_ph_parameter = None
 
 
 class MesaVerticalStructureAdvection(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, Advection,

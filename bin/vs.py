@@ -99,6 +99,7 @@ class BaseVerticalStructure:
 
         self.z0 = self.z0_init()
         self.Teff = (self.Q0 / sigmaSB) ** (1 / 4)
+        self.fitted = False
 
     @property
     def z0(self):
@@ -331,6 +332,7 @@ class BaseVerticalStructure:
 
         z0r, result = brentq(dq, z0r, z0r / factor, full_output=True)
         self.z0 = z0r * self.r
+        self.fitted = True
         return z0r, result
 
 
