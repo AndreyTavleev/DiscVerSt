@@ -333,7 +333,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
     if path_dots is not None:
         rg = 2 * G * M / c ** 2
-        header = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c'
+        header = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas_c \tvarkappa_c'
         header_end = '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, structure = {}'.format(
             M / M_sun, alpha, r, r / rg, structure)
         if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
@@ -362,9 +362,9 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
                 break
 
         varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
-        PradPgas = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
+        PradPgas_C = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
 
-        output_string = [Sigma0, Teff, Mdot, F, z0r, rho_C, T_C, P_C, tau, PradPgas, varkappa_C]
+        output_string = [Sigma0, Teff, Mdot, F, z0r, rho_C, T_C, P_C, tau, PradPgas_C, varkappa_C]
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
@@ -406,7 +406,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             else:
                 raise Exception('Incorrect output, try Teff, Mdot, Mdot_Mdot_edd, F, z0r or T_C')
 
-        if PradPgas < 1.0 and key:
+        if PradPgas_C < 1.0 and key:
             PradPgas10_index = i
             key = False
         if delta_Sigma_plus > 0.0 and Sigma_plus_key:
@@ -527,7 +527,7 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         Mdot = Par * 1.39e18 * M / M_sun
 
     if path_dots is not None:
-        header = 'r \tr/rg \tSigma0 \tTeff \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas \tvarkappa_c'
+        header = 'r \tr/rg \tSigma0 \tTeff \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas_c \tvarkappa_c'
         header_end = '\nM = {:e} Msun, alpha = {}, Mdot = {} g/s, structure = {}'.format(
             M / M_sun, alpha, Mdot, structure)
         if structure in ['Kramers', 'BellLin', 'MesaIdeal']:
@@ -555,9 +555,9 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
                 break
 
         varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
-        PradPgas = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
+        PradPgas_C = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
 
-        output_string = [r, r / rg, Sigma0, Teff, F, z0r, rho_C, T_C, P_C, tau, PradPgas, varkappa_C]
+        output_string = [r, r / rg, Sigma0, Teff, F, z0r, rho_C, T_C, P_C, tau, PradPgas_C, varkappa_C]
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
