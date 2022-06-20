@@ -9,6 +9,16 @@ Class MesaVerticalStructureAdiabatic -- for (tabular) Mesa opacities and EOS wit
 Class MesaVerticalStructureFirstAssumption -- for (tabular) Mesa opacities and EOS with radiative+adiabatic energy
     transport.
 Class MesaVerticalStructureRadConv -- for (tabular) Mesa opacities and EOS with radiative+convective energy transport.
+Class MesaVerticalStructureExternalIrradiation -- for (tabular) Mesa opacities and EOS with radiative energy transport
+    and advanced external irradiation scheme from (Mescheryakov et al. 2011).
+Class MesaVerticalStructureRadConvExternalIrradiation -- for (tabular) Mesa opacities and EOS
+    with radiative+convective energy transport and advanced external irradiation scheme
+    from (Mescheryakov et al. 2011).
+Class MesaVerticalStructureFirstAssumptionExternalIrradiation -- for (tabular) Mesa opacities and EOS
+    with radiative+adiabatic energy transport and advanced external irradiation scheme
+    from (Mescheryakov et al. 2011).
+Class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption -- for (tabular) Mesa opacities and EOS
+    with radiative+convective energy transport and simple external irradiation scheme via T_irr or C_irr.
 
 """
 import os
@@ -26,7 +36,6 @@ sigmaSB = const.sigma_sb.cgs.value
 sigmaT = const.sigma_T.cgs.value
 atomic_mass = const.u.cgs.value
 c = const.c.cgs.value
-pl_const = const.h
 proton_mass = const.m_p.cgs.value
 G = const.G.cgs.value
 M_sun = const.M_sun.cgs.value
@@ -199,7 +208,7 @@ class Advection:
 class ExternalIrradiation:
 
     def sigma_d_nu(self, nu):  # cross-section in cm2 (Morrison & McCammon, 1983) from 0.03 to 10 keV
-        E = (pl_const * nu * units.Hz).to('keV').value
+        E = (nu * units.Hz).to('keV', equivalencies=units.spectral()).value
 
         if 0.030 <= E <= 0.100:
             c_0 = 17.3
@@ -358,16 +367,13 @@ class ExternalIrradiation:
 
         if self.P_ph_0 is None:
             self.P_ph_0 = self.P_ph()
-        print('P_ph_0 = ', self.P_ph_0)
-        print('P_ph_0_0 = ', self.P_ph())
 
         def fun_P_ph(x):
-            print(x, abs(x) - self.P_ph_irr(abs(x)))
             return abs(x) - self.P_ph_irr(abs(x))
 
         if not self.P_ph_key:
             sign_P_ph = fun_P_ph(self.P_ph_0)
-            if sign_P_ph > 0:  # >
+            if sign_P_ph > 0:
                 factor = 0.5
             else:
                 factor = 2.0
@@ -377,20 +383,16 @@ class ExternalIrradiation:
                 if sign_P_ph * fun_P_ph(self.P_ph_0) < 0:
                     break
             P_ph, res = brentq(fun_P_ph, self.P_ph_0, self.P_ph_0 / factor, full_output=True)
-            fuuu = abs(fun_P_ph(P_ph))
-            if fuuu > 1e-8:
-                print('fun_Pph so big = ', fuuu)
-                raise Exception('fun_Pph is so big')
+            if abs(fun_P_ph(P_ph)) > 1e-8:
+                raise Exception('fun_Pph is so big, {:g}'.format(abs(fun_P_ph(P_ph))))
             self.P_ph_0 = P_ph + 1
             P_ph = abs(res.root)
-            print('P_ph\n', res)
             if self.fitted:
                 self.P_ph_parameter = abs(res.root)
                 P_ph = self.P_ph_parameter
                 self.P_ph_key = True
         else:
             P_ph = self.P_ph_parameter
-        print('P_ph = ', P_ph)
 
         self.Sigma_ph = P_ph / (self.z0 * self.omegaK ** 2)
         Q_initial = self.Q_initial(Pph=P_ph)
@@ -398,7 +400,6 @@ class ExternalIrradiation:
         self.C_irr = Qirr / simps(self.F_nu_irr, self.nu_irr)
         self.T_irr = (Qirr / sigmaSB) ** (1 / 4)
         self.Q_irr = Qirr
-        print('Tirr = ', self.T_irr)
         y = np.empty(4, dtype=np.float64)
         y[Vars.S] = 2 * self.Sigma_ph / self.sigma_norm  # 2 -> full mass coordinate Sigma
         y[Vars.P] = P_ph / self.P_norm
@@ -418,7 +419,7 @@ class ExternalIrradiation:
     def dq(self, x, norm):
         self.Sigma0_par = abs(x[1]) * norm
         self.z0 = abs(x[0]) * self.r
-        print('[{:g}, {:g}, {:g}]'.format(x[0], self.Sigma0_par, x[1]))
+        # print('[{:g}, {:g}, {:g}]'.format(x[0], self.Sigma0_par, x[1]))
         q_c = np.array([self.y_c()[Vars.Q], self.Sigma0_par / self.parameters_C()[4] - 1])
         return q_c
 
@@ -449,13 +450,13 @@ class ExternalIrradiation:
             cost_root = result.fun[0] ** 2 + result.fun[1] ** 2
         except:
             result = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
-                                   verbose=2, loss='linear')
+                                   verbose=0, loss='linear')
 
         if cost_root > 1e-16:
-            print('Cost_root > 1e-16')
+            # print('Cost_root > 1e-16')
             try:
                 result_least_squares = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
-                                                     verbose=2, loss='linear')
+                                                     verbose=0, loss='linear')
                 if result_least_squares.cost * 2 < cost_root:
                     result = result_least_squares
             except:
@@ -466,7 +467,7 @@ class ExternalIrradiation:
         result.x = abs(result.x) * np.array([1, norm])
         self.Sigma0_par = result.x[1]
         self.z0 = result.x[0] * self.r
-        self.fitted = True
+        self.fitted = True  # doesn't mean that structure is converged successfully
         return result
 
 
@@ -493,16 +494,13 @@ class ExternalIrradiationZeroAssumption:
 
         if self.P_ph_0 is None:
             self.P_ph_0 = self.P_ph()
-        print('P_ph_0 = ', self.P_ph_0)
-        print('P_ph_0_0 = ', self.P_ph())
 
         def fun_P_ph(x):
-            print(x, abs(x) - self.P_ph_irr(abs(x)))
             return abs(x) - self.P_ph_irr(abs(x))
 
         if not self.P_ph_key:
             sign_P_ph = fun_P_ph(self.P_ph_0)
-            if sign_P_ph > 0:  # >
+            if sign_P_ph > 0:
                 factor = 0.5
             else:
                 factor = 2.0
@@ -512,13 +510,10 @@ class ExternalIrradiationZeroAssumption:
                 if sign_P_ph * fun_P_ph(self.P_ph_0) < 0:
                     break
             P_ph, res = brentq(fun_P_ph, self.P_ph_0, self.P_ph_0 / factor, full_output=True)
-            fuuu = abs(fun_P_ph(P_ph))
-            if fuuu > 1e-8:
-                print('fun_Pph so big = ', fuuu)
-                raise Exception('fun_Pph is so big')
+            if abs(fun_P_ph(P_ph)) > 1e-8:
+                raise Exception('fun_Pph is so big, {:g}'.format(abs(fun_P_ph(P_ph))))
             self.P_ph_0 = P_ph + 1
             P_ph = abs(res.root)
-            print('P_ph\n', res)
             if self.fitted:
                 self.P_ph_parameter = abs(res.root)
                 P_ph = self.P_ph_parameter
@@ -526,9 +521,6 @@ class ExternalIrradiationZeroAssumption:
         else:
             P_ph = self.P_ph_parameter
 
-        print('P_ph = ', P_ph)
-
-        self.Sigma_ph = P_ph / (self.z0 * self.omegaK ** 2)
         Q_initial = self.Q_initial()
         y = np.empty(4, dtype=np.float64)
         y[Vars.S] = 0
@@ -579,8 +571,13 @@ class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGr
     pass
 
 
-class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,
-                                                      ExternalIrradiation, BaseMesaVerticalStructure):
+class MesaVerticalStructureExternalIrradiation(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient,
+                                               ExternalIrradiation, BaseMesaVerticalStructure):
+    """
+    Vertical structure class for (tabular) Mesa opacities and EOS with radiative energy transport
+    and advanced external irradiation scheme from (Mescheryakov et al. 2011).
+
+    """
     def __init__(self, Mx, alpha, r, F, nu_irr, spectrum, L_X_irr, spectrum_par,
                  args_spectrum=(), kwargs_spectrum={}, cos_theta_irr=None, eps=1e-5, abundance='solar', P_ph_0=None):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
@@ -598,10 +595,10 @@ class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityM
                 spectrum_irr = spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
                     spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum), self.nu_irr)
             elif spectrum_par == 'E_in_keV':
-                self.nu_irr = (nu_irr * units.keV / const.h).to('Hz') / units.Hz
+                self.nu_irr = (nu_irr * units.keV).to('Hz', equivalencies=units.spectral()).value
                 spectrum_irr = spectrum(nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
-                    spectrum(nu_irr, *args_spectrum, **kwargs_spectrum), nu_irr) * (
-                                       const.h * units.Hz).to('keV') / units.keV
+                    spectrum(nu_irr, *args_spectrum, **kwargs_spectrum), nu_irr) * \
+                               units.Hz.to('keV', equivalencies=units.spectral())
             else:
                 raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
         else:
@@ -609,8 +606,64 @@ class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityM
                 self.nu_irr = nu_irr
                 spectrum_irr = spectrum
             elif spectrum_par == 'E_in_keV':
-                self.nu_irr = (nu_irr * units.keV / const.h).to('Hz') / units.Hz
-                spectrum_irr = spectrum * (const.h * units.Hz).to('keV') / units.keV
+                self.nu_irr = (nu_irr * units.keV).to('Hz', equivalencies=units.spectral()).value
+                spectrum_irr = spectrum * units.Hz.to('keV', equivalencies=units.spectral())
+            else:
+                raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
+
+        F_nu_irr = L_X_irr / (4 * np.pi * r ** 2) * spectrum_irr
+        self.F_nu_irr = F_nu_irr
+        self.Sigma0_par = self.Sigma0_init()
+        if cos_theta_irr is None:
+            self.cos_theta_irr = 1 / 8 * (self.z0 / self.r)
+        else:
+            self.cos_theta_irr = cos_theta_irr
+        self.T_irr = None
+        self.C_irr = None
+        self.Q_irr = None
+        self.Sigma_ph = None
+        self.P_ph_0 = P_ph_0
+        self.P_ph_key = False
+        self.P_ph_parameter = None
+
+
+class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,
+                                                      ExternalIrradiation, BaseMesaVerticalStructure):
+    """
+    Vertical structure class for (tabular) Mesa opacities and EOS with radiative+convective energy transport
+    and advanced external irradiation scheme from (Mescheryakov et al. 2011).
+
+    """
+    def __init__(self, Mx, alpha, r, F, nu_irr, spectrum, L_X_irr, spectrum_par,
+                 args_spectrum=(), kwargs_spectrum={}, cos_theta_irr=None, eps=1e-5, abundance='solar', P_ph_0=None):
+        super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
+
+        if spectrum is None:
+            raise Exception("spectrum must be a function or an array-like, not None.")
+        if L_X_irr is None:
+            raise Exception("L_X_irr must be a double, not None.")
+        if nu_irr is None:
+            raise Exception("nu_irr must be an array-like, not None.")
+
+        if isinstance(spectrum, FunctionType):
+            if spectrum_par == 'nu':
+                self.nu_irr = nu_irr
+                spectrum_irr = spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
+                    spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum), self.nu_irr)
+            elif spectrum_par == 'E_in_keV':
+                self.nu_irr = (nu_irr * units.keV).to('Hz', equivalencies=units.spectral()).value
+                spectrum_irr = spectrum(nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
+                    spectrum(nu_irr, *args_spectrum, **kwargs_spectrum), nu_irr) * \
+                               units.Hz.to('keV', equivalencies=units.spectral())
+            else:
+                raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
+        else:
+            if spectrum_par == 'nu':
+                self.nu_irr = nu_irr
+                spectrum_irr = spectrum
+            elif spectrum_par == 'E_in_keV':
+                self.nu_irr = (nu_irr * units.keV).to('Hz', equivalencies=units.spectral()).value
+                spectrum_irr = spectrum * units.Hz.to('keV', equivalencies=units.spectral())
             else:
                 raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
 
@@ -633,6 +686,11 @@ class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityM
 class MesaVerticalStructureFirstAssumptionExternalIrradiation(MesaGasMixin, MesaOpacityMixin,
                                                               FirstAssumptionRadiativeConvectiveGradient,
                                                               ExternalIrradiation, BaseMesaVerticalStructure):
+    """
+    Vertical structure class for (tabular) Mesa opacities and EOS with radiative+adiabatic energy transport
+    and advanced external irradiation scheme from (Mescheryakov et al. 2011).
+
+    """
     def __init__(self, Mx, alpha, r, F, nu_irr, spectrum, L_X_irr, spectrum_par,
                  args_spectrum=(), kwargs_spectrum={}, cos_theta_irr=None, eps=1e-5, abundance='solar', P_ph_0=None):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
@@ -650,10 +708,10 @@ class MesaVerticalStructureFirstAssumptionExternalIrradiation(MesaGasMixin, Mesa
                 spectrum_irr = spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
                     spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum), self.nu_irr)
             elif spectrum_par == 'E_in_keV':
-                self.nu_irr = (nu_irr * units.keV / const.h).to('Hz') / units.Hz
+                self.nu_irr = (nu_irr * units.keV).to('Hz', equivalencies=units.spectral()).value
                 spectrum_irr = spectrum(nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
-                    spectrum(nu_irr, *args_spectrum, **kwargs_spectrum), nu_irr) * (
-                                       const.h * units.Hz).to('keV') / units.keV
+                    spectrum(nu_irr, *args_spectrum, **kwargs_spectrum), nu_irr) * \
+                               units.Hz.to('keV', equivalencies=units.spectral())
             else:
                 raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
         else:
@@ -661,8 +719,8 @@ class MesaVerticalStructureFirstAssumptionExternalIrradiation(MesaGasMixin, Mesa
                 self.nu_irr = nu_irr
                 spectrum_irr = spectrum
             elif spectrum_par == 'E_in_keV':
-                self.nu_irr = (nu_irr * units.keV / const.h).to('Hz') / units.Hz
-                spectrum_irr = spectrum * (const.h * units.Hz).to('keV') / units.keV
+                self.nu_irr = (nu_irr * units.keV).to('Hz', equivalencies=units.spectral()).value
+                spectrum_irr = spectrum * units.Hz.to('keV', equivalencies=units.spectral())
             else:
                 raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
 
@@ -685,6 +743,11 @@ class MesaVerticalStructureFirstAssumptionExternalIrradiation(MesaGasMixin, Mesa
 class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,
                                                                     ExternalIrradiationZeroAssumption,
                                                                     BaseMesaVerticalStructure):
+    """
+    Vertical structure class for (tabular) Mesa opacities and EOS with radiative+convective energy transport
+    and simple external irradiation scheme via T_irr or C_irr.
+
+    """
     def __init__(self, Mx, alpha, r, F, C_irr=None, T_irr=None, eps=1e-5, abundance='solar', P_ph_0=None):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
         h = np.sqrt(self.GM * self.r)
@@ -706,7 +769,6 @@ class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin
         else:
             raise Exception('Only one of (C_irr, T_irr) is required.')
         print('C_irr, T_irr = ', self.C_irr, self.T_irr)
-        self.Sigma_ph = None
         self.P_ph_0 = P_ph_0
         self.P_ph_key = False
         self.P_ph_parameter = None
