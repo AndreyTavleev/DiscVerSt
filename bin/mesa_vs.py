@@ -578,38 +578,41 @@ class MesaVerticalStructureExternalIrradiation(MesaGasMixin, MesaOpacityMixin, R
     and advanced external irradiation scheme from (Mescheryakov et al. 2011).
 
     """
-    def __init__(self, Mx, alpha, r, F, nu_irr, spectrum, L_X_irr, spectrum_par,
-                 args_spectrum=(), kwargs_spectrum={}, cos_theta_irr=None, eps=1e-5, abundance='solar', P_ph_0=None):
+    def __init__(self, Mx, alpha, r, F, nu_irr, spectrum_irr, L_X_irr, spectrum_irr_par,
+                 args_spectrum_irr=(), kwargs_spectrum_irr={}, cos_theta_irr=None,
+                 eps=1e-5, abundance='solar', P_ph_0=None):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
 
-        if spectrum is None:
-            raise Exception("spectrum must be a function or an array-like, not None.")
+        if spectrum_irr is None:
+            raise Exception("spectrum_irr must be a function or an array-like, not None.")
         if L_X_irr is None:
             raise Exception("L_X_irr must be a double, not None.")
         if nu_irr is None:
             raise Exception("nu_irr must be an array-like, not None.")
 
-        if isinstance(spectrum, FunctionType):
-            if spectrum_par == 'nu':
+        if isinstance(spectrum_irr, FunctionType):
+            if spectrum_irr_par == 'nu':
                 self.nu_irr = nu_irr
-                spectrum_irr = spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
-                    spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum), self.nu_irr)
-            elif spectrum_par == 'E_in_keV':
+                spectrum_irr = spectrum_irr(self.nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr) / simps(
+                    spectrum_irr(self.nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr), self.nu_irr)
+            elif spectrum_irr_par == 'E_in_keV':
                 self.nu_irr = (nu_irr * units.keV).to('Hz', equivalencies=units.spectral()).value
-                spectrum_irr = spectrum(nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
-                    spectrum(nu_irr, *args_spectrum, **kwargs_spectrum), nu_irr) * \
+                spectrum_irr = spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr) / simps(
+                    spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr), nu_irr) * \
                                units.Hz.to('keV', equivalencies=units.spectral())
             else:
-                raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
+                raise Exception("spectrum_irr_par must be 'nu' or 'E_in_keV', not None or anything else.")
         else:
-            if spectrum_par == 'nu':
+            if len(nu_irr) != len(spectrum_irr):
+                raise Exception("'nu_irr' and 'spectrum_irr' must have the same size.")
+            if spectrum_irr_par == 'nu':
                 self.nu_irr = nu_irr
-                spectrum_irr = spectrum
-            elif spectrum_par == 'E_in_keV':
+                spectrum_irr = spectrum_irr
+            elif spectrum_irr_par == 'E_in_keV':
                 self.nu_irr = (nu_irr * units.keV).to('Hz', equivalencies=units.spectral()).value
-                spectrum_irr = spectrum * units.Hz.to('keV', equivalencies=units.spectral())
+                spectrum_irr = spectrum_irr * units.Hz.to('keV', equivalencies=units.spectral())
             else:
-                raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
+                raise Exception("spectrum_irr_par must be 'nu' or 'E_in_keV', not None or anything else.")
 
         F_nu_irr = L_X_irr / (4 * np.pi * r ** 2) * spectrum_irr
         self.F_nu_irr = F_nu_irr
@@ -634,38 +637,41 @@ class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityM
     and advanced external irradiation scheme from (Mescheryakov et al. 2011).
 
     """
-    def __init__(self, Mx, alpha, r, F, nu_irr, spectrum, L_X_irr, spectrum_par,
-                 args_spectrum=(), kwargs_spectrum={}, cos_theta_irr=None, eps=1e-5, abundance='solar', P_ph_0=None):
+    def __init__(self, Mx, alpha, r, F, nu_irr, spectrum_irr, L_X_irr, spectrum_irr_par,
+                 args_spectrum_irr=(), kwargs_spectrum_irr={}, cos_theta_irr=None,
+                 eps=1e-5, abundance='solar', P_ph_0=None):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
 
-        if spectrum is None:
-            raise Exception("spectrum must be a function or an array-like, not None.")
+        if spectrum_irr is None:
+            raise Exception("spectrum_irr must be a function or an array-like, not None.")
         if L_X_irr is None:
             raise Exception("L_X_irr must be a double, not None.")
         if nu_irr is None:
             raise Exception("nu_irr must be an array-like, not None.")
 
-        if isinstance(spectrum, FunctionType):
-            if spectrum_par == 'nu':
+        if isinstance(spectrum_irr, FunctionType):
+            if spectrum_irr_par == 'nu':
                 self.nu_irr = nu_irr
-                spectrum_irr = spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
-                    spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum), self.nu_irr)
-            elif spectrum_par == 'E_in_keV':
+                spectrum_irr = spectrum_irr(self.nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr) / simps(
+                    spectrum_irr(self.nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr), self.nu_irr)
+            elif spectrum_irr_par == 'E_in_keV':
                 self.nu_irr = (nu_irr * units.keV).to('Hz', equivalencies=units.spectral()).value
-                spectrum_irr = spectrum(nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
-                    spectrum(nu_irr, *args_spectrum, **kwargs_spectrum), nu_irr) * \
+                spectrum_irr = spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr) / simps(
+                    spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr), nu_irr) * \
                                units.Hz.to('keV', equivalencies=units.spectral())
             else:
-                raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
+                raise Exception("spectrum_irr_par must be 'nu' or 'E_in_keV', not None or anything else.")
         else:
-            if spectrum_par == 'nu':
+            if len(nu_irr) != len(spectrum_irr):
+                raise Exception("'nu_irr' and 'spectrum_irr' must have the same size.")
+            if spectrum_irr_par == 'nu':
                 self.nu_irr = nu_irr
-                spectrum_irr = spectrum
-            elif spectrum_par == 'E_in_keV':
+                spectrum_irr = spectrum_irr
+            elif spectrum_irr_par == 'E_in_keV':
                 self.nu_irr = (nu_irr * units.keV).to('Hz', equivalencies=units.spectral()).value
-                spectrum_irr = spectrum * units.Hz.to('keV', equivalencies=units.spectral())
+                spectrum_irr = spectrum_irr * units.Hz.to('keV', equivalencies=units.spectral())
             else:
-                raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
+                raise Exception("spectrum_irr_par must be 'nu' or 'E_in_keV', not None or anything else.")
 
         F_nu_irr = L_X_irr / (4 * np.pi * r ** 2) * spectrum_irr
         self.F_nu_irr = F_nu_irr
@@ -691,38 +697,41 @@ class MesaVerticalStructureFirstAssumptionExternalIrradiation(MesaGasMixin, Mesa
     and advanced external irradiation scheme from (Mescheryakov et al. 2011).
 
     """
-    def __init__(self, Mx, alpha, r, F, nu_irr, spectrum, L_X_irr, spectrum_par,
-                 args_spectrum=(), kwargs_spectrum={}, cos_theta_irr=None, eps=1e-5, abundance='solar', P_ph_0=None):
+    def __init__(self, Mx, alpha, r, F, nu_irr, spectrum_irr, L_X_irr, spectrum_irr_par,
+                 args_spectrum_irr=(), kwargs_spectrum_irr={}, cos_theta_irr=None,
+                 eps=1e-5, abundance='solar', P_ph_0=None):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
 
-        if spectrum is None:
-            raise Exception("spectrum must be a function or an array-like, not None.")
+        if spectrum_irr is None:
+            raise Exception("spectrum_irr must be a function or an array-like, not None.")
         if L_X_irr is None:
             raise Exception("L_X_irr must be a double, not None.")
         if nu_irr is None:
             raise Exception("nu_irr must be an array-like, not None.")
 
-        if isinstance(spectrum, FunctionType):
-            if spectrum_par == 'nu':
+        if isinstance(spectrum_irr, FunctionType):
+            if spectrum_irr_par == 'nu':
                 self.nu_irr = nu_irr
-                spectrum_irr = spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
-                    spectrum(self.nu_irr, *args_spectrum, **kwargs_spectrum), self.nu_irr)
-            elif spectrum_par == 'E_in_keV':
+                spectrum_irr = spectrum_irr(self.nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr) / simps(
+                    spectrum_irr(self.nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr), self.nu_irr)
+            elif spectrum_irr_par == 'E_in_keV':
                 self.nu_irr = (nu_irr * units.keV).to('Hz', equivalencies=units.spectral()).value
-                spectrum_irr = spectrum(nu_irr, *args_spectrum, **kwargs_spectrum) / simps(
-                    spectrum(nu_irr, *args_spectrum, **kwargs_spectrum), nu_irr) * \
+                spectrum_irr = spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr) / simps(
+                    spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr), nu_irr) * \
                                units.Hz.to('keV', equivalencies=units.spectral())
             else:
-                raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
+                raise Exception("spectrum_irr_par must be 'nu' or 'E_in_keV', not None or anything else.")
         else:
-            if spectrum_par == 'nu':
+            if len(nu_irr) != len(spectrum_irr):
+                raise Exception("'nu_irr' and 'spectrum_irr' must have the same size.")
+            if spectrum_irr_par == 'nu':
                 self.nu_irr = nu_irr
-                spectrum_irr = spectrum
-            elif spectrum_par == 'E_in_keV':
+                spectrum_irr = spectrum_irr
+            elif spectrum_irr_par == 'E_in_keV':
                 self.nu_irr = (nu_irr * units.keV).to('Hz', equivalencies=units.spectral()).value
-                spectrum_irr = spectrum * units.Hz.to('keV', equivalencies=units.spectral())
+                spectrum_irr = spectrum_irr * units.Hz.to('keV', equivalencies=units.spectral())
             else:
-                raise Exception("spectrum_par must be 'nu' or 'E_in_keV', not None or anything else.")
+                raise Exception("spectrum_irr_par must be 'nu' or 'E_in_keV', not None or anything else.")
 
         F_nu_irr = L_X_irr / (4 * np.pi * r ** 2) * spectrum_irr
         self.F_nu_irr = F_nu_irr

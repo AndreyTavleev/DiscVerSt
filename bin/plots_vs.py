@@ -149,10 +149,10 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                 eta = 0.1
                 L_X_irr = eta * Mdot * c ** 2
             vs = mesa_vs.MesaVerticalStructureRadConvExternalIrradiation(M, alpha, r, F, nu_irr=nu_irr,
-                                                                         L_X_irr=L_X_irr, spectrum=spectrum_irr,
-                                                                         spectrum_par=spectrum_irr_par,
-                                                                         args_spectrum=args_spectrum_irr,
-                                                                         kwargs_spectrum=kwargs_spectrum_irr,
+                                                                         L_X_irr=L_X_irr, spectrum_irr=spectrum_irr,
+                                                                         spectrum_irr_par=spectrum_irr_par,
+                                                                         args_spectrum_irr=args_spectrum_irr,
+                                                                         kwargs_spectrum_irr=kwargs_spectrum_irr,
                                                                          cos_theta_irr=cos_theta_irr,
                                                                          abundance=abundance, P_ph_0=P_ph_0)
     elif structure == 'MesaIrr':
@@ -164,10 +164,10 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                 eta = 0.1
                 L_X_irr = eta * Mdot * c ** 2
             vs = mesa_vs.MesaVerticalStructureExternalIrradiation(M, alpha, r, F, nu_irr=nu_irr,
-                                                                  L_X_irr=L_X_irr, spectrum=spectrum_irr,
-                                                                  spectrum_par=spectrum_irr_par,
-                                                                  args_spectrum=args_spectrum_irr,
-                                                                  kwargs_spectrum=kwargs_spectrum_irr,
+                                                                  L_X_irr=L_X_irr, spectrum_irr=spectrum_irr,
+                                                                  spectrum_irr_par=spectrum_irr_par,
+                                                                  args_spectrum_irr=args_spectrum_irr,
+                                                                  kwargs_spectrum_irr=kwargs_spectrum_irr,
                                                                   cos_theta_irr=cos_theta_irr,
                                                                   abundance=abundance, P_ph_0=P_ph_0)
     elif structure == 'MesaFirstIrr':
@@ -179,10 +179,11 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                 eta = 0.1
                 L_X_irr = eta * Mdot * c ** 2
             vs = mesa_vs.MesaVerticalStructureFirstAssumptionExternalIrradiation(M, alpha, r, F, nu_irr=nu_irr,
-                                                                                 L_X_irr=L_X_irr, spectrum=spectrum_irr,
-                                                                                 spectrum_par=spectrum_irr_par,
-                                                                                 args_spectrum=args_spectrum_irr,
-                                                                                 kwargs_spectrum=kwargs_spectrum_irr,
+                                                                                 L_X_irr=L_X_irr,
+                                                                                 spectrum_irr=spectrum_irr,
+                                                                                 spectrum_irr_par=spectrum_irr_par,
+                                                                                 args_spectrum_irr=args_spectrum_irr,
+                                                                                 kwargs_spectrum_irr=kwargs_spectrum_irr,
                                                                                  cos_theta_irr=cos_theta_irr,
                                                                                  abundance=abundance)
     elif structure == 'MesaRadConvAdv':
@@ -512,10 +513,10 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
     PradPgas10_index = 0  # where Prad = Pgas
     tau_index = n  # where tau < 1
-    Sigma_minus_index = 0  # where free_e < 0.5, Sigma_minus
+    Sigma_minus_index = 0  # for Sigma_minus
     key = True  # for Prad = Pgas
     tau_key = True  # for tau < 1
-    Sigma_minus_key = True  # for free_e < 0.5, Sigma_minus
+    Sigma_minus_key = True  # for Sigma_minus
 
     Sigma_plus_key = True  # for Sigma_plus
     Sigma_plus_index = 0  # for Sigma_plus
@@ -666,10 +667,6 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         # print(i + 1)
     with open(path_dots, 'a') as file:
         file.write('# Sigma_plus_index = {:d}  Sigma_minus_index = {:d}'.format(Sigma_plus_index, Sigma_minus_index))
-        # if Sigma_plus_index == 0 or Sigma_minus_index == 0:
-        # print('\nATTENTION:\nSigma_plus_index = {:d}  Sigma_minus_index = {:d}\n'
-        #       'M = {:g} Msun, alpha = {:g}, r = {:1.2e} cm\n'.format(Sigma_plus_index, Sigma_minus_index,
-        #                                                              M / M_sun, alpha, r))
         if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
             file.write('\n# Except_fits = {}'.format(except_fits))
 
