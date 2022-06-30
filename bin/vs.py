@@ -302,9 +302,15 @@ class BaseVerticalStructure:
         return (self.r * 2.86e-7 * self.F ** (3 / 20) * (self.Mx / M_sun) ** (-9 / 20)
                 * self.alpha ** (-1 / 10) * (self.r / 1e10) ** (1 / 20))
 
-    def fit(self):
+    def fit(self, start_estimation_z0r=None):
         """
         Solve optimization problem and calculate the vertical structure.
+
+        Parameters
+        ----------
+        start_estimation_z0r : double
+            Start estimation of z0 / r free parameter to fit the structure. Default is None,
+            the estimation is calculated automatically.
 
         Returns
         -------
@@ -319,7 +325,10 @@ class BaseVerticalStructure:
             q_c = self.y_c()[Vars.Q]
             return q_c
 
-        z0r = self.z0 / self.r
+        if start_estimation_z0r is None:
+            z0r = self.z0 / self.r
+        else:
+            z0r = start_estimation_z0r
         sign_dq = dq(z0r)
         if sign_dq > 0:
             factor = 2.0
@@ -332,6 +341,7 @@ class BaseVerticalStructure:
                 break
 
         z0r, result = brentq(dq, z0r, z0r / factor, full_output=True)
+        self.z0 = z0r * self.r
         return z0r, result
 
 

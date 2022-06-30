@@ -72,8 +72,8 @@ class FirstAssumptionRadiativeConvectiveGradient:
     """
 
     def dlnTdlnP(self, y, t):
-        varkappa = self.opacity(y)
-        rho, eos = self.mesaop.rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, True)
+        rho, eos = self.rho(y, True)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
 
         if t == 1:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
