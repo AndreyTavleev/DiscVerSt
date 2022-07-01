@@ -309,7 +309,7 @@ class BaseVerticalStructure:
         Parameters
         ----------
         start_estimation_z0r : double
-            Start estimation of z0 / r free parameter to fit the structure. Default is None,
+            Start estimation of z0r free parameter to fit the structure. Default is None,
             the estimation is calculated automatically.
 
         Returns
@@ -380,14 +380,8 @@ class RadiativeTempGradientPrad:
             # # if dlnTdlnP_rad < 0.0:
             # #     print('t = 1, ', dlnTdlnP_rad)
         else:
-            # dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
-            #         16 * sigmaSB * self.T_norm ** 4)
-
-            # dTdz = (abs(y[Vars.Q] * self.Q_norm - self.Q_adv()) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 / (
-            #         16 * sigmaSB * self.T_norm ** 4)
-
-            dTdz = (abs(y[Vars.Q] * self.Q_norm - self.Q_adv(y[Vars.P] * self.P_norm)) / y[Vars.T] ** 3) * 3 * \
-                   varkappa * rho * self.z0 / (16 * sigmaSB * self.T_norm ** 4)
+            dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
+                    16 * sigmaSB * self.T_norm ** 4)
 
             P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
             dP_full = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2
@@ -450,7 +444,8 @@ class Prad:
         rho, eos = self.law_of_rho(P, T, True)
         varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
 
-        # print(self.z0 * self.omegaK ** 2 / varkappa - (sigmaSB / c) * self.Teff ** 4)
+        # if self.z0 * self.omegaK ** 2 / varkappa - (sigmaSB / c) * self.Teff ** 4 < 0:
+        #     print(self.z0 * self.omegaK ** 2 / varkappa - (sigmaSB / c) * self.Teff ** 4)
         # if np.isnan(self.z0 * self.omegaK ** 2 / varkappa - (sigmaSB / c) * self.Teff ** 4):
         #     breakpoint()
         # print(tau, P, self.z0 * self.omegaK ** 2 / varkappa - (sigmaSB / c) * self.Teff ** 4)
@@ -480,7 +475,7 @@ class Prad:
         dy[Vars.T] = dTdz
 
         # if dy[Vars.P] < 0:
-        #     print(dy[Vars.P] < 0)
+        #     print('ATTENTION: dPdz < 0 ', dy[Vars.P], t)
 
         # print(y, t, dy, grad)  # , self.z0 > 0, self.P_norm > 0, self.sigma_norm > 0)
         # print(rho, y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm)
