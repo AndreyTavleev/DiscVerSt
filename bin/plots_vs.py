@@ -39,6 +39,31 @@ c = const.c.cgs.value
 
 
 def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar'):
+    """
+    Initialize the chosen vertical structure class.
+
+    Parameters
+    ----------
+    M, alpha, r, Par, input
+        Base parameters of structure.
+    mu, abundance
+        Parameters that describe the chemical composition (ideal gas, tabular values).
+    structure : str
+        Type of vertical structure. Can be 'Kramers', 'BellLin',
+        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst' or 'MesaRadConv'.
+
+    Returns
+    -------
+    vs : vertical structure
+        Chosen vertical structure.
+    F : double
+        Viscous torque in g*cm^2/s^2.
+    Teff : double
+        Effective temperature in Kelvins.
+    Mdot : double
+        Accretion rate in g/s.
+
+    """
     h = np.sqrt(G * M * r)
     rg = 2 * G * M / c ** 2
     r_in = 3 * rg
@@ -246,8 +271,8 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         plt.close()
 
 
-def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu=0.6, abundance='solar', n=100,
-            tau_break=True, path_dots=None, add_Pi_values=True, make_pic=True,
+def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu=0.6, abundance='solar',
+            z0r_start_estimation=None, n=100, tau_break=True, path_dots=None, add_Pi_values=True, make_pic=True,
             output='Mdot', xscale='log', yscale='log', path_plot=None,
             set_title=True, title='S-curve'):
     """
@@ -284,6 +309,10 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         Chemical composition of disc. Use in case of Mesa EOS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
+    z0r_start_estimation : double
+        Start estimation of z0r free parameter to fit the first point of S-curve.
+        Further, z0r estimation of the next point is the z0r value of the previous point.
+        Default is None, the start estimation is calculated automatically.
     n : int
         Number of dots to calculate.
     tau_break : bool
@@ -321,15 +350,17 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
     PradPgas10_index = 0  # where Prad = Pgas
     tau_index = n  # where tau < 1
-    Sigma_minus_index = 0  # where free_e < 0.5, Sigma_minus
+    Sigma_minus_index = 0  # for Sigma_minus
     key = True  # for Prad = Pgas
     tau_key = True  # for tau < 1
-    Sigma_minus_key = True  # for free_e < 0.5, Sigma_minus
+    Sigma_minus_key = True  # for Sigma_minus
 
     Sigma_plus_key = True  # for Sigma_plus
     Sigma_plus_index = 0  # for Sigma_plus
     delta_Sigma_plus = -1
-    z0r_estimation = None
+    z0r_estimation = z0r_start_estimation
+
+    sigma_temp = np.infty
 
     if path_dots is not None:
         rg = 2 * G * M / c ** 2
@@ -340,18 +371,18 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             header_end += ', mu = {}'.format(mu)
         else:
             header_end += ', abundance = {}'.format(abundance)
-            header += ' \tfree_e \tconv_param_z \tconv_param_sigma'
+            header += ' \tfree_e_c \tconv_param_z \tconv_param_sigma'
         if add_Pi_values:
             header += ' \tPi1 \tPi2 \tPi3 \tPi4'
         header = header + '\nAll values are in CGS units.' + header_end
         np.savetxt(path_dots, [], header=header)
 
     for i, Par in enumerate(np.geomspace(Par_max, Par_min, n)):
+        print(i)
         vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
         z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
         z0r_estimation = z0r
         tau = vs.tau()
-
         print('Mdot = {:1.3e} g/s, Teff = {:g} K, tau = {:g}, z0r = {:g}'.format(Mdot, Teff, tau, z0r))
 
         if tau < 1 and tau_key:
@@ -366,15 +397,14 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
         output_string = [Sigma0, Teff, Mdot, F, z0r, rho_C, T_C, P_C, tau, PradPgas_C, varkappa_C]
 
+        print('Sigma0 = {:g} g/cm^2'.format(Sigma0))
+
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
             _ = eos.grad_ad
             free_e = np.exp(eos.lnfree_e)
             conv_param_z, conv_param_sigma = Convective_parameter(vs)
             output_string.extend([free_e, conv_param_z, conv_param_sigma])
-            if free_e < (1 + vs.mesaop.X) / 4 and Sigma_minus_key:
-                Sigma_minus_index = i
-                Sigma_minus_key = False
         except AttributeError:
             pass
 
@@ -407,22 +437,24 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
                 raise Exception('Incorrect output, try Teff, Mdot, Mdot_Mdot_edd, F, z0r or T_C')
 
         if PradPgas_C < 1.0 and key:
-            PradPgas10_index = i
+            PradPgas10_index = i - 1
             key = False
         if delta_Sigma_plus > 0.0 and Sigma_plus_key:
-            Sigma_plus_index = i
+            Sigma_plus_index = i - 1
             Sigma_plus_key = False
+        if delta_Sigma_plus < 0.0 and not Sigma_plus_key and Sigma_minus_key:
+            Sigma_minus_index = i - 1
+            Sigma_minus_key = False
 
         output_string = np.array(output_string)
         with open(path_dots, 'a') as file:
             np.savetxt(file, output_string, newline=' ')
             file.write('\n')
-        print(i + 1)
     with open(path_dots, 'a') as file:
         file.write('# Sigma_plus_index = {:d}  Sigma_minus_index = {:d}'.format(Sigma_plus_index, Sigma_minus_index))
 
     if not make_pic:
-        return
+        return 0
 
     xlabel = r'$\Sigma_0, \, \rm g/cm^2$'
 
@@ -472,7 +504,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
 
 def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin', mu=0.6, abundance='solar',
-                n=100, tau_break=True, path_dots=None, add_Pi_values=True):
+                z0r_start_estimation=None,  n=100, tau_break=True, path_dots=None, add_Pi_values=True):
     """
     Calculates radial structure of disc. Return table, which contains input parameters of the system,
     surface density Sigma0, viscous torque F, accretion rate Mdot, effective temperature Teff,
@@ -505,6 +537,10 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         Chemical composition of disc. Use in case of Mesa EOS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
+    z0r_start_estimation : double
+        Start estimation of z0r free parameter to fit the first point of radial structure.
+        Further, z0r estimation of the next point is the z0r value of the previous point.
+        Default is None, the start estimation is calculated automatically.
     n : int
         Number of dots to calculate.
     tau_break : bool
@@ -517,9 +553,9 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
     """
     if path_dots is None:
         print("ATTENTION: the data wil not be saved, since 'path_dots' is None")
-    r_plot = np.geomspace(r_start, r_end, n)
+
     tau_key = True
-    z0r_estimation = None
+    z0r_estimation = z0r_start_estimation
 
     if input == 'Mdot':
         Mdot = Par
@@ -540,7 +576,8 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         header = header + '\nAll values are in CGS units.' + header_end
         np.savetxt(path_dots, [], header=header)
 
-    for i, r in enumerate(r_plot):
+    for i, r in enumerate(np.geomspace(r_start, r_end, n)):
+        print(i)
         vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
         z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
         z0r_estimation = z0r
@@ -558,6 +595,7 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         PradPgas_C = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
 
         output_string = [r, r / rg, Sigma0, Teff, F, z0r, rho_C, T_C, P_C, tau, PradPgas_C, varkappa_C]
+        print('Sigma0 = {:g} g/cm^2'.format(Sigma0))
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
@@ -575,7 +613,7 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         with open(path_dots, 'a') as file:
             np.savetxt(file, output_string, newline=' ')
             file.write('\n')
-        print(i + 1)
+    return 0
 
 
 def main():
