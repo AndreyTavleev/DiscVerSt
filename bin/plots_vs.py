@@ -372,6 +372,13 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         header_input += ', abundance = {}'.format(abundance)
     if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
         header_input += ', T_irr = {:g} K, C_irr = {:g}, QirrQvis = {:g}'.format(vs.T_irr, vs.C_irr, vs.Q_irr / vs.Q0)
+    if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
+        try:
+            cost_func = result.cost * 2
+        except AttributeError:
+            cost_func = result.fun[0] ** 2 + result.fun[1] ** 2
+        header_input += ', cost = {:g}, success = {}, Sigma_ph = {:g} g/cm^2'.format(
+            cost_func, result.success, vs.Sigma_ph)
     header_C = '\nvarkappa_C = {:e} cm^2/g, rho_C = {:e} g/cm^3, T_C = {:e} K, P_C = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
                'PradPgas_C = {:e}, z0r = {:e}, tau = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r, tau)
     header_norm = '\nSigma_norm = {:e}, P_norm = {:e}, T_norm = {:e}, Q_norm = {:e}'.format(
@@ -593,7 +600,6 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         PradPgas_C = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
 
         output_string = [Sigma0, Teff, Mdot, F, z0r, rho_C, T_C, P_C, tau, PradPgas_C, varkappa_C]
-
         print('Sigma0 = {:g} g/cm^2'.format(Sigma0))
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
@@ -607,7 +613,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
         if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
             QirrQvis = vs.Q_irr / vs.Q0
-            output_string.extend([QirrQvis, vs.T_irr, vs.C_irr])
+            T_irr, C_irr = vs.T_irr, vs.C_irr
+            output_string.extend([QirrQvis, T_irr, C_irr])
             print('T_irr, C_irr = {:g}, {:g}'.format(T_irr, C_irr))
 
         if add_Pi_values:
@@ -620,12 +627,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             except AttributeError:
                 cost_func = result.fun[0] ** 2 + result.fun[1] ** 2
             output_string.extend([cost_func, result.success, vs.Sigma_ph])
-            output_string[0] = output_string[0] - 2 * vs.Sigma_ph
 
-        if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
-            Sigma_plot.append(Sigma0 - 2 * vs.Sigma_ph)
-        else:
-            Sigma_plot.append(Sigma0)
+        Sigma_plot.append(Sigma0)
 
         if i == 0:
             sigma_temp = Sigma0
@@ -895,7 +898,8 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
 
         if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
             QirrQvis = vs.Q_irr / vs.Q0
-            output_string.extend([QirrQvis, vs.T_irr, vs.C_irr])
+            T_irr, C_irr = vs.T_irr, vs.C_irr
+            output_string.extend([QirrQvis, T_irr, C_irr])
             print('T_irr, C_irr = {:g}, {:g}'.format(T_irr, C_irr))
 
         if add_Pi_values:
@@ -908,7 +912,6 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
             except AttributeError:
                 cost_func = result.fun[0] ** 2 + result.fun[1] ** 2
             output_string.extend([cost_func, result.success, vs.Sigma_ph])
-            output_string[2] = output_string[2] - 2 * vs.Sigma_ph
 
         output_string = np.array(output_string)
         with open(path_dots, 'a') as file:

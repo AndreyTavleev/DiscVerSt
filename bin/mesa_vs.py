@@ -46,6 +46,70 @@ except ModuleNotFoundError as e:
     raise ModuleNotFoundError('Mesa2py is not installed') from e
 
 
+def sigma_d_nu(nu):  # cross-section in cm2 (Morrison & McCammon, 1983) from 0.03 to 10 keV
+    E = (nu * units.Hz).to('keV', equivalencies=units.spectral()).value
+
+    if 0.030 <= E <= 0.100:
+        c_0 = 17.3
+        c_1 = 608.1
+        c_2 = -2150.0
+    elif 0.100 < E <= 0.284:
+        c_0 = 34.6
+        c_1 = 267.9
+        c_2 = -476.1
+    elif 0.284 < E <= 0.400:
+        c_0 = 78.1
+        c_1 = 18.8
+        c_2 = 4.3
+    elif 0.400 < E <= 0.532:
+        c_0 = 71.4
+        c_1 = 66.8
+        c_2 = -51.4
+    elif 0.532 < E <= 0.707:
+        c_0 = 95.5
+        c_1 = 145.8
+        c_2 = -61.1
+    elif 0.707 < E <= 0.867:
+        c_0 = 308.9
+        c_1 = -380.6
+        c_2 = 294.0
+    elif 0.867 < E <= 1.303:
+        c_0 = 120.6
+        c_1 = 169.3
+        c_2 = -47.7
+    elif 1.303 < E <= 1.840:
+        c_0 = 141.3
+        c_1 = 146.8
+        c_2 = -31.5
+    elif 1.840 < E <= 2.471:
+        c_0 = 202.7
+        c_1 = 104.7
+        c_2 = -17.0
+    elif 2.471 < E <= 3.210:
+        c_0 = 342.7
+        c_1 = 18.7
+        c_2 = 0.0
+    elif 3.210 < E <= 4.038:
+        c_0 = 352.2
+        c_1 = 18.7
+        c_2 = 0.0
+    elif 4.038 < E <= 7.111:
+        c_0 = 433.9
+        c_1 = -2.4
+        c_2 = 0.75
+    elif 7.111 < E <= 8.331:
+        c_0 = 629.0
+        c_1 = 30.9
+        c_2 = 0.0
+    elif 8.331 < E <= 10.000:
+        c_0 = 701.2
+        c_1 = 25.2
+        c_2 = 0.0
+
+    result = (c_0 + c_1 * E + c_2 * E ** 2) * E ** (-3) * 1e-24  # cross-section in cm2
+    return result
+
+
 class BaseMesaVerticalStructure(BaseVerticalStructure):
     def __init__(self, Mx, alpha, r, F, eps=1e-5, mu=0.6, abundance='solar'):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=mu)
@@ -206,74 +270,12 @@ class Advection:
 
 
 class ExternalIrradiation:
-
-    def sigma_d_nu(self, nu):  # cross-section in cm2 (Morrison & McCammon, 1983) from 0.03 to 10 keV
-        E = (nu * units.Hz).to('keV', equivalencies=units.spectral()).value
-
-        if 0.030 <= E <= 0.100:
-            c_0 = 17.3
-            c_1 = 608.1
-            c_2 = -2150.0
-        elif 0.100 < E <= 0.284:
-            c_0 = 34.6
-            c_1 = 267.9
-            c_2 = -476.1
-        elif 0.284 < E <= 0.400:
-            c_0 = 78.1
-            c_1 = 18.8
-            c_2 = 4.3
-        elif 0.400 < E <= 0.532:
-            c_0 = 71.4
-            c_1 = 66.8
-            c_2 = -51.4
-        elif 0.532 < E <= 0.707:
-            c_0 = 95.5
-            c_1 = 145.8
-            c_2 = -61.1
-        elif 0.707 < E <= 0.867:
-            c_0 = 308.9
-            c_1 = -380.6
-            c_2 = 294.0
-        elif 0.867 < E <= 1.303:
-            c_0 = 120.6
-            c_1 = 169.3
-            c_2 = -47.7
-        elif 1.303 < E <= 1.840:
-            c_0 = 141.3
-            c_1 = 146.8
-            c_2 = -31.5
-        elif 1.840 < E <= 2.471:
-            c_0 = 202.7
-            c_1 = 104.7
-            c_2 = -17.0
-        elif 2.471 < E <= 3.210:
-            c_0 = 342.7
-            c_1 = 18.7
-            c_2 = 0.0
-        elif 3.210 < E <= 4.038:
-            c_0 = 352.2
-            c_1 = 18.7
-            c_2 = 0.0
-        elif 4.038 < E <= 7.111:
-            c_0 = 433.9
-            c_1 = -2.4
-            c_2 = 0.75
-        elif 7.111 < E <= 8.331:
-            c_0 = 629.0
-            c_1 = 30.9
-            c_2 = 0.0
-        elif 8.331 < E <= 10.000:
-            c_0 = 701.2
-            c_1 = 25.2
-            c_2 = 0.0
-
-        result = (c_0 + c_1 * E + c_2 * E ** 2) * E ** (-3) * 1e-24  # cross-section in cm2
-        return result
-
-    def J_tot(self, F_nu, y, tau_Xray, t):
+    def J_tot(self, F_nu, y, tau_Xray, t):  # mean intensity as function of tau
         sigma_sc = 0.34  # not exactly sigma_sc in case of not fully ionized gas
-        k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
-        tau = (sigma_sc + k_d_nu) * y[Vars.S] * self.sigma_norm / 2  # tau = varkappa * mass_coord (Sigma / 2)
+        k_d_nu = np.array([sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
+        tau = (sigma_sc + k_d_nu) * \
+              (y[Vars.S] * self.sigma_norm + 2 * self.Sigma_ph) / 2  # tau = varkappa * (Sigma + 2 * Sigma_ph) / 2
+
         lamb = sigma_sc / (sigma_sc + k_d_nu)
         k = np.sqrt(3 * (1 - lamb))
         zeta_0 = self.cos_theta_irr
@@ -298,11 +300,10 @@ class ExternalIrradiation:
             raise Exception
         return J_tot
 
-    def H_tot(self, F_nu, tau_Xray, Pph):
+    def H_tot(self, F_nu, tau_Xray, Pph):  # eddington flux at the photosphere
         sigma_sc = 0.34  # not exactly sigma_sc in case of not fully ionized gas
-        k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
-        # tau = (sigma_sc + k_d_nu) * self.Sigma_ph
-        tau = (sigma_sc + k_d_nu) * Pph / (self.z0 * self.omegaK ** 2)
+        k_d_nu = np.array([sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
+        tau = (sigma_sc + k_d_nu) * Pph / (self.z0 * self.omegaK ** 2)  # tau at the photosphere
         lamb = sigma_sc / (sigma_sc + k_d_nu)
         k = np.sqrt(3 * (1 - lamb))
         zeta_0 = self.cos_theta_irr
@@ -329,15 +330,15 @@ class ExternalIrradiation:
     def epsilon(self, y, t):
         rho, eos = self.rho(y, full_output=True)
         sigma_sc = 0.34  # not exactly sigma_sc in case of not fully ionized gas
-        k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
-        tau_Xray = (sigma_sc + k_d_nu) * self.Sigma0_par
+        k_d_nu = np.array([sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
+        tau_Xray = (sigma_sc + k_d_nu) * (self.Sigma0_par + 2 * self.Sigma_ph)
         epsilon = 4 * np.pi * rho * simps(k_d_nu * self.J_tot(self.F_nu_irr, y, tau_Xray, t), self.nu_irr)
         return epsilon
 
     def Q_irr_ph(self, Pph):
         sigma_sc = 0.34  # not exactly sigma_sc in case of not fully ionized gas
-        k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
-        tau_Xray = (sigma_sc + k_d_nu) * self.Sigma0_par
+        k_d_nu = np.array([sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
+        tau_Xray = (sigma_sc + k_d_nu) * (self.Sigma0_par + 2 * Pph / (self.z0 * self.omegaK ** 2))
         Qirr = simps(self.H_tot(self.F_nu_irr, tau_Xray, Pph), self.nu_irr)
         return Qirr
 
@@ -401,7 +402,7 @@ class ExternalIrradiation:
         self.T_irr = (Qirr / sigmaSB) ** (1 / 4)
         self.Q_irr = Qirr
         y = np.empty(4, dtype=np.float64)
-        y[Vars.S] = 2 * self.Sigma_ph / self.sigma_norm  # 2 -> full mass coordinate Sigma
+        y[Vars.S] = 0
         y[Vars.P] = P_ph / self.P_norm
         y[Vars.Q] = Q_initial
         y[Vars.T] = (Q_initial * self.Q_norm / sigmaSB) ** (1 / 4) / self.T_norm  # Tph^4 = Teff^4 + Tirr^4
@@ -578,6 +579,7 @@ class MesaVerticalStructureExternalIrradiation(MesaGasMixin, MesaOpacityMixin, R
     and advanced external irradiation scheme from (Mescheryakov et al. 2011).
 
     """
+
     def __init__(self, Mx, alpha, r, F, nu_irr, spectrum_irr, L_X_irr, spectrum_irr_par,
                  args_spectrum_irr=(), kwargs_spectrum_irr={}, cos_theta_irr=None,
                  eps=1e-5, abundance='solar', P_ph_0=None):
@@ -637,6 +639,7 @@ class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityM
     and advanced external irradiation scheme from (Mescheryakov et al. 2011).
 
     """
+
     def __init__(self, Mx, alpha, r, F, nu_irr, spectrum_irr, L_X_irr, spectrum_irr_par,
                  args_spectrum_irr=(), kwargs_spectrum_irr={}, cos_theta_irr=None,
                  eps=1e-5, abundance='solar', P_ph_0=None):
@@ -697,6 +700,7 @@ class MesaVerticalStructureFirstAssumptionExternalIrradiation(MesaGasMixin, Mesa
     and advanced external irradiation scheme from (Mescheryakov et al. 2011).
 
     """
+
     def __init__(self, Mx, alpha, r, F, nu_irr, spectrum_irr, L_X_irr, spectrum_irr_par,
                  args_spectrum_irr=(), kwargs_spectrum_irr={}, cos_theta_irr=None,
                  eps=1e-5, abundance='solar', P_ph_0=None):
@@ -757,6 +761,7 @@ class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin
     and simple external irradiation scheme via T_irr or C_irr.
 
     """
+
     def __init__(self, Mx, alpha, r, F, C_irr=None, T_irr=None, eps=1e-5, abundance='solar', P_ph_0=None):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
         h = np.sqrt(self.GM * self.r)
