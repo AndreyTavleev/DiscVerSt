@@ -118,7 +118,7 @@ class BaseVerticalStructure:
     def law_of_rho(self, P, T, full_output):
         raise NotImplementedError
 
-    def law_of_opacity(self, rho, T, lnfree_e):
+    def law_of_opacity(self, rho, T, lnfree_e, return_grad):
         raise NotImplementedError
 
     def viscosity(self, y):
@@ -127,14 +127,14 @@ class BaseVerticalStructure:
     def rho(self, y, full_output):
         return self.law_of_rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, full_output=full_output)
 
-    def opacity(self, y, lnfree_e):
+    def opacity(self, y, lnfree_e, return_grad):
         rho = self.rho(y, full_output=False)
-        return self.law_of_opacity(rho, y[Vars.T] * self.T_norm, lnfree_e=lnfree_e)
+        return self.law_of_opacity(rho, y[Vars.T] * self.T_norm, lnfree_e=lnfree_e, return_grad=return_grad)
 
     def photospheric_pressure_equation(self, tau, P):
         T = self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)
         rho, eos = self.law_of_rho(P, T, True)
-        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
+        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e, return_grad=False)
         return self.z0 * self.omegaK ** 2 / varkappa
 
     def P_ph(self):
@@ -236,7 +236,7 @@ class BaseVerticalStructure:
         t = np.linspace(0, 1, 100)
         y = self.integrate(t)[0]
         rho, eos = self.rho(y, full_output=True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
         tau_norm = simps(varkappa * rho, t)
         return self.z0 * tau_norm
 
@@ -259,7 +259,7 @@ class BaseVerticalStructure:
         T_C = y_c[Vars.T] * self.T_norm
         P_C = y_c[Vars.P] * self.P_norm
         rho_C, eos = self.rho(y_c, full_output=True)
-        varkappa_C = self.opacity(y_c, lnfree_e=eos.lnfree_e)
+        varkappa_C = self.opacity(y_c, lnfree_e=eos.lnfree_e, return_grad=False)
         return np.array([varkappa_C, rho_C, T_C, P_C, Sigma0])
 
     def tau0(self):
@@ -344,7 +344,7 @@ class RadiativeTempGradient:
 
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, full_output=True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
 
         if t == 1:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
@@ -364,8 +364,10 @@ class IdealGasMixin:
         else:
             eos_temp = namedtuple(
                 'eos_temp',
-                ('lnfree_e',), )
-            eos = eos_temp(0.0)
+                ('dlnRho_dlnPgas_const_T', 'dlnRho_dlnT_const_Pgas',
+                 'mu', 'lnfree_e', 'grad_ad',), )
+            eos = eos_temp(dlnRho_dlnPgas_const_T=1.0, dlnRho_dlnT_const_Pgas=-1.0, mu=self.mu, lnfree_e=0.0,
+                           grad_ad=0.4)
             return P * self.mu / (R_gas * T), eos
 
 
@@ -374,8 +376,12 @@ class KramersOpacityMixin:
     zeta = 1
     gamma = -7 / 2
 
-    def law_of_opacity(self, rho, T, lnfree_e):
-        return self.varkappa0 * (rho ** self.zeta) * (T ** self.gamma)
+    def law_of_opacity(self, rho, T, lnfree_e, return_grad):
+        if not return_grad:
+            return self.varkappa0 * (rho ** self.zeta) * (T ** self.gamma)
+        else:
+            dlnkap_dlnRho, dlnkap_dlnT = self.zeta, self.gamma
+            return self.varkappa0 * (rho ** self.zeta) * (T ** self.gamma), dlnkap_dlnRho, dlnkap_dlnT
 
 
 class BellLin1994TwoComponentOpacityMixin:
@@ -392,9 +398,15 @@ class BellLin1994TwoComponentOpacityMixin:
     def opacity_ff(self, rho, T):
         return self.varkappa0_ff * (rho ** self.zeta_ff) * (T ** self.gamma_ff)
 
-    def law_of_opacity(self, rho, T, lnfree_e):
-        return np.minimum(self.opacity_h(rho, T), self.opacity_ff(rho, T))
-
+    def law_of_opacity(self, rho, T, lnfree_e, return_grad):
+        if not return_grad:
+            return np.minimum(self.opacity_h(rho, T), self.opacity_ff(rho, T))
+        else:
+            if self.opacity_h(rho, T) < self.opacity_ff(rho, T):
+                dlnkap_dlnRho, dlnkap_dlnT = self.zeta_h, self.gamma_h
+            else:
+                dlnkap_dlnRho, dlnkap_dlnT = self.zeta_ff, self.gamma_ff
+            return np.minimum(self.opacity_h(rho, T), self.opacity_ff(rho, T)), dlnkap_dlnRho, dlnkap_dlnT
 
 class IdealKramersVerticalStructure(IdealGasMixin, KramersOpacityMixin, RadiativeTempGradient, BaseVerticalStructure):
     """

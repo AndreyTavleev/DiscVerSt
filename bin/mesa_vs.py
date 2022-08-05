@@ -126,8 +126,12 @@ class MesaGasMixin:
 
 
 class MesaOpacityMixin:
-    def law_of_opacity(self, rho, T, lnfree_e):
-        return self.mesaop.kappa(rho, T, lnfree_e=lnfree_e)
+    def law_of_opacity(self, rho, T, lnfree_e, return_grad):
+        if return_grad:
+            kappa, dlnkap_dlnRho, dlnkap_dlnT = self.mesaop.kappa(rho, T, lnfree_e=lnfree_e, return_grad=return_grad)
+            return kappa, dlnkap_dlnRho, dlnkap_dlnT
+        else:
+            return self.mesaop.kappa(rho, T, lnfree_e=lnfree_e, return_grad=return_grad)
 
 
 class AdiabaticTempGradient:
@@ -150,7 +154,7 @@ class FirstAssumptionRadiativeConvectiveGradient:
 
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
 
         if t == 1:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
@@ -176,7 +180,7 @@ class RadConvTempGradient:
 
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
 
         if t == 1:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
@@ -265,7 +269,7 @@ class Advection:
         Teff = ((self.Q0 - self.Q_adv(y)) / sigmaSB) ** (1 / 4)
         T = Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)
         rho = self.law_of_rho(y, T)
-        varkappa = self.law_of_opacity(rho, T)
+        varkappa = self.law_of_opacity(rho, T, return_grad=False)
         return self.z0 * self.omegaK ** 2 / varkappa
 
 
@@ -345,7 +349,7 @@ class ExternalIrradiation:
     def photospheric_pressure_equation_irr(self, tau, P, Pph):
         T = (self.Teff ** 4 * (1 / 2 + 3 * tau / 4) + self.Q_irr_ph(Pph) / sigmaSB) ** (1 / 4)
         rho, eos = self.law_of_rho(P, T, True)
-        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
+        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e, return_grad=False)
         return self.z0 * self.omegaK ** 2 / varkappa
 
     def P_ph_irr(self, Pph):
@@ -468,7 +472,7 @@ class ExternalIrradiation:
         result.x = abs(result.x) * np.array([1, norm])
         self.Sigma0_par = result.x[1]
         self.z0 = result.x[0] * self.r
-        self.fitted = True  # doesn't mean that structure is converged successfully
+        self.fitted = True  # doesn't mean that structure converged successfully
         return result
 
 
@@ -476,7 +480,7 @@ class ExternalIrradiationZeroAssumption:
     def photospheric_pressure_equation(self, tau, P):
         T = (self.Teff ** 4 * (1 / 2 + 3 * tau / 4) + self.T_irr) ** (1 / 4)
         rho, eos = self.law_of_rho(P, T, True)
-        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
+        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e, return_grad=False)
         return self.z0 * self.omegaK ** 2 / varkappa
 
     def P_ph_irr(self, Pph):

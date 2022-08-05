@@ -352,7 +352,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     delta = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
     grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
     rho, eos = vs.law_of_rho(P * vs.P_norm, T * vs.T_norm, True)
-    varkappa = vs.law_of_opacity(rho, T * vs.T_norm, lnfree_e=eos.lnfree_e)
+    varkappa = vs.law_of_opacity(rho, T * vs.T_norm, lnfree_e=eos.lnfree_e, return_grad=False)
     dots_arr = np.c_[t, S, P, Q, T, rho, varkappa, grad_plot(np.log(P))]
     try:
         dots_arr = np.c_[dots_arr, eos.grad_ad, np.exp(eos.lnfree_e)]
