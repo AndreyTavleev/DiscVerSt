@@ -624,8 +624,9 @@ class MesaVerticalStructureExternalIrradiation(MesaGasMixin, MesaOpacityMixin, R
         self.F_nu_irr = F_nu_irr
         self.Sigma0_par = self.Sigma0_init()
         if cos_theta_irr is None:
-            self.cos_theta_irr = 1 / 8 * (self.z0 / self.r)
+            self.cos_theta_irr_key = False
         else:
+            self.cos_theta_irr_key = True
             self.cos_theta_irr = cos_theta_irr
         self.T_irr = None
         self.C_irr = None
@@ -634,6 +635,17 @@ class MesaVerticalStructureExternalIrradiation(MesaGasMixin, MesaOpacityMixin, R
         self.P_ph_0 = P_ph_0
         self.P_ph_key = False
         self.P_ph_parameter = None
+
+    @property
+    def cos_theta_irr(self):
+        if self.cos_theta_irr_key:
+            return self.cos_theta_irr
+        else:
+            return 1 / 8 * self.z0 / self.r
+
+    @cos_theta_irr.setter
+    def cos_theta_irr(self, value):
+        self.__cos_theta_irr = value
 
 
 class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,
@@ -684,8 +696,9 @@ class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityM
         self.F_nu_irr = F_nu_irr
         self.Sigma0_par = self.Sigma0_init()
         if cos_theta_irr is None:
-            self.cos_theta_irr = 1 / 8 * (self.z0 / self.r)
+            self.cos_theta_irr_key = False
         else:
+            self.cos_theta_irr_key = True
             self.cos_theta_irr = cos_theta_irr
         self.T_irr = None
         self.C_irr = None
@@ -694,6 +707,17 @@ class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityM
         self.P_ph_0 = P_ph_0
         self.P_ph_key = False
         self.P_ph_parameter = None
+
+    @property
+    def cos_theta_irr(self):
+        if self.cos_theta_irr_key:
+            return self.cos_theta_irr
+        else:
+            return 1 / 8 * self.z0 / self.r
+
+    @cos_theta_irr.setter
+    def cos_theta_irr(self, value):
+        self.__cos_theta_irr = value
 
 
 class MesaVerticalStructureFirstAssumptionExternalIrradiation(MesaGasMixin, MesaOpacityMixin,
@@ -745,8 +769,9 @@ class MesaVerticalStructureFirstAssumptionExternalIrradiation(MesaGasMixin, Mesa
         self.F_nu_irr = F_nu_irr
         self.Sigma0_par = self.Sigma0_init()
         if cos_theta_irr is None:
-            self.cos_theta_irr = 1 / 8 * (self.z0 / self.r)
+            self.cos_theta_irr_key = False
         else:
+            self.cos_theta_irr_key = True
             self.cos_theta_irr = cos_theta_irr
         self.T_irr = None
         self.C_irr = None
@@ -755,6 +780,17 @@ class MesaVerticalStructureFirstAssumptionExternalIrradiation(MesaGasMixin, Mesa
         self.P_ph_0 = P_ph_0
         self.P_ph_key = False
         self.P_ph_parameter = None
+
+    @property
+    def cos_theta_irr(self):
+        if self.cos_theta_irr_key:
+            return self.cos_theta_irr
+        else:
+            return 1 / 8 * self.z0 / self.r
+
+    @cos_theta_irr.setter
+    def cos_theta_irr(self, value):
+        self.__cos_theta_irr = value
 
 
 class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,

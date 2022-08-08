@@ -332,7 +332,8 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     if path_dots is None:
         print("ATTENTION: the data wil not be saved, since 'path_dots' is None")
     if make_pic and path_plot is None:
-        print("ATTENTION: the plot will only be created, but not be saved, since 'path_plot' is None")
+        print("ATTENTION: 'make_pic' == True. "
+              "The plot will only be created, but not be saved, since 'path_plot' is None")
     vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance,
                                         nu_irr=nu_irr, L_X_irr=L_X_irr,
                                         spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
@@ -510,7 +511,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     if path_dots is None:
         print("ATTENTION: the data wil not be saved, since 'path_dots' is None")
     if make_pic and path_plot is None:
-        print("ATTENTION: the plot will only be created, but not be saved, since 'path_plot' is None")
+        print("ATTENTION: 'make_pic' == True. "
+              "The plot will only be created, but not be saved, since 'path_plot' is None")
     if xscale not in ['linear', 'log', 'parlog']:
         raise Exception('Incorrect xscale, try linear, log or parlog')
     if yscale not in ['linear', 'log', 'parlog']:
