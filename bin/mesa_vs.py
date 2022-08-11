@@ -237,42 +237,6 @@ class RadConvTempGradient:
         return dlnTdlnP_conv
 
 
-class Advection:
-    def Q_adv(self, P):
-        v_r = - self.alpha * self.r * self.omegaK * (self.z0 / self.r) ** 2
-        beta = 1
-        Q_adv = v_r * (self.z0 / self.r) * P * (-15 + 99 / 8 * beta)
-        return Q_adv
-
-    def initial(self):
-        """
-        Initial conditions.
-
-        Returns
-        -------
-        array
-
-        """
-
-        Q_initial = self.Q_initial()
-        y = np.empty(4, dtype=np.float)
-        y[Vars.S] = 0
-        # y[Vars.S] = 0.1 / self.sigma_norm
-        # y[Vars.S] = self.P_ph() / (self.z0 * self.omegaK ** 2) / self.sigma_norm
-        y[Vars.P] = self.P_ph() / self.P_norm
-        y[Vars.Q] = Q_initial
-        y[Vars.T] = ((Q_initial - self.Q_adv(y[Vars.P] * self.P_norm) / self.Q_norm) * self.Q_norm / sigmaSB) ** (
-                1 / 4) / self.T_norm
-        return y
-
-    def photospheric_pressure_equation(self, tau, y):
-        Teff = ((self.Q0 - self.Q_adv(y)) / sigmaSB) ** (1 / 4)
-        T = Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)
-        rho = self.law_of_rho(y, T)
-        varkappa = self.law_of_opacity(rho, T, return_grad=False)
-        return self.z0 * self.omegaK ** 2 / varkappa
-
-
 class ExternalIrradiation:
     def J_tot(self, F_nu, y, tau_Xray, t):  # mean intensity as function of tau
         sigma_sc = 0.34  # not exactly sigma_sc in case of not fully ionized gas
@@ -825,21 +789,6 @@ class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin
         self.P_ph_0 = P_ph_0
         self.P_ph_key = False
         self.P_ph_parameter = None
-
-
-class MesaVerticalStructureAdvection(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, Advection,
-                                     BaseMesaVerticalStructure):
-    pass
-
-
-class MesaIdealVerticalStructureAdvection(IdealGasMixin, MesaOpacityMixin, RadiativeTempGradient, Advection,
-                                          BaseMesaVerticalStructure):
-    pass
-
-
-class MesaVerticalStructureRadConvAdvection(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, Advection,
-                                            BaseMesaVerticalStructure):
-    pass
 
 
 def main():

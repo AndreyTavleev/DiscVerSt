@@ -186,27 +186,9 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                                                                                  kwargs_spectrum_irr=kwargs_spectrum_irr,
                                                                                  cos_theta_irr=cos_theta_irr,
                                                                                  abundance=abundance)
-    elif structure == 'MesaRadConvAdv':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = mesa_vs.MesaVerticalStructureRadConvAdvection(M, alpha, r, F, abundance=abundance)
-    elif structure == 'MesaAdv':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = mesa_vs.MesaVerticalStructureAdvection(M, alpha, r, F, abundance=abundance)
-    elif structure == 'MesaIdealAdv':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = mesa_vs.MesaIdealVerticalStructureAdvection(M, alpha, r, F, abundance=abundance, mu=mu)
     else:
         raise Exception('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst, MesaRadConv,'
-                        ' MesaRadConvIrrZero, MesaRadConvIrr, MesaIrr or MesaFirstIrr')  # No advection?
+                        ' MesaRadConvIrrZero, MesaRadConvIrr, MesaIrr or MesaFirstIrr')
 
     return vs, F, Teff, Mdot
 
