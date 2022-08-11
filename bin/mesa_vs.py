@@ -822,7 +822,6 @@ class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin
             self.T_irr = (self.Q_irr / sigmaSB) ** (1 / 4)
         else:
             raise Exception('Only one of (C_irr, T_irr) is required.')
-        print('C_irr, T_irr = ', self.C_irr, self.T_irr)
         self.P_ph_0 = P_ph_0
         self.P_ph_key = False
         self.P_ph_parameter = None

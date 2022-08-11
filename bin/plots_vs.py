@@ -342,7 +342,6 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
         result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=Sigma0_estimation)
         z0r, sigma_par = result.x
-        # print('{}\n{}\n{}, {}\n\n'.format(result.x, result.fun, result.success, result.message))
     else:
         z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
     rg = 2 * G * M / c ** 2
@@ -623,7 +622,6 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             output_string.extend(vs.Pi_finder())
 
         if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
-            # print(result)
             try:
                 cost_func = result.cost * 2
             except AttributeError:
@@ -669,7 +667,6 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         with open(path_dots, 'a') as file:
             np.savetxt(file, output_string, newline=' ')
             file.write('\n')
-        # print(i + 1)
     with open(path_dots, 'a') as file:
         file.write('# Sigma_plus_index = {:d}  Sigma_minus_index = {:d}'.format(Sigma_plus_index, Sigma_minus_index))
         if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
@@ -908,7 +905,6 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
             output_string.extend(vs.Pi_finder())
 
         if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
-            # print(result)
             try:
                 cost_func = result.cost * 2
             except AttributeError:
@@ -919,9 +915,8 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         with open(path_dots, 'a') as file:
             np.savetxt(file, output_string, newline=' ')
             file.write('\n')
-        # print(i + 1)
-    with open(path_dots, 'a') as file:
-        if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
+    if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
+        with open(path_dots, 'a') as file:
             file.write('# Except_fits = {}'.format(except_fits))
     return 0
 
