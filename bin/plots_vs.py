@@ -450,10 +450,6 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
                 raise Exception('Incorrect output, try Teff, Mdot, Mdot_Mdot_edd, F, z0r or T_C')
 
         print('Prad/Pgas = ', PradPgas_C)
-        # if PradPgas_C < 1:
-        #     print('Prad/Pgas = {}'.format(PradPgas_C))
-        #     print(vs.Pi_finder())
-        #     return vs.Pi_finder(), PradPgas_C
 
         if PradPgas_C < 1.0 and key:
             PradPgas10_index = i - 1
@@ -614,6 +610,9 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         PradPgas_C = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
 
         output_string = [r, r / rg, Sigma0, Teff, F, z0r, rho_C, T_C, P_C, tau, PradPgas_C, varkappa_C]
+
+        print('Sigma0 = {:g} g/cm^2'.format(Sigma0))
+        print('Prad/Pgas = ', PradPgas_C)
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
