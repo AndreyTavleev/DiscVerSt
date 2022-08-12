@@ -415,6 +415,8 @@ class ExternalIrradiation:
             try:
                 result = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
                                        verbose=0, loss='linear')
+                if result.cost <= 1e-16:
+                    self.converged = True
             except NotConvergeError as err:
                 print('Not converged, try larger Sigma0_par or smaller z0r approximations. '
                       'Current approximations are Sigma0_par = {:g}, z0r = {:g}.'.format(err.Sigma0_par, err.z0r))
@@ -429,13 +431,17 @@ class ExternalIrradiation:
                                                      verbose=0, loss='linear')
                 if result_least_squares.cost * 2 < cost_root:
                     result = result_least_squares
+                    if result_least_squares.cost <= 1e-16:
+                        self.converged = True
             except (NotConvergeError, PphNotConvergeError):
                 pass
+        else:
+            self.converged = True
 
         result.x = abs(result.x) * np.array([1, norm])
         self.Sigma0_par = result.x[1]
         self.z0 = result.x[0] * self.r
-        self.fitted = True  # doesn't mean that structure converged successfully
+        self.fitted = True  # doesn't mean that structure converged successfully, need only for Pph
         return result
 
 
@@ -598,6 +604,7 @@ class MesaVerticalStructureExternalIrradiation(MesaGasMixin, MesaOpacityMixin, R
         self.P_ph_0 = P_ph_0
         self.P_ph_key = False
         self.P_ph_parameter = None
+        self.converged = False
 
     @property
     def cos_theta_irr(self):
@@ -670,6 +677,7 @@ class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityM
         self.P_ph_0 = P_ph_0
         self.P_ph_key = False
         self.P_ph_parameter = None
+        self.converged = False
 
     @property
     def cos_theta_irr(self):
@@ -743,6 +751,7 @@ class MesaVerticalStructureFirstAssumptionExternalIrradiation(MesaGasMixin, Mesa
         self.P_ph_0 = P_ph_0
         self.P_ph_key = False
         self.P_ph_parameter = None
+        self.converged = False
 
     @property
     def cos_theta_irr(self):

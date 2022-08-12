@@ -359,8 +359,8 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
             cost_func = result.cost * 2
         except AttributeError:
             cost_func = result.fun[0] ** 2 + result.fun[1] ** 2
-        header_input += ', cost = {:g}, success = {}, Sigma_ph = {:g} g/cm^2'.format(
-            cost_func, result.success, vs.Sigma_ph)
+        header_input += ', cost = {:g}, converged = {}, Sigma_ph = {:g} g/cm^2'.format(
+            cost_func, vs.converged, vs.Sigma_ph)
     header_C = '\nvarkappa_C = {:e} cm^2/g, rho_C = {:e} g/cm^3, T_C = {:e} K, P_C = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
                'PradPgas_C = {:e}, z0r = {:e}, tau = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r, tau)
     header_norm = '\nSigma_norm = {:e}, P_norm = {:e}, T_norm = {:e}, Q_norm = {:e}'.format(
@@ -533,7 +533,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         if add_Pi_values:
             header += ' \tPi1 \tPi2 \tPi3 \tPi4'
         if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
-            header += ' \tcost \tsuccess \tSigma_ph'
+            header += ' \tcost \tconverged \tSigma_ph'
         header = header + '\nAll values are in CGS units.' + header_end
         np.savetxt(path_dots, [], header=header)
 
@@ -608,7 +608,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
                 cost_func = result.cost * 2
             except AttributeError:
                 cost_func = result.fun[0] ** 2 + result.fun[1] ** 2
-            output_string.extend([cost_func, result.success, vs.Sigma_ph])
+            output_string.extend([cost_func, vs.converged, vs.Sigma_ph])
 
         Sigma_plot.append(Sigma0)
 
@@ -816,7 +816,7 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         if add_Pi_values:
             header += ' \tPi1 \tPi2 \tPi3 \tPi4'
         if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
-            header += ' \tcost \tsuccess \tSigma_ph'
+            header += ' \tcost \tconverged \tSigma_ph'
         header = header + '\nAll values are in CGS units.' + header_end
         np.savetxt(path_dots, [], header=header)
 
@@ -891,7 +891,7 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
                 cost_func = result.cost * 2
             except AttributeError:
                 cost_func = result.fun[0] ** 2 + result.fun[1] ** 2
-            output_string.extend([cost_func, result.success, vs.Sigma_ph])
+            output_string.extend([cost_func, vs.converged, vs.Sigma_ph])
 
         output_string = np.array(output_string)
         with open(path_dots, 'a') as file:
