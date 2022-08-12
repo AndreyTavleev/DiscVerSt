@@ -5,7 +5,7 @@ This code can calculate vertical structure of accretion discs around neutron sta
 ## Contents
 
    * [Installation](#Installation)
-      * [Only analitical opacities and EOS](#Only-analitical-opacities-and-EOS)
+      * [Only analytical opacities and EOS](#Only-analytical-opacities-and-EOS)
       * [Tabular opacities and EOS](#Tabular-opacities-and-EOS)
    * [Calculate structure](#Calculate-structure)
    * [Irradiated discs](#Irradiated-discs)
@@ -189,7 +189,7 @@ Irradiation can be taken into account in two ways:
    and the cosine of incident angle `cos_theta_irr`. The spectral incident flux then will be 
    `F_nu_irr = L_X_irr / (4 * pi * r ** 2) * spectrum_irr`.
 
-   1. Frequency range `nu_irr` is array-like and can be either in Hz or in energy units (keV), this is detemined by 
+   1. Frequency range `nu_irr` is array-like and can be either in Hz or in energy units (keV), this is determined by 
       `spectrum_irr_par` in `['nu', 'E_in_keV']`.
    2. Spectrum `spectrum_irr` can be either an array-like or a Python function. 
       In latter case the spectrum is calculated for the frequency range `nu_irr` and automatically normalized to unity 
