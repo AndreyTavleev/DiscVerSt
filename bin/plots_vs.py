@@ -217,7 +217,7 @@ def Convective_parameter(vs):
     grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
     rho, eos = vs.law_of_rho(P * vs.P_norm, T * vs.T_norm, True)
     try:
-        _ = eos.grad_ad
+        _ = eos.c_p
     except AttributeError:
         raise Exception('Incorrect vertical structure. Use vertical structure with Mesa EOS.')
     conv_param_sigma = simps(2 * rho * (grad_plot(np.log(P)) > eos.grad_ad), t * vs.z0) / (
@@ -549,8 +549,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
             try:
                 result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=sigma_par_estimation)
-            except Exception as ex:
-                print('Except fit', type(ex), ex)
+            except (mesa_vs.NotConvergeError, mesa_vs.PphNotConvergeError):
+                print('Except fit')
                 except_fits += 1
                 continue
             z0r, sigma_par = result.x
@@ -559,8 +559,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         elif structure in ['MesaRadConvIrrZero']:
             try:
                 z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
-            except Exception as ex:
-                print('Except fit', type(ex), ex)
+            except mesa_vs.PphNotConvergeError:
+                print('Except fit')
                 except_fits += 1
                 continue
             z0r_estimation = z0r
@@ -587,7 +587,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
-            _ = eos.grad_ad
+            _ = eos.c_p
             free_e = np.exp(eos.lnfree_e)
             conv_param_z, conv_param_sigma = Convective_parameter(vs)
             output_string.extend([free_e, conv_param_z, conv_param_sigma])
@@ -832,8 +832,8 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
             try:
                 result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=sigma_par_estimation)
-            except Exception as ex:
-                print('Except fit', type(ex), ex)
+            except (mesa_vs.NotConvergeError, mesa_vs.PphNotConvergeError):
+                print('Except fit')
                 except_fits += 1
                 continue
             z0r, sigma_par = result.x
@@ -842,8 +842,8 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         elif structure in ['MesaRadConvIrrZero']:
             try:
                 z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
-            except Exception as ex:
-                print('Except fit', type(ex), ex)
+            except mesa_vs.PphNotConvergeError:
+                print('Except fit')
                 except_fits += 1
                 continue
             z0r_estimation = z0r
@@ -870,7 +870,7 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
-            _ = eos.grad_ad
+            _ = eos.c_p
             free_e = np.exp(eos.lnfree_e)
             conv_param_z, conv_param_sigma = Convective_parameter(vs)
             output_string.extend([free_e, conv_param_z, conv_param_sigma])

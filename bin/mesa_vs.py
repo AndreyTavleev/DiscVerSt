@@ -46,6 +46,19 @@ except ModuleNotFoundError as e:
     raise ModuleNotFoundError('Mesa2py is not installed') from e
 
 
+class NotConvergeError(Exception):
+    def __init__(self, Sigma0_par, z0r):
+        self.Sigma0_par = Sigma0_par
+        self.z0r = z0r
+    pass
+
+
+class PphNotConvergeError(Exception):
+    def __init__(self, func_Pph):
+        self.func_Pph = abs(func_Pph)
+    pass
+
+
 def sigma_d_nu(nu):  # cross-section in cm2 (Morrison & McCammon, 1983) from 0.03 to 10 keV
     E = (nu * units.Hz).to('keV', equivalencies=units.spectral()).value
 
@@ -205,7 +218,6 @@ class RadConvTempGradient:
         der = eos.dlnRho_dlnT_const_Pgas
         if der > 0:
             der = -1
-            print('FUUUUU...!')
 
         VV = -((3 + omega ** 2) / (
                 3 * omega)) ** 2 * eos.c_p ** 2 * rho ** 2 * H_ml ** 2 * self.omegaK ** 2 * self.z0 * (1 - t) / (
@@ -214,25 +226,18 @@ class RadConvTempGradient:
         V = 1 / np.sqrt(VV)
 
         coeff = [2 * A, V, V ** 2, - V]
-        # print(coeff)
-        # x = np.roots(coeff)
+
         try:
             x = np.roots(coeff)
         except np.linalg.LinAlgError:
             print('LinAlgError, coeff[2A, V, V ** 2, -V] = ', coeff)
             raise
-            # breakpoint()
 
         x = [a.real for a in x if a.imag == 0 and 0.0 < a.real < 1.0]
         if len(x) != 1:
             print('not one x of there is no right x')
             raise Exception
-        #     breakpoint()
         x = x[0]
-        # print(x)
-        # print(H_p, H_ml, omega, eos.c_p, eos.dlnRho_dlnT_const_Pgas, dlnTdlnP_rad - eos.grad_ad, VV, rho,
-        #       y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, eos.grad_ad, dlnTdlnP_rad, varkappa)
-
         dlnTdlnP_conv = eos.grad_ad + (dlnTdlnP_rad - eos.grad_ad) * x * (x + V)
         return dlnTdlnP_conv
 
@@ -258,14 +263,8 @@ class ExternalIrradiation:
                 (1 - D_nu) * (np.exp(-tau / zeta_0) + np.exp(-(tau_Xray - tau) / zeta_0))
         )
 
-        i = 0
-        if (tau_Xray[i] - tau[i]) < 0:
-            print('tau0 < tau, J, min nu: ', t, sigma_sc + k_d_nu[i],
-                  self.Sigma0_par, y[Vars.S] * self.sigma_norm / 2,
-                  self.Sigma0_par - y[Vars.S] * self.sigma_norm / 2,
-                  tau_Xray[i], tau[i], tau_Xray[i] - tau[i],
-                  -k[i] * (tau_Xray[i] - tau[i]), -(tau_Xray[i] - tau[i]) / zeta_0, J_tot[i])
-            raise Exception
+        if (tau_Xray[0] - tau[0]) < 0:
+            raise NotConvergeError(self.Sigma0_par, self.z0 / self.r)
         return J_tot
 
     def H_tot(self, F_nu, tau_Xray, Pph):  # eddington flux at the photosphere
@@ -288,11 +287,7 @@ class ExternalIrradiation:
 
         i = 0
         if (tau_Xray[i] - tau[i]) < 0:
-            print('tau0 < tau, H, min nu: ', self.nu_irr[i], sigma_sc + k_d_nu[i],
-                  self.Sigma0_par - Pph / (self.z0 * self.omegaK ** 2),
-                  tau_Xray[i], tau[i], tau_Xray[i] - tau[i],
-                  -k[i] * (tau_Xray[i] - tau[i]), -(tau_Xray[i] - tau[i]) / zeta_0, H_tot[i])
-            raise Exception
+            raise NotConvergeError(self.Sigma0_par, self.z0 / self.r)
         return H_tot
 
     def epsilon(self, y, t):
@@ -353,7 +348,7 @@ class ExternalIrradiation:
                     break
             P_ph, res = brentq(fun_P_ph, self.P_ph_0, self.P_ph_0 / factor, full_output=True)
             if abs(fun_P_ph(P_ph)) > 1e-8:
-                raise Exception('fun_Pph is so big, {:g}'.format(abs(fun_P_ph(P_ph))))
+                raise PphNotConvergeError(fun_P_ph(P_ph))
             self.P_ph_0 = P_ph + 1
             P_ph = abs(res.root)
             if self.fitted:
@@ -388,7 +383,6 @@ class ExternalIrradiation:
     def dq(self, x, norm):
         self.Sigma0_par = abs(x[1]) * norm
         self.z0 = abs(x[0]) * self.r
-        # print('[{:g}, {:g}, {:g}]'.format(x[0], self.Sigma0_par, x[1]))
         q_c = np.array([self.y_c()[Vars.Q], self.Sigma0_par / self.parameters_C()[4] - 1])
         return q_c
 
@@ -417,21 +411,26 @@ class ExternalIrradiation:
         try:
             result = root(self.dq, x0=np.array([x0_z0r, 1]), args=norm, method='hybr')
             cost_root = result.fun[0] ** 2 + result.fun[1] ** 2
-        except:
-            result = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
-                                   verbose=0, loss='linear')
+        except (NotConvergeError, PphNotConvergeError):
+            try:
+                result = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
+                                       verbose=0, loss='linear')
+            except NotConvergeError as err:
+                print('Not converged, try larger Sigma0_par or smaller z0r approximations. '
+                      'Current approximations are Sigma0_par = {:g}, z0r = {:g}.'.format(err.Sigma0_par, err.z0r))
+                raise err
+            except PphNotConvergeError as err:
+                print('Not converged')
+                raise err
 
         if cost_root > 1e-16:
-            # print('Cost_root > 1e-16')
             try:
                 result_least_squares = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
                                                      verbose=0, loss='linear')
                 if result_least_squares.cost * 2 < cost_root:
                     result = result_least_squares
-            except:
+            except (NotConvergeError, PphNotConvergeError):
                 pass
-
-        # print(result)
 
         result.x = abs(result.x) * np.array([1, norm])
         self.Sigma0_par = result.x[1]
@@ -480,7 +479,7 @@ class ExternalIrradiationZeroAssumption:
                     break
             P_ph, res = brentq(fun_P_ph, self.P_ph_0, self.P_ph_0 / factor, full_output=True)
             if abs(fun_P_ph(P_ph)) > 1e-8:
-                raise Exception('fun_Pph is so big, {:g}'.format(abs(fun_P_ph(P_ph))))
+                raise PphNotConvergeError(fun_P_ph(P_ph))
             self.P_ph_0 = P_ph + 1
             P_ph = abs(res.root)
             if self.fitted:
