@@ -197,7 +197,8 @@ Irradiation can be taken into account in two ways:
       There are two optional parameters `args_spectrum_irr` and `kwargs_spectrum_irr` for arguments (keyword arguments) 
       of spectrum function.
    3. Cosine of incident angle `cos_theta_irr` can be either exact value or `None`. In the latter case
-      cosine is calculated self-consistently as `1/8 * z0 / r`.
+      cosine is calculated self-consistently as `cos_theta_irr_exp * z0 / r`, where `cos_theta_irr_exp` is
+      additional parameter, namely the `dln(z0)/dln(r) - 1` derivative.
 
 ### Usage of simple irradiation scheme:
 
@@ -249,7 +250,8 @@ F = 2e34  # viscous torque
 nu_irr = np.geomspace(1, 10, 30)  # energy range from 1 to 10 keV
 spectrum_par = 'E_in_keV'  # units of nu_irr if energy in keV
 kwargs={'n': -0.4, 'scale': 8}  # spectrum function parameters
-cos_theta_irr = None  # incident angle is calculated self-consistently as 1/8 * z0 / r
+cos_theta_irr = None  # incident angle is calculated self-consistently
+cos_theta_irr_exp = 1 / 8  # as cos_theta_irr_exp * z0 / r
 L_X_irr = 1.0 * 1.25e38 * M / 2e33  #  luminosity of X-ray source = 1.0 * L_eddington
 
 # Structure with tabular MESA opacities and EOS,
@@ -263,7 +265,8 @@ vertstr = mesa_vs.MesaVerticalStructureRadConvExternalIrradiation(
                      spectrum_irr=power_law_exp_spectrum, L_X_irr=L_X_irr,
                      spectrum_irr_par=spectrum_par, 
                      kwargs_spectrum_irr=kwargs,
-                     cos_theta_irr=cos_theta_irr)  # create the structure
+                     cos_theta_irr=cos_theta_irr, 
+                     cos_theta_irr_exp=cos_theta_irr_exp)  # create the structure
 result = vertstr.fit()  # calculate structure
 z0r, Sigma0 = result.x  # Sigma0 is additional free parameter to find
 varkappa_C, rho_C, T_C, P_C, Sigma0 = vertstr.parameters_C()

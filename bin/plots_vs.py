@@ -40,7 +40,7 @@ c = const.c.cgs.value
 
 def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar', nu_irr=None, L_X_irr=None,
                     spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
-                    C_irr=None, T_irr=None, cos_theta_irr=None, P_ph_0=None):
+                    C_irr=None, T_irr=None, cos_theta_irr=None, cos_theta_irr_exp=1 / 8, P_ph_0=None):
     """
     Initialize the chosen vertical structure class.
 
@@ -50,7 +50,9 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
         Base parameters of structure.
     mu, abundance
         Parameters that describe the chemical composition (ideal gas, tabular values).
-    nu_irr, L_X_irr, spectrum_irr, spectrum_irr_par, args_spectrum_irr, kwargs_spectrum_irr, cos_theta_irr
+    nu_irr, L_X_irr, spectrum_irr, spectrum_irr_par
+        Additional parameters in case of advanced external irradiation scheme from (Mescheryakov et al. 2011).
+    args_spectrum_irr, kwargs_spectrum_irr, cos_theta_irr, cos_theta_irr_exp
         Additional parameters in case of advanced external irradiation scheme from (Mescheryakov et al. 2011).
     C_irr, T_irr
         Additional parameters in case of simple external irradiation scheme.
@@ -154,6 +156,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                                                                          args_spectrum_irr=args_spectrum_irr,
                                                                          kwargs_spectrum_irr=kwargs_spectrum_irr,
                                                                          cos_theta_irr=cos_theta_irr,
+                                                                         cos_theta_irr_exp=cos_theta_irr_exp,
                                                                          abundance=abundance, P_ph_0=P_ph_0)
     elif structure == 'MesaIrr':
         try:
@@ -169,6 +172,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                                                                   args_spectrum_irr=args_spectrum_irr,
                                                                   kwargs_spectrum_irr=kwargs_spectrum_irr,
                                                                   cos_theta_irr=cos_theta_irr,
+                                                                  cos_theta_irr_exp=cos_theta_irr_exp,
                                                                   abundance=abundance, P_ph_0=P_ph_0)
     elif structure == 'MesaFirstIrr':
         try:
@@ -185,6 +189,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                                                                                  args_spectrum_irr=args_spectrum_irr,
                                                                                  kwargs_spectrum_irr=kwargs_spectrum_irr,
                                                                                  cos_theta_irr=cos_theta_irr,
+                                                                                 cos_theta_irr_exp=cos_theta_irr_exp,
                                                                                  abundance=abundance)
     else:
         raise Exception('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst, MesaRadConv,'
@@ -228,7 +233,8 @@ def Convective_parameter(vs):
 
 def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', abundance='solar', nu_irr=None,
                    L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
-                   cos_theta_irr=None, C_irr=None, T_irr=None, z0r_estimation=None, Sigma0_estimation=None,
+                   cos_theta_irr=None, cos_theta_irr_exp=1 / 8, C_irr=None, T_irr=None,
+                   z0r_estimation=None, Sigma0_estimation=None,
                    n=100, add_Pi_values=True, path_dots=None,
                    make_pic=True, path_plot=None, set_title=True, title='Vertical structure'):
     """
@@ -277,13 +283,16 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     args_spectrum_irr, kwargs_spectrum_irr : tuple and dict
         Extra arguments and keyword arguments of spectrum_irr, if it's callable.
         The calling signature is ``spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``
-    L_X_irr : double
+    L_X_irr : double or None
         If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'],
         L_X_irr is the (X-ray) bolometric luminosity of external irradiation source.
+        If None, then ``L_X_irr = 0.1 * Mdot * c ** 2``.
         The irradiation flux ``F_irr = L_X_irr / (4 * pi * r ** 2)``.
-    cos_theta_irr : double
+    cos_theta_irr : double or None
         If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'], cos_theta_irr is the cosine of angle
-        of incidence for external irradiation flux. If None, ``cos_theta_irr = 1/8 * (z0/r)``.
+        of incidence for external irradiation flux. If None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
+    cos_theta_irr_exp : double
+        If cos_theta_irr is None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
     C_irr : double
         If structure == 'MesaRadConvIrrZero', C_irr is the irradiation constant.
     T_irr : double
@@ -320,7 +329,8 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
                                         nu_irr=nu_irr, L_X_irr=L_X_irr,
                                         spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
                                         args_spectrum_irr=args_spectrum_irr, kwargs_spectrum_irr=kwargs_spectrum_irr,
-                                        cos_theta_irr=cos_theta_irr, C_irr=C_irr, T_irr=T_irr)
+                                        cos_theta_irr=cos_theta_irr, cos_theta_irr_exp=cos_theta_irr_exp,
+                                        C_irr=C_irr, T_irr=T_irr)
     if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
         result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=Sigma0_estimation)
         z0r, sigma_par = result.x
@@ -389,7 +399,8 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
 
 def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu=0.6, abundance='solar', nu_irr=None,
             L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
-            cos_theta_irr=None, C_irr=None, T_irr=None, z0r_start_estimation=None, Sigma0_start_estimation=None,
+            cos_theta_irr=None, cos_theta_irr_exp=1 / 8, C_irr=None, T_irr=None,
+            z0r_start_estimation=None, Sigma0_start_estimation=None,
             n=100, tau_break=True, path_dots=None, add_Pi_values=True,
             make_pic=True, output='Mdot', xscale='log', yscale='log',
             path_plot=None, set_title=True, title='S-curve'):
@@ -445,13 +456,16 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     args_spectrum_irr, kwargs_spectrum_irr : tuple and dict
         Extra arguments and keyword arguments of spectrum_irr, if it's callable.
         The calling signature is ``spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``
-    L_X_irr : double
+    L_X_irr : double or None
         If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'],
         L_X_irr is the (X-ray) bolometric luminosity of external irradiation source.
+        If None, then ``L_X_irr = 0.1 * Mdot * c ** 2``.
         The irradiation flux ``F_irr = L_X_irr / (4 * pi * r ** 2)``.
-    cos_theta_irr : double
+    cos_theta_irr : double or None
         If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'], cos_theta_irr is the cosine of angle
-        of incidence for external irradiation flux. If None, ``cos_theta_irr = 1/8 * (z0/r)``.
+        of incidence for external irradiation flux. If None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
+    cos_theta_irr_exp : double
+        If cos_theta_irr is None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
     C_irr : double
         If structure == 'MesaRadConvIrrZero', C_irr is the irradiation constant.
     T_irr : double
@@ -544,7 +558,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
                                             spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
                                             args_spectrum_irr=args_spectrum_irr,
                                             kwargs_spectrum_irr=kwargs_spectrum_irr,
-                                            cos_theta_irr=cos_theta_irr,
+                                            cos_theta_irr=cos_theta_irr, cos_theta_irr_exp=cos_theta_irr_exp,
                                             C_irr=C_irr, T_irr=T_irr, P_ph_0=P_ph_0)
         if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
             try:
@@ -706,8 +720,9 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
 def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin', mu=0.6, abundance='solar',
                 nu_irr=None, L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(),
-                kwargs_spectrum_irr={}, cos_theta_irr=None, C_irr=None, T_irr=None, z0r_start_estimation=None,
-                Sigma0_start_estimation=None, n=100, tau_break=True, path_dots=None, add_Pi_values=True):
+                kwargs_spectrum_irr={}, cos_theta_irr=None, cos_theta_irr_exp=1 / 8, C_irr=None, T_irr=None,
+                z0r_start_estimation=None, Sigma0_start_estimation=None,
+                n=100, tau_break=True, path_dots=None, add_Pi_values=True):
     """
     Calculates radial structure of disc. Return table, which contains input parameters of the system,
     surface density Sigma0, viscous torque F, accretion rate Mdot, effective temperature Teff,
@@ -758,13 +773,16 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
     args_spectrum_irr, kwargs_spectrum_irr : tuple and dict
         Extra arguments and keyword arguments of spectrum_irr, if it's callable.
         The calling signature is ``spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``
-    L_X_irr : double
+    L_X_irr : double or None
         If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'],
         L_X_irr is the (X-ray) bolometric luminosity of external irradiation source.
+        If None, then ``L_X_irr = 0.1 * Mdot * c ** 2``.
         The irradiation flux ``F_irr = L_X_irr / (4 * pi * r ** 2)``.
-    cos_theta_irr : double
+    cos_theta_irr : double or None
         If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'], cos_theta_irr is the cosine of angle
-        of incidence for external irradiation flux. If None, ``cos_theta_irr = 1/8 * (z0/r)``.
+        of incidence for external irradiation flux. If None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
+    cos_theta_irr_exp : double
+        If cos_theta_irr is None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
     C_irr : double
         If structure == 'MesaRadConvIrrZero', C_irr is the irradiation constant.
     T_irr : double
@@ -827,7 +845,7 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
                                             spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
                                             args_spectrum_irr=args_spectrum_irr,
                                             kwargs_spectrum_irr=kwargs_spectrum_irr,
-                                            cos_theta_irr=cos_theta_irr,
+                                            cos_theta_irr=cos_theta_irr, cos_theta_irr_exp=cos_theta_irr_exp,
                                             C_irr=C_irr, T_irr=T_irr, P_ph_0=P_ph_0)
         if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
             try:
