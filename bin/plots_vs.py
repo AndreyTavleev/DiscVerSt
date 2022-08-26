@@ -610,9 +610,9 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
         if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
             QirrQvis = vs.Q_irr / vs.Q0
-            T_irr, C_irr = vs.T_irr, vs.C_irr
-            output_string.extend([QirrQvis, T_irr, C_irr])
-            print('T_irr, C_irr = {:g}, {:g}'.format(T_irr, C_irr))
+            T_irr_, C_irr_ = vs.T_irr, vs.C_irr
+            output_string.extend([QirrQvis, T_irr_, C_irr_])
+            print('T_irr, C_irr = {:g}, {:g}'.format(T_irr_, C_irr_))
 
         if add_Pi_values:
             output_string.extend(vs.Pi_finder())
@@ -897,9 +897,9 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
 
         if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
             QirrQvis = vs.Q_irr / vs.Q0
-            T_irr, C_irr = vs.T_irr, vs.C_irr
-            output_string.extend([QirrQvis, T_irr, C_irr])
-            print('T_irr, C_irr = {:g}, {:g}'.format(T_irr, C_irr))
+            T_irr_, C_irr_ = vs.T_irr, vs.C_irr
+            output_string.extend([QirrQvis, T_irr_, C_irr_])
+            print('T_irr, C_irr = {:g}, {:g}'.format(T_irr_, C_irr_))
 
         if add_Pi_values:
             output_string.extend(vs.Pi_finder())

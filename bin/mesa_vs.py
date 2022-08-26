@@ -345,7 +345,7 @@ class ExternalIrradiation:
                 if sign_P_ph * fun_P_ph(self.P_ph_0) < 0:
                     break
             P_ph, res = brentq(fun_P_ph, self.P_ph_0, self.P_ph_0 / factor, full_output=True)
-            if abs(fun_P_ph(P_ph)) > 1e-8:
+            if abs(fun_P_ph(P_ph)) > 1e-7:
                 raise PphNotConvergeError(fun_P_ph(P_ph))
             self.P_ph_0 = P_ph + 1
             P_ph = abs(res.root)
@@ -482,7 +482,7 @@ class ExternalIrradiationZeroAssumption:
                 if sign_P_ph * fun_P_ph(self.P_ph_0) < 0:
                     break
             P_ph, res = brentq(fun_P_ph, self.P_ph_0, self.P_ph_0 / factor, full_output=True)
-            if abs(fun_P_ph(P_ph)) > 1e-8:
+            if abs(fun_P_ph(P_ph)) > 1e-7:
                 raise PphNotConvergeError(fun_P_ph(P_ph))
             self.P_ph_0 = P_ph + 1
             P_ph = abs(res.root)
