@@ -38,7 +38,9 @@ M_sun = const.M_sun.cgs.value
 c = const.c.cgs.value
 
 
-def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar'):
+def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar', nu_irr=None, L_X_irr=None,
+                    spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
+                    C_irr=None, T_irr=None, cos_theta_irr=None, cos_theta_irr_exp=1 / 8, P_ph_0=None):
     """
     Initialize the chosen vertical structure class.
 
@@ -48,9 +50,18 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
         Base parameters of structure.
     mu, abundance
         Parameters that describe the chemical composition (ideal gas, tabular values).
+    nu_irr, L_X_irr, spectrum_irr, spectrum_irr_par
+        Additional parameters in case of advanced external irradiation scheme from (Mescheryakov et al. 2011).
+    args_spectrum_irr, kwargs_spectrum_irr, cos_theta_irr, cos_theta_irr_exp
+        Additional parameters in case of advanced external irradiation scheme from (Mescheryakov et al. 2011).
+    C_irr, T_irr
+        Additional parameters in case of simple external irradiation scheme.
+    P_ph_0
+        Additional parameter in case of external irradiation.
     structure : str
         Type of vertical structure. Can be 'Kramers', 'BellLin',
-        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst' or 'MesaRadConv'.
+        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst', 'MesaRadConv',
+        'MesaRadConvIrrZero', 'MesaRadConvIrr', 'MesaIrr' or 'MesaFirstIrr'
 
     Returns
     -------
@@ -124,8 +135,65 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
             vs = mesa_vs.MesaVerticalStructureRadConv(M, alpha, r, F, abundance=abundance)
+    elif structure == 'MesaRadConvIrrZero':
+        try:
+            if np.isnan(mesa_vs):
+                raise ModuleNotFoundError('Mesa2py is not installed')
+        except TypeError:
+            vs = mesa_vs.MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(M, alpha, r, F, C_irr=C_irr,
+                                                                                       T_irr=T_irr, abundance=abundance)
+    elif structure == 'MesaRadConvIrr':
+        try:
+            if np.isnan(mesa_vs):
+                raise ModuleNotFoundError('Mesa2py is not installed')
+        except TypeError:
+            if L_X_irr is None:
+                eta = 0.1
+                L_X_irr = eta * Mdot * c ** 2
+            vs = mesa_vs.MesaVerticalStructureRadConvExternalIrradiation(M, alpha, r, F, nu_irr=nu_irr,
+                                                                         L_X_irr=L_X_irr, spectrum_irr=spectrum_irr,
+                                                                         spectrum_irr_par=spectrum_irr_par,
+                                                                         args_spectrum_irr=args_spectrum_irr,
+                                                                         kwargs_spectrum_irr=kwargs_spectrum_irr,
+                                                                         cos_theta_irr=cos_theta_irr,
+                                                                         cos_theta_irr_exp=cos_theta_irr_exp,
+                                                                         abundance=abundance, P_ph_0=P_ph_0)
+    elif structure == 'MesaIrr':
+        try:
+            if np.isnan(mesa_vs):
+                raise ModuleNotFoundError('Mesa2py is not installed')
+        except TypeError:
+            if L_X_irr is None:
+                eta = 0.1
+                L_X_irr = eta * Mdot * c ** 2
+            vs = mesa_vs.MesaVerticalStructureExternalIrradiation(M, alpha, r, F, nu_irr=nu_irr,
+                                                                  L_X_irr=L_X_irr, spectrum_irr=spectrum_irr,
+                                                                  spectrum_irr_par=spectrum_irr_par,
+                                                                  args_spectrum_irr=args_spectrum_irr,
+                                                                  kwargs_spectrum_irr=kwargs_spectrum_irr,
+                                                                  cos_theta_irr=cos_theta_irr,
+                                                                  cos_theta_irr_exp=cos_theta_irr_exp,
+                                                                  abundance=abundance, P_ph_0=P_ph_0)
+    elif structure == 'MesaFirstIrr':
+        try:
+            if np.isnan(mesa_vs):
+                raise ModuleNotFoundError('Mesa2py is not installed')
+        except TypeError:
+            if L_X_irr is None:
+                eta = 0.1
+                L_X_irr = eta * Mdot * c ** 2
+            vs = mesa_vs.MesaVerticalStructureFirstAssumptionExternalIrradiation(M, alpha, r, F, nu_irr=nu_irr,
+                                                                                 L_X_irr=L_X_irr,
+                                                                                 spectrum_irr=spectrum_irr,
+                                                                                 spectrum_irr_par=spectrum_irr_par,
+                                                                                 args_spectrum_irr=args_spectrum_irr,
+                                                                                 kwargs_spectrum_irr=kwargs_spectrum_irr,
+                                                                                 cos_theta_irr=cos_theta_irr,
+                                                                                 cos_theta_irr_exp=cos_theta_irr_exp,
+                                                                                 abundance=abundance)
     else:
-        raise Exception('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst or MesaRadConv')
+        raise Exception('Incorrect structure, try Kramers, BellLin, Mesa, MesaIdeal, MesaAd, MesaFirst, MesaRadConv,'
+                        ' MesaRadConvIrrZero, MesaRadConvIrr, MesaIrr or MesaFirstIrr')
 
     return vs, F, Teff, Mdot
 
@@ -154,7 +222,7 @@ def Convective_parameter(vs):
     grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
     rho, eos = vs.law_of_rho(P * vs.P_norm, T * vs.T_norm, True)
     try:
-        _ = eos.grad_ad
+        _ = eos.c_p
     except AttributeError:
         raise Exception('Incorrect vertical structure. Use vertical structure with Mesa EOS.')
     conv_param_sigma = simps(2 * rho * (grad_plot(np.log(P)) > eos.grad_ad), t * vs.z0) / (
@@ -163,9 +231,12 @@ def Convective_parameter(vs):
     return conv_param_z, conv_param_sigma
 
 
-def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', abundance='solar', n=100,
-                   z0r_estimation=None, add_Pi_values=True, path_dots=None, make_pic=True,
-                   path_plot=None, set_title=True, title='Vertical structure'):
+def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', abundance='solar', nu_irr=None,
+                   L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
+                   cos_theta_irr=None, cos_theta_irr_exp=1 / 8, C_irr=None, T_irr=None,
+                   z0r_estimation=None, Sigma0_estimation=None,
+                   n=100, add_Pi_values=True, path_dots=None,
+                   make_pic=True, path_plot=None, set_title=True, title='Vertical structure'):
     """
     Calculates vertical structure and makes table with disc parameters as functions of vertical coordinate.
     Table also contains input parameters of structure, parameters in the symmetry plane and parameter normalisations.
@@ -189,16 +260,52 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         Molecular weight. Use in case of ideal gas EOS.
     structure : str
         Type of vertical structure. Can be 'Kramers', 'BellLin',
-        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst' or 'MesaRadConv'.
+        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst', 'MesaRadConv',
+        'MesaRadConvIrrZero', 'MesaRadConvIrr', 'MesaIrr' or 'MesaFirstIrr'
     abundance : dict or str
         Chemical composition of disc. Use in case of Mesa EOS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
+    nu_irr : array-like
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'], nu_irr is the irradiation spectral flux argument.
+        Can be (X-ray) frequency (in Hz) or energy (in keV) array for spectral external irradiation flux.
+        Choose depends on the 'spectrum_irr_par'.
+    spectrum_irr : array-like or callable
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'],
+        spectrum_irr is the spectrum of external irradiation flux, i.e.
+        the spectral (X-ray) external irradiation flux F_nu_irr = F_irr * spectrum_irr.
+        If spectrum_irr is array-like, then its size must be equal to nu_irr.size.
+        If spectrum_irr is callable, then
+        ``F_nu_irr = F_irr * spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``.
+        The normalisation of the spectrum_irr in that case is performed automatically.
+    spectrum_irr_par : str
+        Defines the irradiation spectral flux argument. Can be 'nu' (frequency in Hz) and 'E_in_keV' (energy in keV).
+    args_spectrum_irr, kwargs_spectrum_irr : tuple and dict
+        Extra arguments and keyword arguments of spectrum_irr, if it's callable.
+        The calling signature is ``spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``
+    L_X_irr : double or None
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'],
+        L_X_irr is the (X-ray) bolometric luminosity of external irradiation source.
+        If None, then ``L_X_irr = 0.1 * Mdot * c ** 2``.
+        The irradiation flux ``F_irr = L_X_irr / (4 * pi * r ** 2)``.
+    cos_theta_irr : double or None
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'], cos_theta_irr is the cosine of angle
+        of incidence for external irradiation flux. If None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
+    cos_theta_irr_exp : double
+        If cos_theta_irr is None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
+    C_irr : double
+        If structure == 'MesaRadConvIrrZero', C_irr is the irradiation constant.
+    T_irr : double
+        If structure == 'MesaRadConvIrrZero', T_irr is the irradiation temperature.
     n : int
         Number of dots to calculate.
     z0r_estimation : double
         Start estimation of z0r free parameter to fit the structure. Default is None,
         the estimation is calculated automatically.
+    Sigma0_estimation : double
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'],
+        it's the start estimation of Sigma0 free parameter to fit the structure.
+        Default is None, the estimation is calculated automatically.
     add_Pi_values : bool
         Whether to write Pi-parameters (see Ketsaris & Shakura, 1998) to the output file header.
     path_dots : str
@@ -216,9 +323,19 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     if path_dots is None:
         print("ATTENTION: the data wil not be saved, since 'path_dots' is None")
     if make_pic and path_plot is None:
-        print("ATTENTION: the plot will only be created, but not be saved, since 'path_plot' is None")
-    vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
-    z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+        print("ATTENTION: 'make_pic' == True. "
+              "The plot will only be created, but not be saved, since 'path_plot' is None")
+    vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance,
+                                        nu_irr=nu_irr, L_X_irr=L_X_irr,
+                                        spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
+                                        args_spectrum_irr=args_spectrum_irr, kwargs_spectrum_irr=kwargs_spectrum_irr,
+                                        cos_theta_irr=cos_theta_irr, cos_theta_irr_exp=cos_theta_irr_exp,
+                                        C_irr=C_irr, T_irr=T_irr)
+    if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
+        result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=Sigma0_estimation)
+        z0r, sigma_par = result.x
+    else:
+        z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
     rg = 2 * G * M / c ** 2
     t = np.linspace(0, 1, n)
     S, P, Q, T = vs.integrate(t)[0]
@@ -227,7 +344,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     delta = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
     grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
     rho, eos = vs.law_of_rho(P * vs.P_norm, T * vs.T_norm, True)
-    varkappa = vs.law_of_opacity(rho, T * vs.T_norm, lnfree_e=eos.lnfree_e)
+    varkappa = vs.law_of_opacity(rho, T * vs.T_norm, lnfree_e=eos.lnfree_e, return_grad=False)
     dots_arr = np.c_[t, S, P, Q, T, rho, varkappa, grad_plot(np.log(P))]
     try:
         dots_arr = np.c_[dots_arr, eos.grad_ad, np.exp(eos.lnfree_e)]
@@ -245,6 +362,15 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         header_input += ', mu = {}'.format(mu)
     else:
         header_input += ', abundance = {}'.format(abundance)
+    if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
+        header_input += ', T_irr = {:g} K, C_irr = {:g}, QirrQvis = {:g}'.format(vs.T_irr, vs.C_irr, vs.Q_irr / vs.Q0)
+    if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
+        try:
+            cost_func = result.cost * 2
+        except AttributeError:
+            cost_func = result.fun[0] ** 2 + result.fun[1] ** 2
+        header_input += ', cost = {:g}, converged = {}, Sigma_ph = {:g} g/cm^2'.format(
+            cost_func, vs.converged, vs.Sigma_ph)
     header_C = '\nvarkappa_C = {:e} cm^2/g, rho_C = {:e} g/cm^3, T_C = {:e} K, P_C = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
                'PradPgas_C = {:e}, z0r = {:e}, tau = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r, tau)
     header_norm = '\nSigma_norm = {:e}, P_norm = {:e}, T_norm = {:e}, Q_norm = {:e}'.format(
@@ -271,10 +397,13 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         plt.close()
 
 
-def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu=0.6, abundance='solar',
-            z0r_start_estimation=None, n=100, tau_break=True, path_dots=None, add_Pi_values=True, make_pic=True,
-            output='Mdot', xscale='log', yscale='log', path_plot=None,
-            set_title=True, title='S-curve'):
+def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu=0.6, abundance='solar', nu_irr=None,
+            L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
+            cos_theta_irr=None, cos_theta_irr_exp=1 / 8, C_irr=None, T_irr=None,
+            z0r_start_estimation=None, Sigma0_start_estimation=None,
+            n=100, tau_break=True, path_dots=None, add_Pi_values=True,
+            make_pic=True, output='Mdot', xscale='log', yscale='log',
+            path_plot=None, set_title=True, title='S-curve'):
     """
     Calculates S-curve and makes table with disc parameters on the S-curve.
     Table contains input parameters of system, surface density Sigma0, viscous torque F,
@@ -302,16 +431,53 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         'Mdot' (accretion rate) or 'Mdot_Mdot_edd' (Mdot in eddington limits).
     structure : str
         Type of vertical structure. Can be 'Kramers', 'BellLin',
-        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst' or 'MesaRadConv'.
+        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst', 'MesaRadConv',
+        'MesaRadConvIrrZero', 'MesaRadConvIrr', 'MesaIrr' or 'MesaFirstIrr'
     mu : double
         Molecular weight. Use in case of ideal gas EOS.
     abundance : dict or str
         Chemical composition of disc. Use in case of Mesa EOS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
+    nu_irr : array-like
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'], nu_irr is the irradiation spectral flux argument.
+        Can be (X-ray) frequency (in Hz) or energy (in keV) array for spectral external irradiation flux.
+        Choose depends on the 'spectrum_irr_par'.
+    spectrum_irr : array-like or callable
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'],
+        spectrum_irr is the spectrum of external irradiation flux, i.e.
+        the spectral (X-ray) external irradiation flux F_nu_irr = F_irr * spectrum_irr.
+        If spectrum_irr is array-like, then its size must be equal to nu_irr.size.
+        If spectrum_irr is callable, then
+        ``F_nu_irr = F_irr * spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``.
+        The normalisation of the spectrum_irr in that case is performed automatically.
+    spectrum_irr_par : str
+        Defines the irradiation spectral flux argument. Can be 'nu' (frequency in Hz) and 'E_in_keV' (energy in keV).
+    args_spectrum_irr, kwargs_spectrum_irr : tuple and dict
+        Extra arguments and keyword arguments of spectrum_irr, if it's callable.
+        The calling signature is ``spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``
+    L_X_irr : double or None
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'],
+        L_X_irr is the (X-ray) bolometric luminosity of external irradiation source.
+        If None, then ``L_X_irr = 0.1 * Mdot * c ** 2``.
+        The irradiation flux ``F_irr = L_X_irr / (4 * pi * r ** 2)``.
+    cos_theta_irr : double or None
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'], cos_theta_irr is the cosine of angle
+        of incidence for external irradiation flux. If None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
+    cos_theta_irr_exp : double
+        If cos_theta_irr is None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
+    C_irr : double
+        If structure == 'MesaRadConvIrrZero', C_irr is the irradiation constant.
+    T_irr : double
+        If structure == 'MesaRadConvIrrZero', T_irr is the irradiation temperature.
     z0r_start_estimation : double
         Start estimation of z0r free parameter to fit the first point of S-curve.
         Further, z0r estimation of the next point is the z0r value of the previous point.
+        Default is None, the start estimation is calculated automatically.
+    Sigma0_start_estimation : double
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'],
+        it's the start estimation of Sigma0 free parameter to fit the first point of S-curve.
+        Further, Sigma0 estimation of the next point is the 2*Sigma0 value of the previous point.
         Default is None, the start estimation is calculated automatically.
     n : int
         Number of dots to calculate.
@@ -340,7 +506,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     if path_dots is None:
         print("ATTENTION: the data wil not be saved, since 'path_dots' is None")
     if make_pic and path_plot is None:
-        print("ATTENTION: the plot will only be created, but not be saved, since 'path_plot' is None")
+        print("ATTENTION: 'make_pic' == True. "
+              "The plot will only be created, but not be saved, since 'path_plot' is None")
     if xscale not in ['linear', 'log', 'parlog']:
         raise Exception('Incorrect xscale, try linear, log or parlog')
     if yscale not in ['linear', 'log', 'parlog']:
@@ -359,8 +526,11 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     Sigma_plus_index = 0  # for Sigma_plus
     delta_Sigma_plus = -1
     z0r_estimation = z0r_start_estimation
+    sigma_par_estimation = Sigma0_start_estimation
 
     sigma_temp = np.infty
+    except_fits = 0
+    P_ph_0 = None
 
     if path_dots is not None:
         rg = 2 * G * M / c ** 2
@@ -372,21 +542,52 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         else:
             header_end += ', abundance = {}'.format(abundance)
             header += ' \tfree_e_c \tconv_param_z \tconv_param_sigma'
+        if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
+            header += ' \tQirrQvis \tT_irr \tC_irr'
         if add_Pi_values:
             header += ' \tPi1 \tPi2 \tPi3 \tPi4'
+        if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
+            header += ' \tcost \tconverged \tSigma_ph'
         header = header + '\nAll values are in CGS units.' + header_end
         np.savetxt(path_dots, [], header=header)
 
     for i, Par in enumerate(np.geomspace(Par_max, Par_min, n)):
         print(i)
-        vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
-        z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
-        z0r_estimation = z0r
+        vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance,
+                                            nu_irr=nu_irr, L_X_irr=L_X_irr,
+                                            spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
+                                            args_spectrum_irr=args_spectrum_irr,
+                                            kwargs_spectrum_irr=kwargs_spectrum_irr,
+                                            cos_theta_irr=cos_theta_irr, cos_theta_irr_exp=cos_theta_irr_exp,
+                                            C_irr=C_irr, T_irr=T_irr, P_ph_0=P_ph_0)
+        if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
+            try:
+                result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=sigma_par_estimation)
+            except (mesa_vs.NotConvergeError, mesa_vs.PphNotConvergeError):
+                print('Except fit')
+                except_fits += 1
+                continue
+            z0r, sigma_par = result.x
+            z0r_estimation, sigma_par_estimation = z0r, 2 * sigma_par
+            P_ph_0 = vs.P_ph_0
+        elif structure in ['MesaRadConvIrrZero']:
+            try:
+                z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+            except mesa_vs.PphNotConvergeError:
+                print('Except fit')
+                except_fits += 1
+                continue
+            z0r_estimation = z0r
+            P_ph_0 = vs.P_ph_0
+        else:
+            z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+            z0r_estimation = z0r
+
         tau = vs.tau()
         print('Mdot = {:1.3e} g/s, Teff = {:g} K, tau = {:g}, z0r = {:g}'.format(Mdot, Teff, tau, z0r))
 
         if tau < 1 and tau_key:
-            tau_index = i
+            tau_index = i - except_fits
             tau_key = False
             if tau_break:
                 print('Note: tau<1, tau_break=True. Cycle ends, when tau<1.')
@@ -401,15 +602,28 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
-            _ = eos.grad_ad
+            _ = eos.c_p
             free_e = np.exp(eos.lnfree_e)
             conv_param_z, conv_param_sigma = Convective_parameter(vs)
             output_string.extend([free_e, conv_param_z, conv_param_sigma])
         except AttributeError:
             pass
 
+        if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
+            QirrQvis = vs.Q_irr / vs.Q0
+            T_irr_, C_irr_ = vs.T_irr, vs.C_irr
+            output_string.extend([QirrQvis, T_irr_, C_irr_])
+            print('T_irr, C_irr = {:g}, {:g}'.format(T_irr_, C_irr_))
+
         if add_Pi_values:
             output_string.extend(vs.Pi_finder())
+
+        if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
+            try:
+                cost_func = result.cost * 2
+            except AttributeError:
+                cost_func = result.fun[0] ** 2 + result.fun[1] ** 2
+            output_string.extend([cost_func, vs.converged, vs.Sigma_ph])
 
         Sigma_plot.append(Sigma0)
 
@@ -437,13 +651,13 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
                 raise Exception('Incorrect output, try Teff, Mdot, Mdot_Mdot_edd, F, z0r or T_C')
 
         if PradPgas_C < 1.0 and key:
-            PradPgas10_index = i - 1
+            PradPgas10_index = i - 1 - except_fits
             key = False
         if delta_Sigma_plus > 0.0 and Sigma_plus_key:
-            Sigma_plus_index = i - 1
+            Sigma_plus_index = i - 1 - except_fits
             Sigma_plus_key = False
         if delta_Sigma_plus < 0.0 and not Sigma_plus_key and Sigma_minus_key:
-            Sigma_minus_index = i - 1
+            Sigma_minus_index = i - 1 - except_fits
             Sigma_minus_key = False
 
         output_string = np.array(output_string)
@@ -452,6 +666,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             file.write('\n')
     with open(path_dots, 'a') as file:
         file.write('# Sigma_plus_index = {:d}  Sigma_minus_index = {:d}'.format(Sigma_plus_index, Sigma_minus_index))
+        if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
+            file.write('\n# Except_fits = {}'.format(except_fits))
 
     if not make_pic:
         return 0
@@ -504,7 +720,10 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
 
 def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin', mu=0.6, abundance='solar',
-                z0r_start_estimation=None,  n=100, tau_break=True, path_dots=None, add_Pi_values=True):
+                nu_irr=None, L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(),
+                kwargs_spectrum_irr={}, cos_theta_irr=None, cos_theta_irr_exp=1 / 8, C_irr=None, T_irr=None,
+                z0r_start_estimation=None, Sigma0_start_estimation=None,
+                n=100, tau_break=True, path_dots=None, add_Pi_values=True):
     """
     Calculates radial structure of disc. Return table, which contains input parameters of the system,
     surface density Sigma0, viscous torque F, accretion rate Mdot, effective temperature Teff,
@@ -530,16 +749,53 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         Can be 'Mdot' (accretion rate) or 'Mdot_Mdot_edd' (Mdot in eddington limits).
     structure : str
         Type of vertical structure. Can be 'Kramers', 'BellLin',
-        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst' or 'MesaRadConv'.
+        'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst', 'MesaRadConv',
+        'MesaRadConvIrrZero', 'MesaRadConvIrr', 'MesaIrr' or 'MesaFirstIrr'
     mu : double
         Molecular weight. Use in case of ideal gas EOS.
     abundance : dict or str
         Chemical composition of disc. Use in case of Mesa EOS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
+    nu_irr : array-like
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'], nu_irr is the irradiation spectral flux argument.
+        Can be (X-ray) frequency (in Hz) or energy (in keV) array for spectral external irradiation flux.
+        Choose depends on the 'spectrum_irr_par'.
+    spectrum_irr : array-like or callable
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'],
+        spectrum_irr is the spectrum of external irradiation flux, i.e.
+        the spectral (X-ray) external irradiation flux F_nu_irr = F_irr * spectrum_irr.
+        If spectrum_irr is array-like, then its size must be equal to nu_irr.size.
+        If spectrum_irr is callable, then
+        ``F_nu_irr = F_irr * spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``.
+        The normalization of the spectrum_irr in that case is performed automatically.
+    spectrum_irr_par : str
+        Defines the irradiation spectral flux argument. Can be 'nu' (frequency in Hz) and 'E_in_keV' (energy in keV).
+    args_spectrum_irr, kwargs_spectrum_irr : tuple and dict
+        Extra arguments and keyword arguments of spectrum_irr, if it's callable.
+        The calling signature is ``spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``
+    L_X_irr : double or None
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'],
+        L_X_irr is the (X-ray) bolometric luminosity of external irradiation source.
+        If None, then ``L_X_irr = 0.1 * Mdot * c ** 2``.
+        The irradiation flux ``F_irr = L_X_irr / (4 * pi * r ** 2)``.
+    cos_theta_irr : double or None
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'], cos_theta_irr is the cosine of angle
+        of incidence for external irradiation flux. If None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
+    cos_theta_irr_exp : double
+        If cos_theta_irr is None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
+    C_irr : double
+        If structure == 'MesaRadConvIrrZero', C_irr is the irradiation constant.
+    T_irr : double
+        If structure == 'MesaRadConvIrrZero', T_irr is the irradiation temperature.
     z0r_start_estimation : double
         Start estimation of z0r free parameter to fit the first point of radial structure.
         Further, z0r estimation of the next point is the z0r value of the previous point.
+        Default is None, the start estimation is calculated automatically.
+    Sigma0_start_estimation : double
+        If structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr'],
+        it's the start estimation of Sigma0 free parameter to fit the first point of radial structure.
+        Further, Sigma0 estimation of the next point is the 2*Sigma0 value of the previous point.
         Default is None, the start estimation is calculated automatically.
     n : int
         Number of dots to calculate.
@@ -556,6 +812,9 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
 
     tau_key = True
     z0r_estimation = z0r_start_estimation
+    sigma_par_estimation = Sigma0_start_estimation
+    P_ph_0 = None
+    except_fits = 0
 
     if input == 'Mdot':
         Mdot = Par
@@ -571,16 +830,47 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         else:
             header_end += ', abundance = {}'.format(abundance)
             header += ' \tfree_e \tconv_param_z \tconv_param_sigma'
+        if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
+            header += ' \tQirrQvis \tT_irr \tC_irr'
         if add_Pi_values:
             header += ' \tPi1 \tPi2 \tPi3 \tPi4'
+        if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
+            header += ' \tcost \tconverged \tSigma_ph'
         header = header + '\nAll values are in CGS units.' + header_end
         np.savetxt(path_dots, [], header=header)
 
     for i, r in enumerate(np.geomspace(r_start, r_end, n)):
         print(i)
-        vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
-        z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
-        z0r_estimation = z0r
+        vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance,
+                                            nu_irr=nu_irr, L_X_irr=L_X_irr,
+                                            spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
+                                            args_spectrum_irr=args_spectrum_irr,
+                                            kwargs_spectrum_irr=kwargs_spectrum_irr,
+                                            cos_theta_irr=cos_theta_irr, cos_theta_irr_exp=cos_theta_irr_exp,
+                                            C_irr=C_irr, T_irr=T_irr, P_ph_0=P_ph_0)
+        if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
+            try:
+                result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=sigma_par_estimation)
+            except (mesa_vs.NotConvergeError, mesa_vs.PphNotConvergeError):
+                print('Except fit')
+                except_fits += 1
+                continue
+            z0r, sigma_par = result.x
+            z0r_estimation, sigma_par_estimation = z0r, 2 * sigma_par
+            P_ph_0 = vs.P_ph_0
+        elif structure in ['MesaRadConvIrrZero']:
+            try:
+                z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+            except mesa_vs.PphNotConvergeError:
+                print('Except fit')
+                except_fits += 1
+                continue
+            z0r_estimation = z0r
+            P_ph_0 = vs.P_ph_0
+        else:
+            z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+            z0r_estimation = z0r
+
         tau = vs.tau()
         rg = 2 * G * M / c ** 2
         print('r = {:1.3e} cm = {:g} rg, Teff = {:g} K, tau = {:g}, z0r = {:g}'.format(r, r / rg, Teff, tau, z0r))
@@ -599,20 +889,36 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
-            _ = eos.grad_ad
+            _ = eos.c_p
             free_e = np.exp(eos.lnfree_e)
             conv_param_z, conv_param_sigma = Convective_parameter(vs)
             output_string.extend([free_e, conv_param_z, conv_param_sigma])
         except AttributeError:
             pass
 
+        if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
+            QirrQvis = vs.Q_irr / vs.Q0
+            T_irr_, C_irr_ = vs.T_irr, vs.C_irr
+            output_string.extend([QirrQvis, T_irr_, C_irr_])
+            print('T_irr, C_irr = {:g}, {:g}'.format(T_irr_, C_irr_))
+
         if add_Pi_values:
             output_string.extend(vs.Pi_finder())
+
+        if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr']:
+            try:
+                cost_func = result.cost * 2
+            except AttributeError:
+                cost_func = result.fun[0] ** 2 + result.fun[1] ** 2
+            output_string.extend([cost_func, vs.converged, vs.Sigma_ph])
 
         output_string = np.array(output_string)
         with open(path_dots, 'a') as file:
             np.savetxt(file, output_string, newline=' ')
             file.write('\n')
+    if structure in ['MesaRadConvIrr', 'MesaIrr', 'MesaFirstIrr', 'MesaRadConvIrrZero']:
+        with open(path_dots, 'a') as file:
+            file.write('# Except_fits = {}'.format(except_fits))
     return 0
 
 
