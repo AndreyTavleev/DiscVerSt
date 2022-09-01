@@ -180,7 +180,7 @@ class BaseVerticalStructure:
         Parameters
         ----------
         t : array-like
-            Modified vertical coordinate (t = 1 - z).
+            Modified vertical coordinate (t = 1 - z/z0).
         y :
             Current values of (dimensionless) unknown functions.
 
@@ -209,7 +209,8 @@ class BaseVerticalStructure:
         Parameters
         ----------
         t : array-like
-            Interval of integration and evaluation.
+            Interval of modified vertical coordinate (t = 1 - z/z0) for integration and evaluation.
+            t[0] must be equal to zero, t[-1] must be less or equal to unity.
 
         Returns
         -------
@@ -220,6 +221,7 @@ class BaseVerticalStructure:
 
         """
         assert t[0] == 0
+        assert t[-1] <= 1
         solution = solve_ivp(self.dydt, (t[0], t[-1]), self.initial(), t_eval=t, rtol=self.eps, method='RK23')
         return [solution.y, solution.message]
 
