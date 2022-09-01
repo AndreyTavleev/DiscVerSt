@@ -347,6 +347,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     varkappa = vs.law_of_opacity(rho, T * vs.T_norm, lnfree_e=eos.lnfree_e, return_grad=False)
     dots_arr = np.c_[t, S, P, Q, T, rho, varkappa, grad_plot(np.log(P))]
     try:
+        _ = eos.c_p
         dots_arr = np.c_[dots_arr, eos.grad_ad, np.exp(eos.lnfree_e)]
         header = 't\t S\t P\t Q\t T\t rho\t varkappa\t grad\t grad_ad\t free_e'
         conv_param_z, conv_param_sigma = Convective_parameter(vs)
