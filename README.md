@@ -298,6 +298,8 @@ Also makes plot of structure.
 
 ### Usage:
 ``` python3
+import plots_vs
+
 M = 1.5 * 2e33  # 1.5 * M_sun
 alpha = 0.2
 r = 1e10
