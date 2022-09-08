@@ -98,6 +98,10 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
         Mdot = Par * 1.39e18 * M / M_sun
         F = Mdot * h * func
         Teff = (3 / (8 * np.pi) * (G * M) ** 4 * F / (sigmaSB * h ** 7)) ** (1 / 4)
+    elif input == 'Mdot_Msun_yr':
+        Mdot = Par * M_sun / 31557600.0
+        F = Mdot * h * func
+        Teff = (3 / (8 * np.pi) * (G * M) ** 4 * F / (sigmaSB * h ** 7)) ** (1 / 4)
     else:
         raise Exception('Incorrect input, try Teff, Mdot, F of Mdot_Mdot_edd')
 
@@ -255,7 +259,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         Choice depends on 'input' parameter.
     input : str
         Define the choice of 'Par' parameter. Can be 'F' (viscous torque), 'Teff' (effective temperature),
-        'Mdot' (accretion rate) or 'Mdot_Mdot_edd' (Mdot in eddington limits).
+        'Mdot' (accretion rate), 'Mdot_Mdot_edd' (Mdot in eddington limits) or 'Mdot_Msun_yr' (Mdot in Msun/yr).
     mu : double
         Molecular weight. Use in case of ideal gas EOS.
     structure : str
@@ -429,7 +433,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     input : str
         Define the choice of 'Par_min' and 'Par_max' parameters.
         Can be 'F' (viscous torque), 'Teff' (effective temperature),
-        'Mdot' (accretion rate) or 'Mdot_Mdot_edd' (Mdot in eddington limits).
+        'Mdot' (accretion rate), 'Mdot_Mdot_edd' (Mdot in eddington limits) or 'Mdot_Msun_yr' (Mdot in Msun/yr).
     structure : str
         Type of vertical structure. Can be 'Kramers', 'BellLin',
         'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst', 'MesaRadConv',
@@ -744,10 +748,11 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         The end value of radius. Radius (in cylindrical coordinate system, in cm)
         is the distance from central star.
     Par : double
-        Par can be accretion rate in g/s or in eddington limits. Choice depends on 'input' parameter.
+        Par can be accretion rate in g/s, in eddington limits or in Msun/yr. Choice depends on 'input' parameter.
     input : str
         Define the choice of 'Par' parameter.
-        Can be 'Mdot' (accretion rate) or 'Mdot_Mdot_edd' (Mdot in eddington limits).
+        Can be 'Mdot' (accretion rate), 'Mdot_Mdot_edd' (Mdot in eddington limits)
+        or 'Mdot_Msun_yr' (Mdot in Msun/yr).
     structure : str
         Type of vertical structure. Can be 'Kramers', 'BellLin',
         'Mesa', 'MesaIdeal', 'MesaAd', 'MesaFirst', 'MesaRadConv',
