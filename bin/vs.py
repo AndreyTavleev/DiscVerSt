@@ -73,11 +73,11 @@ class BaseVerticalStructure:
     Methods
     -------
     fit()
-        Solve optimization problem and calculate the vertical structure.
+        Solves optimization problem and calculate the vertical structure.
     integrate()
-        Integrate the system and return values of four dimensionless functions.
+        Integrates the system and return values of four dimensionless functions.
     Pi_finder()
-        Return the Pi values (see Ketsaris & Shakura, 1998).
+        Returns the Pi values (see Ketsaris & Shakura, 1998).
     parameters_C()
         Calculates parameters of disc in the symmetry plane.
     tau()
@@ -297,7 +297,7 @@ class BaseVerticalStructure:
 
     def fit(self, start_estimation_z0r=None):
         """
-        Solve optimization problem and calculate the vertical structure.
+        Solves optimization problem and calculates the vertical structure.
 
         Parameters
         ----------
@@ -340,7 +340,7 @@ class BaseVerticalStructure:
 
 class RadiativeTempGradient:
     """
-    Temperature gradient class. Calculate radiative d(lnT)/d(lnP) in the Eddington approximation.
+    Temperature gradient class. Calculates radiative d(lnT)/d(lnP) in the Eddington approximation.
 
     """
 
@@ -409,6 +409,7 @@ class BellLin1994TwoComponentOpacityMixin:
             else:
                 dlnkap_dlnRho, dlnkap_dlnT = self.zeta_ff, self.gamma_ff
             return np.minimum(self.opacity_h(rho, T), self.opacity_ff(rho, T)), dlnkap_dlnRho, dlnkap_dlnT
+
 
 class IdealKramersVerticalStructure(IdealGasMixin, KramersOpacityMixin, RadiativeTempGradient, BaseVerticalStructure):
     """
