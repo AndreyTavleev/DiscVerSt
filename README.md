@@ -5,17 +5,17 @@ This code can calculate vertical structure of accretion discs around neutron sta
 ## Contents
 
    * [Installation](#Installation)
-      * [Only analytical opacities and EOS](#Only-analytical-opacities-and-EOS)
-      * [Tabular opacities and EOS](#Tabular-opacities-and-EOS)
+      * [Only analytical opacities and EoS](#Only-analytical-opacities-and-EoS)
+      * [Tabular opacities and EoS](#Tabular-opacities-and-EoS)
    * [Calculate structure](#Calculate-structure)
    * [Irradiated discs](#Irradiated-discs)
    * [Make plots and tables with disc parameters](#Make-plots-and-tables-with-disc-parameters)
 
 ## Installation
 
-### Only analytical opacities and EOS
+### Only analytical opacities and EoS
 
-If you want to use only analytical formulas for opacity and EOS to calculate structures, choose this installation way.
+If you want to use only analytical formulas for opacity and EoS to calculate structures, choose this installation way.
 
 1. Create and activate virtual environment
 
@@ -45,7 +45,7 @@ $ python3 -m vs
 ```
 
 	Finding Pi parameters of structure and making a structure plot. 
-	Structure with Kramers opacity and ideal gas EOS.
+	Structure with Kramers opacity and ideal gas EoS.
 	M = 1.98841e+34 grams
 	r = 1.1813e+09 cm = 400 rg
 	alpha = 0.01
@@ -55,11 +55,11 @@ $ python3 -m vs
 	z0/r =  0.028869666211114635
 	Plot of structure is successfully saved to fig/vs.pdf.
 
-### Tabular opacities and EOS
+### Tabular opacities and EoS
 
-['mesa2py'](https://github.com/hombit/mesa2py) is used to bind tabular opacities and EOS 
+['mesa2py'](https://github.com/hombit/mesa2py) is used to bind tabular opacities and EoS 
 from [MESA code](http://mesa.sourceforge.net) with Python3.
-If you want to use tabular values of opacity and EOS to calculate the structure, you should use Docker.
+If you want to use tabular values of opacity and EoS to calculate the structure, you should use Docker.
 
 You can use the latest pre-build Docker image:
 
@@ -83,7 +83,7 @@ $ docker run -v$(pwd)/fig:/app/fig --rm -ti vertstr python3 -m mesa_vs
 ```
 
 	Calculating structure and making a structure plot.
-	Structure with tabular MESA opacity and EOS.
+	Structure with tabular MESA opacity and EoS.
 	M = 1.98841e+34 grams
 	r = 1.1813e+09 cm = 400 rg
 	alpha = 0.01
@@ -123,7 +123,7 @@ r = 2e9  # radius in cm
 F = 2e34  # viscous torque
 mu = 0.6  # molecular weight
 
-# Structure with (Bell & Lin, 1994) power-law opacities and ideal gas EOS
+# Structure with (Bell & Lin, 1994) power-law opacities and ideal gas EoS
 # with molecular weight mu and radiative temperature gradient.
 
 vertstr = vs.IdealBellLin1994VerticalStructure(Mx=M, alpha=alpha, r=r, F=F, mu=mu)  # create the structure
@@ -135,7 +135,7 @@ print(Sigma0)  # Surface density of disc
 print(vertstr.tau())  # optical thickness of disc
 ```
 
-### Usage with tabular opacities and EOS:
+### Usage with tabular opacities and EoS:
 
 You can use `mesa_vs` module inside the Docker with different output parameters: 
 mass of central object, alpha, radius and viscous torque
@@ -152,7 +152,7 @@ alpha = 0.01  # alpha parameter
 r = 2e9  # radius in cm
 F = 2e34  # viscous torque
 
-# Structure with tabular MESA opacities and EOS 
+# Structure with tabular MESA opacities and EoS 
 # and both radiative and convective energy transport,
 # default chemical composition is solar.
 
@@ -211,7 +211,7 @@ r = 2e9  # radius in cm
 F = 2e34  # viscous torque
 Tirr = 1.2e4  # irradiation temperature
 
-# Structure with tabular MESA opacities and EOS,
+# Structure with tabular MESA opacities and EoS,
 # both radiative and convective energy transport,
 # default chemical composition is solar, 
 # external irradiation is taken into account
@@ -245,16 +245,16 @@ import numpy as np
 
 M = 2e33  # Mass of central object in grams
 alpha = 0.01  # alpha parameter
-r = 2e9  # radius in cm
+r = 4e9  # radius in cm
 F = 2e34  # viscous torque
 nu_irr = np.geomspace(1, 10, 30)  # energy range from 1 to 10 keV
 spectrum_par = 'E_in_keV'  # units of nu_irr if energy in keV
 kwargs={'n': -0.4, 'scale': 8}  # spectrum function parameters
 cos_theta_irr = None  # incident angle is calculated self-consistently
-cos_theta_irr_exp = 1 / 8  # as cos_theta_irr_exp * z0 / r
+cos_theta_irr_exp = 1 / 12  # as cos_theta_irr_exp * z0 / r
 L_X_irr = 1.0 * 1.25e38 * M / 2e33  #  luminosity of X-ray source = 1.0 * L_eddington
 
-# Structure with tabular MESA opacities and EOS,
+# Structure with tabular MESA opacities and EoS,
 # both radiative and convective energy transport,
 # default chemical composition is solar, 
 # external irradiation is taken into account

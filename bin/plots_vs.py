@@ -40,7 +40,7 @@ c = const.c.cgs.value
 
 def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar', nu_irr=None, L_X_irr=None,
                     spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
-                    C_irr=None, T_irr=None, cos_theta_irr=None, cos_theta_irr_exp=1 / 8, P_ph_0=None):
+                    C_irr=None, T_irr=None, cos_theta_irr=None, cos_theta_irr_exp=1 / 12, P_ph_0=None):
     """
     Initialize the chosen vertical structure class.
 
@@ -60,11 +60,11 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
         Additional parameter in case of external irradiation.
     structure : str
         Type of vertical structure. Possible options are:
-        'Kramers', 'BellLin' -- ideal gas EOS, analytical opacities and radiative temperature gradient;
-        'Mesa', 'MesaAd', 'MesaRadAd', 'MesaRadConv' -- MESA EOS and opacities and
+        'Kramers', 'BellLin' -- ideal gas EoS, analytical opacities and radiative temperature gradient;
+        'Mesa', 'MesaAd', 'MesaRadAd', 'MesaRadConv' -- MESA EoS and opacities and
                                                         radiative, adiabatic, rad+ad
                                                         and rad+conv temperature gradient;
-        'MesaIdealGas' -- ideal gas EOS, MESA opacities and radiative temperature gradient;
+        'MesaIdealGas' -- ideal gas EoS, MESA opacities and radiative temperature gradient;
         'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero' -- simple external irradiation scheme
                                                                    via T_irr or C_irr
         'MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr' -- advanced external irradiation scheme
@@ -253,7 +253,7 @@ def Convective_parameter(vs):
     try:
         _ = eos.c_p
     except AttributeError:
-        raise Exception('Incorrect vertical structure. Use vertical structure with MESA EOS.')
+        raise Exception('Incorrect vertical structure. Use vertical structure with MESA EoS.')
     conv_param_sigma = simps(2 * rho * (grad_plot(np.log(P)) > eos.grad_ad), t * vs.z0) / (
             S[-1] * vs.sigma_norm)
     conv_param_z = simps(grad_plot(np.log(P)) > eos.grad_ad, t * vs.z0) / vs.z0
@@ -262,7 +262,7 @@ def Convective_parameter(vs):
 
 def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', abundance='solar', nu_irr=None,
                    L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
-                   cos_theta_irr=None, cos_theta_irr_exp=1 / 8, C_irr=None, T_irr=None,
+                   cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
                    z0r_estimation=None, Sigma0_estimation=None, P_ph_0=None,
                    n=100, add_Pi_values=True, path_dots=None,
                    make_pic=True, path_plot=None, set_title=True, title='Vertical structure'):
@@ -286,20 +286,20 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         Define the choice of 'Par' parameter. Can be 'F' (viscous torque), 'Teff' (effective temperature),
         'Mdot' (accretion rate), 'Mdot_Mdot_edd' (Mdot in eddington limits) or 'Mdot_Msun_yr' (Mdot in Msun/yr).
     mu : double
-        Mean molecular weight. Use in case of ideal gas EOS.
+        Mean molecular weight. Use in case of ideal gas EoS.
     structure : str
         Type of vertical structure. Possible options are:
-        'Kramers', 'BellLin' -- ideal gas EOS, analytical opacities and radiative temperature gradient;
-        'Mesa', 'MesaAd', 'MesaRadAd', 'MesaRadConv' -- MESA EOS and opacities and
+        'Kramers', 'BellLin' -- ideal gas EoS, analytical opacities and radiative temperature gradient;
+        'Mesa', 'MesaAd', 'MesaRadAd', 'MesaRadConv' -- MESA EoS and opacities and
                                                         radiative, adiabatic, rad+ad
                                                         and rad+conv temperature gradient;
-        'MesaIdealGas' -- ideal gas EOS, MESA opacities and radiative temperature gradient;
+        'MesaIdealGas' -- ideal gas EoS, MESA opacities and radiative temperature gradient;
         'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero' -- simple external irradiation scheme
                                                                    via T_irr or C_irr
         'MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr' -- advanced external irradiation scheme
                                                        from (Mescheryakov et al. 2011).
     abundance : dict or str
-        Chemical composition of disc. Use in case of MESA EOS.
+        Chemical composition of disc. Use in case of MESA EoS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
     nu_irr : array-like
@@ -405,14 +405,14 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         header_input += ', mu = {}'.format(mu)
     else:
         header_input += ', abundance = {}'.format(abundance)
-    if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr', 
+    if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                      'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
         header_input += ', T_irr = {:g} K, C_irr = {:g}, QirrQvis = {:g}'.format(vs.T_irr, vs.C_irr, vs.Q_irr / vs.Q0)
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
         try:
             cost_func = result.cost * 2
         except AttributeError:
-            cost_func = result.fun[0] ** 2 + result.fun[1] ** 2
+            cost_func = sum(result.fun ** 2)
         header_input += ', cost = {:g}, converged = {}, Sigma_ph = {:g} g/cm^2'.format(
             cost_func, vs.converged, vs.Sigma_ph)
     header_C = '\nvarkappa_C = {:e} cm^2/g, rho_C = {:e} g/cm^3, T_C = {:e} K, P_C = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
@@ -443,7 +443,7 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
 
 def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu=0.6, abundance='solar', nu_irr=None,
             L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
-            cos_theta_irr=None, cos_theta_irr_exp=1 / 8, C_irr=None, T_irr=None,
+            cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
             z0r_start_estimation=None, Sigma0_start_estimation=None,
             n=100, tau_break=True, path_dots=None, add_Pi_values=True,
             make_pic=True, output='Mdot', xscale='log', yscale='log',
@@ -475,19 +475,19 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         'Mdot' (accretion rate), 'Mdot_Mdot_edd' (Mdot in eddington limits) or 'Mdot_Msun_yr' (Mdot in Msun/yr).
     structure : str
         Type of vertical structure. Possible options are:
-        'Kramers', 'BellLin' -- ideal gas EOS, analytical opacities and radiative temperature gradient;
-        'Mesa', 'MesaAd', 'MesaRadAd', 'MesaRadConv' -- MESA EOS and opacities and
+        'Kramers', 'BellLin' -- ideal gas EoS, analytical opacities and radiative temperature gradient;
+        'Mesa', 'MesaAd', 'MesaRadAd', 'MesaRadConv' -- MESA EoS and opacities and
                                                         radiative, adiabatic, rad+ad
                                                         and rad+conv temperature gradient;
-        'MesaIdealGas' -- ideal gas EOS, MESA opacities and radiative temperature gradient;
+        'MesaIdealGas' -- ideal gas EoS, MESA opacities and radiative temperature gradient;
         'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero' -- simple external irradiation scheme
                                                                    via T_irr or C_irr
         'MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr' -- advanced external irradiation scheme
                                                        from (Mescheryakov et al. 2011).
     mu : double
-        Mean molecular weight. Use in case of ideal gas EOS.
+        Mean molecular weight. Use in case of ideal gas EoS.
     abundance : dict or str
-        Chemical composition of disc. Use in case of MESA EOS.
+        Chemical composition of disc. Use in case of MESA EoS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
     nu_irr : array-like
@@ -595,7 +595,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         else:
             header_end += ', abundance = {}'.format(abundance)
             header += ' \tfree_e_c \tconv_param_z \tconv_param_sigma'
-        if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr', 
+        if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                          'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
             header += ' \tQirrQvis \tT_irr \tC_irr'
         if add_Pi_values:
@@ -662,7 +662,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         except AttributeError:
             pass
 
-        if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr', 
+        if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                          'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
             QirrQvis = vs.Q_irr / vs.Q0
             T_irr_, C_irr_ = vs.T_irr, vs.C_irr
@@ -676,7 +676,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             try:
                 cost_func = result.cost * 2
             except AttributeError:
-                cost_func = result.fun[0] ** 2 + result.fun[1] ** 2
+                cost_func = sum(result.fun ** 2)
             output_string.extend([cost_func, vs.converged, vs.Sigma_ph])
 
         Sigma_plot.append(Sigma0)
@@ -720,7 +720,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             file.write('\n')
     with open(path_dots, 'a') as file:
         file.write('# Sigma_plus_index = {:d}  Sigma_minus_index = {:d}'.format(Sigma_plus_index, Sigma_minus_index))
-        if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr', 
+        if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                          'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
             file.write('\n# Except_fits = {}'.format(except_fits))
 
@@ -776,7 +776,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
 
 def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin', mu=0.6, abundance='solar',
                 nu_irr=None, L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(),
-                kwargs_spectrum_irr={}, cos_theta_irr=None, cos_theta_irr_exp=1 / 8, C_irr=None, T_irr=None,
+                kwargs_spectrum_irr={}, cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
                 z0r_start_estimation=None, Sigma0_start_estimation=None,
                 n=100, tau_break=True, path_dots=None, add_Pi_values=True):
     """
@@ -805,19 +805,19 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         or 'Mdot_Msun_yr' (Mdot in Msun/yr).
     structure : str
         Type of vertical structure. Possible options are:
-        'Kramers', 'BellLin' -- ideal gas EOS, analytical opacities and radiative temperature gradient;
-        'Mesa', 'MesaAd', 'MesaRadAd', 'MesaRadConv' -- MESA EOS and opacities and
+        'Kramers', 'BellLin' -- ideal gas EoS, analytical opacities and radiative temperature gradient;
+        'Mesa', 'MesaAd', 'MesaRadAd', 'MesaRadConv' -- MESA EoS and opacities and
                                                         radiative, adiabatic, rad+ad
                                                         and rad+conv temperature gradient;
-        'MesaIdealGas' -- ideal gas EOS, MESA opacities and radiative temperature gradient;
+        'MesaIdealGas' -- ideal gas EoS, MESA opacities and radiative temperature gradient;
         'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero' -- simple external irradiation scheme
                                                                    via T_irr or C_irr
         'MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr' -- advanced external irradiation scheme
                                                        from (Mescheryakov et al. 2011).
     mu : double
-        Mean molecular weight. Use in case of ideal gas EOS.
+        Mean molecular weight. Use in case of ideal gas EoS.
     abundance : dict or str
-        Chemical composition of disc. Use in case of MESA EOS.
+        Chemical composition of disc. Use in case of MESA EoS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
     nu_irr : array-like
@@ -885,6 +885,8 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         Mdot = Par
     elif input == 'Mdot_Mdot_edd':
         Mdot = Par * 1.39e18 * M / M_sun
+    else:
+        raise Exception("Incorrect input, try 'Mdot' or 'Mdot_Mdot_edd'.")
 
     if path_dots is not None:
         header = 'r \tr/rg \tSigma0 \tTeff \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas_c \tvarkappa_c'
@@ -894,8 +896,8 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
             header_end += ', mu = {}'.format(mu)
         else:
             header_end += ', abundance = {}'.format(abundance)
-            header += ' \tfree_e \tconv_param_z \tconv_param_sigma'
-        if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr', 
+            header += ' \tfree_e_c \tconv_param_z \tconv_param_sigma'
+        if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                          'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
             header += ' \tQirrQvis \tT_irr \tC_irr'
         if add_Pi_values:
@@ -962,7 +964,7 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
         except AttributeError:
             pass
 
-        if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr', 
+        if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                          'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
             QirrQvis = vs.Q_irr / vs.Q0
             T_irr_, C_irr_ = vs.T_irr, vs.C_irr
@@ -976,7 +978,7 @@ def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin'
             try:
                 cost_func = result.cost * 2
             except AttributeError:
-                cost_func = result.fun[0] ** 2 + result.fun[1] ** 2
+                cost_func = sum(result.fun ** 2)
             output_string.extend([cost_func, vs.converged, vs.Sigma_ph])
 
         output_string = np.array(output_string)

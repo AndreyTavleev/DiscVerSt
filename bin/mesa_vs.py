@@ -3,13 +3,13 @@
 Module contains several classes that represent vertical structure of accretion disc in case
 of (tabular) MESA opacity and(or) EOS.
 
-Class MesaVerticalStructure --  for MESA opacities and EOS with radiative energy transport.
-Class MesaIdealVerticalStructure -- for MESA opacities and ideal gas EOS with radiative energy transport.
-Class MesaVerticalStructureAd -- for MESA opacities and EOS with adiabatic energy transport.
-Class MesaVerticalStructureRadAd -- for MESA opacities and EOS with radiative+adiabatic energy transport.
-Class MesaVerticalStructureRadConv -- for MESA opacities and EOS with radiative+convective energy transport.
+Class MesaVerticalStructure --  for MESA opacities and EoS with radiative energy transport.
+Class MesaIdealVerticalStructure -- for MESA opacities and ideal gas EoS with radiative energy transport.
+Class MesaVerticalStructureAd -- for MESA opacities and EoS with adiabatic energy transport.
+Class MesaVerticalStructureRadAd -- for MESA opacities and EoS with radiative+adiabatic energy transport.
+Class MesaVerticalStructureRadConv -- for MESA opacities and EoS with radiative+convective energy transport.
 
-Class MesaVerticalStructureExternalIrradiation -- for MESA opacities and EOS with radiative energy transport
+Class MesaVerticalStructureExternalIrradiation -- for MESA opacities and EoS with radiative energy transport
     and advanced external irradiation scheme from (Mescheryakov et al. 2011).
 Class MesaVerticalStructureRadAdExternalIrradiation -- for MESA opacities and EOS
     with radiative+adiabatic energy transport and advanced external irradiation scheme
@@ -603,7 +603,7 @@ class ExternalIrradiationZeroAssumption:
 # Classes with MESA opacity without Irradiation
 class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseMesaVerticalStructure):
     """
-    Vertical structure class for MESA opacities and EOS with radiative energy transport.
+    Vertical structure class for MESA opacities and EoS with radiative energy transport.
 
     """
     pass
@@ -611,7 +611,7 @@ class MesaVerticalStructure(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradien
 
 class MesaIdealGasVerticalStructure(IdealGasMixin, MesaOpacityMixin, RadiativeTempGradient, BaseMesaVerticalStructure):
     """
-    Vertical structure class for MESA opacities and ideal gas EOS with radiative energy transport.
+    Vertical structure class for MESA opacities and ideal gas EoS with radiative energy transport.
 
     """
     pass
@@ -619,7 +619,7 @@ class MesaIdealGasVerticalStructure(IdealGasMixin, MesaOpacityMixin, RadiativeTe
 
 class MesaVerticalStructureAd(MesaGasMixin, MesaOpacityMixin, AdiabaticTempGradient, BaseMesaVerticalStructure):
     """
-    Vertical structure class for MESA opacities and EOS with adiabatic energy transport.
+    Vertical structure class for MESA opacities and EoS with adiabatic energy transport.
 
     """
     pass
@@ -627,7 +627,7 @@ class MesaVerticalStructureAd(MesaGasMixin, MesaOpacityMixin, AdiabaticTempGradi
 
 class MesaVerticalStructureRadAd(MesaGasMixin, MesaOpacityMixin, RadiativeAdiabaticGradient, BaseMesaVerticalStructure):
     """
-    Vertical structure class for MESA opacities and EOS with radiative+adiabatic energy transport.
+    Vertical structure class for MESA opacities and EoS with radiative+adiabatic energy transport.
 
     """
     pass
@@ -635,7 +635,7 @@ class MesaVerticalStructureRadAd(MesaGasMixin, MesaOpacityMixin, RadiativeAdiaba
 
 class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient, BaseMesaVerticalStructure):
     """
-    Vertical structure class for MESA opacities and EOS with radiative+convective energy transport.
+    Vertical structure class for MESA opacities and EoS with radiative+convective energy transport.
 
     """
     pass
@@ -645,7 +645,7 @@ class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGr
 class MesaVerticalStructureExternalIrradiation(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient,
                                                ExternalIrradiation, BaseExternalIrradiation):
     """
-    Vertical structure class for MESA opacities and EOS with radiative energy transport
+    Vertical structure class for MESA opacities and EoS with radiative energy transport
     and advanced external irradiation scheme from (Mescheryakov et al. 2011).
 
     """
@@ -655,7 +655,7 @@ class MesaVerticalStructureExternalIrradiation(MesaGasMixin, MesaOpacityMixin, R
 class MesaVerticalStructureRadAdExternalIrradiation(MesaGasMixin, MesaOpacityMixin, RadiativeAdiabaticGradient,
                                                     ExternalIrradiation, BaseExternalIrradiation):
     """
-    Vertical structure class for MESA opacities and EOS with radiative+adiabatic energy transport
+    Vertical structure class for MESA opacities and EoS with radiative+adiabatic energy transport
     and advanced external irradiation scheme from (Mescheryakov et al. 2011).
 
     """
@@ -665,7 +665,7 @@ class MesaVerticalStructureRadAdExternalIrradiation(MesaGasMixin, MesaOpacityMix
 class MesaVerticalStructureRadConvExternalIrradiation(MesaGasMixin, MesaOpacityMixin, RadConvTempGradient,
                                                       ExternalIrradiation, BaseExternalIrradiation):
     """
-    Vertical structure class for MESA opacities and EOS with radiative+convective energy transport
+    Vertical structure class for MESA opacities and EoS with radiative+convective energy transport
     and advanced external irradiation scheme from (Mescheryakov et al. 2011).
 
     """
@@ -677,7 +677,7 @@ class MesaVerticalStructureExternalIrradiationZeroAssumption(MesaGasMixin, MesaO
                                                              ExternalIrradiationZeroAssumption,
                                                              BaseExternalIrradiationZeroAssumption):
     """
-    Vertical structure class for MESA opacities and EOS with radiative energy transport
+    Vertical structure class for MESA opacities and EoS with radiative energy transport
     and simple external irradiation scheme via T_irr or C_irr.
 
     """
@@ -689,7 +689,7 @@ class MesaVerticalStructureRadAdExternalIrradiationZeroAssumption(MesaGasMixin, 
                                                                   ExternalIrradiationZeroAssumption,
                                                                   BaseExternalIrradiationZeroAssumption):
     """
-    Vertical structure class for MESA opacities and EOS with radiative+adiabatic energy transport
+    Vertical structure class for MESA opacities and EoS with radiative+adiabatic energy transport
     and simple external irradiation scheme via T_irr or C_irr.
 
     """
@@ -700,7 +700,7 @@ class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin
                                                                     ExternalIrradiationZeroAssumption,
                                                                     BaseExternalIrradiationZeroAssumption):
     """
-    Vertical structure class for MESA opacities and EOS with radiative+convective energy transport
+    Vertical structure class for MESA opacities and EoS with radiative+convective energy transport
     and simple external irradiation scheme via T_irr or C_irr.
 
     """
