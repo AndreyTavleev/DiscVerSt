@@ -240,7 +240,7 @@ class BaseVerticalStructure:
         rho, eos = self.rho(y, full_output=True)
         varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
         tau_norm = simps(varkappa * rho, t)
-        return self.z0 * tau_norm
+        return self.z0 * tau_norm + 2 / 3
 
     def y_c(self):
         y = self.integrate([0, 1])
@@ -459,8 +459,7 @@ def main():
         M / M_sun, Mdot, alpha, r))
     plt.grid()
     plt.legend()
-    if not os.path.exists('fig/'):
-        os.makedirs('fig/')
+    os.makedirs('fig/', exist_ok=True)
     plt.savefig('fig/vs.pdf')
     print('Plot of structure is successfully saved to fig/vs.pdf.')
     return

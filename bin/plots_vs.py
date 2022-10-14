@@ -387,15 +387,18 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
     rho, eos = vs.law_of_rho(P * vs.P_norm, T * vs.T_norm, True)
     varkappa = vs.law_of_opacity(rho, T * vs.T_norm, lnfree_e=eos.lnfree_e, return_grad=False)
-    dots_arr = np.c_[t, S, P, Q, T, rho, varkappa, grad_plot(np.log(P))]
+    tau_arr = np.array([simps(rho[:i] * varkappa[:i], t[:i] * z0r * r) for i in range(2, n+1)]) + 2 / 3
+    tau_arr = np.r_[2/3, tau_arr]
+    dots_arr = np.c_[t, S, P, abs(Q), T, rho, varkappa, tau_arr, grad_plot(np.log(P))]
+    header_input_irr = ''
     try:
         _ = eos.c_p
         dots_arr = np.c_[dots_arr, eos.grad_ad, np.exp(eos.lnfree_e)]
-        header = 't\t S\t P\t Q\t T\t rho\t varkappa\t grad\t grad_ad\t free_e'
+        header = 't\t S\t P\t Q\t T\t rho\t varkappa\t tau\t grad\t grad_ad\t free_e'
         conv_param_z, conv_param_sigma = Convective_parameter(vs)
         header_conv = '\nconv_param_z = {} \tconv_param_sigma = {}'.format(conv_param_z, conv_param_sigma)
     except AttributeError:
-        header = 't\t S\t P\t Q\t T\t rho\t varkappa\t grad'
+        header = 't\t S\t P\t Q\t T\t rho\t varkappa\t tau\t grad'
         header_conv = ''
     header_input = '\nS, P, Q, T -- normalized values, rho -- in g/cm^3, ' \
                    'varkappa -- in cm^2/g \nt = 1 - z/z0 ' \
@@ -407,19 +410,20 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
         header_input += ', abundance = {}'.format(abundance)
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                      'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
-        header_input += ', T_irr = {:g} K, C_irr = {:g}, QirrQvis = {:g}'.format(vs.T_irr, vs.C_irr, vs.Q_irr / vs.Q0)
-    if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
-        try:
-            cost_func = result.cost * 2
-        except AttributeError:
-            cost_func = sum(result.fun ** 2)
-        header_input += ', cost = {:g}, converged = {}, Sigma_ph = {:g} g/cm^2'.format(
-            cost_func, vs.converged, vs.Sigma_ph)
+        header_input_irr = '\nT_irr = {:g} K, C_irr = {:g}, QirrQvis = {:g}'.format(vs.T_irr, vs.C_irr,
+                                                                                    vs.Q_irr / vs.Q0)
+        if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
+            try:
+                cost_func = result.cost * 2
+            except AttributeError:
+                cost_func = sum(result.fun ** 2)
+            header_input_irr += ', cost = {:g}, converged = {}, Sigma_ph = {:g} g/cm^2'.format(
+                cost_func, vs.converged, vs.Sigma_ph)
     header_C = '\nvarkappa_C = {:e} cm^2/g, rho_C = {:e} g/cm^3, T_C = {:e} K, P_C = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
                'PradPgas_C = {:e}, z0r = {:e}, tau = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r, tau)
     header_norm = '\nSigma_norm = {:e}, P_norm = {:e}, T_norm = {:e}, Q_norm = {:e}'.format(
         vs.sigma_norm, vs.P_norm, vs.T_norm, vs.Q_norm)
-    header = header + header_input + header_C + header_norm + header_conv
+    header = header + header_input + header_input_irr + header_C + header_norm + header_conv
     if add_Pi_values:
         header += '\nPi1 = {:f}, Pi2 = {:f}, Pi3 = {:f}, Pi4 = {:f}'.format(*vs.Pi_finder())
     if path_dots is not None:
@@ -998,8 +1002,7 @@ def main():
     alpha = 0.2
     r = 1e10
     Teff = 1e4
-    if not os.path.exists('fig/'):
-        os.makedirs('fig/')
+    os.makedirs('fig/', exist_ok=True)
 
     print('Calculation of vertical structure. Return structure table and plot.')
     print('M = {:g} M_sun \nr = {:g} cm \nalpha = {:g} \nTeff = {:g} K'.format(M / M_sun, r, alpha, Teff))

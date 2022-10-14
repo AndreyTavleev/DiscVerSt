@@ -736,8 +736,7 @@ def main():
         M / M_sun, Mdot, alpha, r))
     plt.grid()
     plt.legend()
-    if not os.path.exists('fig/'):
-        os.makedirs('fig/')
+    os.makedirs('fig/', exist_ok=True)
     plt.savefig('fig/vs_mesa.pdf')
     print('Plot of structure is successfully saved to fig/vs_mesa.pdf.')
     return
