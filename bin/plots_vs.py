@@ -3,7 +3,7 @@
 Module contains functions that calculate vertical structure and S-curve. Functions return tables with calculated data
 and make plots of structure or S-curve.
 
-Structure_Plot -- calculates vertical structure and makes table with disc parameters as functions of vertical
+Vertical_Profile -- calculates vertical structure and makes table with disc parameters as functions of vertical
     coordinate. Table also contains input parameters of structure, parameters in the symmetry plane and
     parameter normalisations. Also makes a plot of structure (if 'make_pic' parameter is True).
 S_curve -- Calculates S-curve and makes table with disc parameters on the S-curve.
@@ -11,7 +11,7 @@ S_curve -- Calculates S-curve and makes table with disc parameters on the S-curv
     accretion rate Mdot, effective temperature Teff, geometrical half-thickness of the disc z0r,
     parameters in the symmetry plane of disc on the S-curve.
     Also makes a plot of S-curve (if 'make_pic' parameter is True).
-Radial_Plot -- Calculates radial structure of disc. Return table, which contains input parameters of the system,
+Radial_Profile -- Calculates radial structure of disc. Return table, which contains input parameters of the system,
     surface density Sigma0, viscous torque F, accretion rate Mdot, effective temperature Teff,
     geometrical half-thickness of the disc z0r and parameters in the symmetry plane of disc
     as functions of radius.
@@ -260,12 +260,13 @@ def Convective_parameter(vs):
     return conv_param_z, conv_param_sigma
 
 
-def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', abundance='solar', nu_irr=None,
-                   L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
-                   cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
-                   z0r_estimation=None, Sigma0_estimation=None, P_ph_0=None,
-                   n=100, add_Pi_values=True, path_dots=None,
-                   make_pic=True, path_plot=None, set_title=True, title='Vertical structure'):
+def Vertical_Profile(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', abundance='solar', nu_irr=None,
+                     L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None,
+                     args_spectrum_irr=(), kwargs_spectrum_irr={},
+                     cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
+                     z0r_estimation=None, Sigma0_estimation=None, P_ph_0=None,
+                     n=100, add_Pi_values=True, path_dots=None,
+                     make_pic=True, path_plot=None, set_title=True, title='Vertical structure'):
     """
     Calculates vertical structure and makes table with disc parameters as functions of vertical coordinate.
     Table also contains input parameters of structure, parameters in the symmetry plane and parameter normalisations.
@@ -387,8 +388,8 @@ def Structure_Plot(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', 
     grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
     rho, eos = vs.law_of_rho(P * vs.P_norm, T * vs.T_norm, True)
     varkappa = vs.law_of_opacity(rho, T * vs.T_norm, lnfree_e=eos.lnfree_e, return_grad=False)
-    tau_arr = np.array([simps(rho[:i] * varkappa[:i], t[:i] * z0r * r) for i in range(2, n+1)]) + 2 / 3
-    tau_arr = np.r_[2/3, tau_arr]
+    tau_arr = np.array([simps(rho[:i] * varkappa[:i], t[:i] * z0r * r) for i in range(2, n + 1)]) + 2 / 3
+    tau_arr = np.r_[2 / 3, tau_arr]
     dots_arr = np.c_[t, S, P, abs(Q), T, rho, varkappa, tau_arr, grad_plot(np.log(P))]
     header_input_irr = ''
     try:
@@ -779,11 +780,11 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         plt.close()
 
 
-def Radial_Plot(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin', mu=0.6, abundance='solar',
-                nu_irr=None, L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(),
-                kwargs_spectrum_irr={}, cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
-                z0r_start_estimation=None, Sigma0_start_estimation=None,
-                n=100, tau_break=True, path_dots=None, add_Pi_values=True):
+def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin', mu=0.6, abundance='solar',
+                   nu_irr=None, L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(),
+                   kwargs_spectrum_irr={}, cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
+                   z0r_start_estimation=None, Sigma0_start_estimation=None,
+                   n=100, tau_break=True, path_dots=None, add_Pi_values=True):
     """
     Calculates radial structure of disc. Return table, which contains input parameters of the system,
     surface density Sigma0, viscous torque F, accretion rate Mdot, effective temperature Teff,
@@ -1007,11 +1008,11 @@ def main():
     print('Calculation of vertical structure. Return structure table and plot.')
     print('M = {:g} M_sun \nr = {:g} cm \nalpha = {:g} \nTeff = {:g} K'.format(M / M_sun, r, alpha, Teff))
 
-    Structure_Plot(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100, add_Pi_values=True,
-                   path_dots='fig/vs.dat', make_pic=True, path_plot='fig/vs.pdf',
-                   set_title=True,
-                   title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, T_{{\rm eff}} = {:g} \, '
-                         r'{{\rm K}}$'.format(M / M_sun, r, alpha, Teff))
+    Vertical_Profile(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100, add_Pi_values=True,
+                     path_dots='fig/vs.dat', make_pic=True, path_plot='fig/vs.pdf',
+                     set_title=True,
+                     title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, T_{{\rm eff}} = {:g} \, '
+                           r'{{\rm K}}$'.format(M / M_sun, r, alpha, Teff))
     print('Structure is calculated successfully. Plot is saved to fig/vs.pdf, table is saved to fig/vs.dat. \n')
 
     print('Calculation of S-curve for Teff from 4e3 K to 1e4 K. Return S-curve table and Sigma0-Mdot plot.\n')
@@ -1026,8 +1027,8 @@ def main():
           'Return radial structure table.\n')
 
     rg = 2 * G * M / c ** 2
-    Radial_Plot(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200,
-                tau_break=True, path_dots='fig/radial_struct.dat', add_Pi_values=True)
+    Radial_Profile(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200,
+                   tau_break=True, path_dots='fig/radial_struct.dat', add_Pi_values=True)
     print('Radial structure is calculated successfully. Table is saved to fig/radial_struct.dat.')
 
     return

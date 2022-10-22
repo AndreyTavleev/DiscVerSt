@@ -287,14 +287,14 @@ Try it
 $ python3 -m plots_vs
 ```
 
-`plots_vs` contains three functions: `Structure_Plot`, `S_curve` and `Radial_Plot`. 
+`plots_vs` contains three functions: `Vertical_Profile`, `S_curve` and `Radial_Profile`. 
 
-`Structure_Plot` returns table with parameters of disc as functions of vertical coordinate at specific radius. 
+`Vertical_Profile` returns table with parameters of disc as functions of vertical coordinate at specific radius. 
 Also makes plot of structure.
 
 `S_curve` calculates S-curve and return table with disc parameters on the curve. Also makes plot of S-curve.
 
-`Radial_Plot` returns table with parameters of disc as functions of radius for a given radius range.
+`Radial_Profile` returns table with parameters of disc as functions of radius for a given radius range.
 
 ### Usage:
 ``` python3
@@ -305,11 +305,11 @@ alpha = 0.2
 r = 1e10
 Teff = 1e4
 
-plots_vs.Structure_Plot(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100, add_Pi_values=True,
-                    	path_dots='vs.dat', make_pic=True, path_plot='vs.pdf',
-                    	set_title=True,
-                    	title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, T_{{\rm eff}} = {:g} \, '
-                          	r'{{\rm K}}$'.format(M / 2e33, r, alpha, Teff))
+plots_vs.Vertical_Profile(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100, add_Pi_values=True,
+                    	  path_dots='vs.dat', make_pic=True, path_plot='vs.pdf',
+                    	  set_title=True,
+                    	  title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, '
+                    	      r'T_{{\rm eff}} = {:g} \, {{\rm K}}$'.format(M / 2e33, r, alpha, Teff))
 
 plots_vs.S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False,
                  path_dots='S-curve.dat', add_Pi_values=True, make_pic=True, output='Mdot',
@@ -317,13 +317,13 @@ plots_vs.S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.
                  title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / 2e33, r, alpha))
 
 rg = 3e5 * (M / 2e33)  # Schwarzschild radius
-plots_vs.Radial_Plot(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200, 
-		     tau_break=True, path_dots='radial_struct.dat', add_Pi_values=True)
+plots_vs.Radial_Profile(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200, 
+		                tau_break=True, path_dots='radial_struct.dat', add_Pi_values=True)
 ```
 Both `plots_vs` module and functions in it have help
 ``` python3
 help(plots_vs)
-help(plots_vs.Structure_Plot)
+help(plots_vs.Vertical_Profile)
 help(plots_vs.S_curve)
-help(plots_vs.Radial_Plot)
+help(plots_vs.Radial_Profile)
 ```
