@@ -1,4 +1,4 @@
-# DiscVerSt --- accretion disc vertical structure calculation
+# DiscVerSt — accretion disc vertical structure calculation
 
 This code calculates vertical structure of accretion discs around neutron stars and black holes.
 
@@ -69,8 +69,8 @@ $ docker tag ghcr.io/andrey890/vertical-structure-of-accretion-discs vertstr
 Or build a Docker image by yourself
 
 ``` shell
-$ git clone https://github.com/Andrey890/Vertical-structure-of-accretion-discs.git
-$ cd Vertical-structure-of-accretion-discs
+$ git clone https://github.com/Andrey890/DiscVerSt.git
+$ cd DiscVerSt
 $ docker build -t vertstr .
 ```
 
