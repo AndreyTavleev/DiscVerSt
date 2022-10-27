@@ -25,10 +25,10 @@ from matplotlib import pyplot as plt
 from scipy.integrate import simps
 from scipy.interpolate import InterpolatedUnivariateSpline
 
-import vs as vert
+import disc_verst.vs as vert
 
 try:
-    import mesa_vs
+    import disc_verst.mesa_vs as mesa_vs
 except ImportError:
     mesa_vs = np.nan
 

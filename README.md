@@ -1,6 +1,6 @@
-# Vertical-structure-of-accretion-discs
+# DiscVerSt --- accretion disc vertical structure calculation
 
-This code can calculate vertical structure of accretion discs around neutron stars and black holes.
+This code calculates vertical structure of accretion discs around neutron stars and black holes.
 
 ## Contents
 
@@ -9,7 +9,7 @@ This code can calculate vertical structure of accretion discs around neutron sta
       * [Tabular opacities and EoS](#Tabular-opacities-and-EoS)
    * [Calculate structure](#Calculate-structure)
    * [Irradiated discs](#Irradiated-discs)
-   * [Make plots and tables with disc parameters](#Make-plots-and-tables-with-disc-parameters)
+   * [Vertical and radial profile calculation, S-curves](#Vertical-and-radial-profile-calculation-S-curves)
 
 ## Installation
 
@@ -24,24 +24,22 @@ $ python3 -m venv ~/.venv/vs
 $ source ~/.venv/vs/bin/activate
 ```
 
-2. Update pip and install all requirements from
-   [`requirements.txt`](https://github.com/Andrey890/Vertical-structure-of-accretion-discs/blob/master/requirements.txt)
+2. Update pip and setuptools
 
 ``` shell
-$ pip3 install -U pip
-$ pip3 install -r requirements.txt
+$ pip3 install -U pip setuptools
 ```
 
-3. Install 'Vertical-structure-of-accretion-discs' package
+3. Install 'disc_verst' package
 
 ``` shell
-$ python3 setup.py install
+$ pip3 install .
 ```
 
-4. Run python and try vs.main()
+4. Run python and try to calculate simple structure
 
 ``` shell
-$ python3 -m vs
+$ python3 -m disc_verst.vs
 ```
 
 	Finding Pi parameters of structure and making a structure plot. 
@@ -68,7 +66,7 @@ $ docker pull ghcr.io/andrey890/vertical-structure-of-accretion-discs:latest
 $ docker tag ghcr.io/andrey890/vertical-structure-of-accretion-discs vertstr
 ```
 
-Or build a docker image by yourself
+Or build a Docker image by yourself
 
 ``` shell
 $ git clone https://github.com/Andrey890/Vertical-structure-of-accretion-discs.git
@@ -79,7 +77,7 @@ $ docker build -t vertstr .
 Then run 'vertstr' image as a container and try mesa_vs.main()
 
 ``` shell
-$ docker run -v$(pwd)/fig:/app/fig --rm -ti vertstr python3 -m mesa_vs
+$ docker run -v$(pwd)/fig:/app/fig --rm -ti vertstr python3 -m disc_verst.mesa_vs
 ```
 
 	Calculating structure and making a structure plot.
@@ -89,10 +87,10 @@ $ docker run -v$(pwd)/fig:/app/fig --rm -ti vertstr python3 -m mesa_vs
 	alpha = 0.01
 	Mdot = 1e+17 g/s
 	The vertical structure has been calculated successfully.
-	z0/r =  0.02976707374263605
+	z0/r =  0.029812574021917705
 	Plot of structure is successfully saved to fig/vs_mesa.pdf.
 
-As the result, the plot `vs_mesa.pdf` is saved to the `/app/fig/` (`/app/` is a WORKDIR) 
+As the result, the plot `vs_mesa.pdf` is saved to the `/app/fig/` (`/app/` is a Docker WORKDIR) 
 in the container and to the `$(pwd)/fig/` in the host machine. 
 
 ## Calculate structure
@@ -107,15 +105,15 @@ the vertical structure for tabular opacities and convective energy transport.
 
 Both `vs` and `mesa_vs` modules have help
 ``` python3
-help(vs)
-help(mesa_vs)
+help(disc_verst.vs)
+help(disc_verst.mesa_vs)
 ```
 
 ### Usage:
 You can use `vs` module with different output parameters: mass of central object, alpha, radius and viscous torque
 
 ``` python3
-import vs
+from disc_verst import vs
 
 M = 2e33  # Mass of central object in grams
 alpha = 0.01  # alpha parameter
@@ -145,7 +143,7 @@ $ docker run --rm -ti vertstr python3
 ```
 
 ``` python3
-import mesa_vs
+from disc_verst import mesa_vs
 
 M = 2e33  # Mass of central object in grams
 alpha = 0.01  # alpha parameter
@@ -203,7 +201,7 @@ Irradiation can be taken into account in two ways:
 ### Usage of simple irradiation scheme:
 
 ``` python3
-import mesa_vs
+from disc_verst import mesa_vs
 
 M = 2e33  # Mass of central object in grams
 alpha = 0.01  # alpha parameter
@@ -240,7 +238,7 @@ def power_law_exp_spectrum(E, n, scale):
 Then calculate structure with this spectrum:
 
 ``` python3
-import mesa_vs
+from disc_verst import mesa_vs
 import numpy as np
 
 M = 2e33  # Mass of central object in grams
@@ -277,17 +275,16 @@ print(vertstr.tau())  # optical thickness of disc
 print(vertstr.C_irr, vertstr.T_irr)  # irradiation constant and temperature
 ```
 
-## Make plots and tables with disc parameters
+## Vertical and radial profile calculation, S-curves
 
-Module `plots_vs` contains functions, that calculate vertical and radial structure and S-curve and return tables 
-with disc parameters and make plots. With plots_vs.main() the vertical structure, S-curve and radial structure 
-can be calculated for default parameters, stored as a plot and tables.  
-Try it
+Module `profiles` contains functions, that calculate vertical and radial disc profiles and S-curves, and return tables 
+with disc parameters. With profiles.main() the vertical structure, S-curve and radial structure 
+can be calculated for default parameters, stored as a plot and tables:
 ``` shell
-$ python3 -m plots_vs
+$ python3 -m disc_verst.profiles
 ```
 
-`plots_vs` contains three functions: `Vertical_Profile`, `S_curve` and `Radial_Profile`. 
+`profiles` contains three functions: `Vertical_Profile`, `S_curve` and `Radial_Profile`. 
 
 `Vertical_Profile` returns table with parameters of disc as functions of vertical coordinate at specific radius. 
 Also makes plot of structure.
@@ -298,32 +295,34 @@ Also makes plot of structure.
 
 ### Usage:
 ``` python3
-import plots_vs
+from disc_verst import profiles
 
 M = 1.5 * 2e33  # 1.5 * M_sun
 alpha = 0.2
 r = 1e10
 Teff = 1e4
 
-plots_vs.Vertical_Profile(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100, add_Pi_values=True,
+profiles.Vertical_Profile(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100, add_Pi_values=True,
                     	  path_dots='vs.dat', make_pic=True, path_plot='vs.pdf',
                     	  set_title=True,
                     	  title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, '
                     	      r'T_{{\rm eff}} = {:g} \, {{\rm K}}$'.format(M / 2e33, r, alpha, Teff))
 
-plots_vs.S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False,
+profiles.S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False,
                  path_dots='S-curve.dat', add_Pi_values=True, make_pic=True, output='Mdot',
                  xscale='parlog', yscale='parlog', path_plot='S-curve.pdf', set_title=True,
                  title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / 2e33, r, alpha))
 
 rg = 3e5 * (M / 2e33)  # Schwarzschild radius
-plots_vs.Radial_Profile(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200, 
+profiles.Radial_Profile(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200, 
 		                tau_break=True, path_dots='radial_struct.dat', add_Pi_values=True)
 ```
-Both `plots_vs` module and functions in it have help
+Both `profiles` module and functions in it have help
 ``` python3
-help(plots_vs)
-help(plots_vs.Vertical_Profile)
-help(plots_vs.S_curve)
-help(plots_vs.Radial_Profile)
+from disc_verst import profiles
+
+help(profiles)
+help(profiles.Vertical_Profile)
+help(profiles.S_curve)
+help(profiles.Radial_Profile)
 ```

@@ -1,12 +1,11 @@
 FROM ghcr.io/hombit/mesa2py:latest
 
-COPY requirements.txt README.md setup.py /app/
+COPY README.md setup.py /app/
 
-RUN pip3 install -U pip
-RUN pip3 install -r /app/requirements.txt
+RUN pip3 install -U pip setuptools
 
-COPY bin /app/bin/
+COPY disc_verst /app/disc_verst/
 
 WORKDIR /app
 
-RUN python3 setup.py install
+RUN pip3 install .

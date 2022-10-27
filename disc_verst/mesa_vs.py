@@ -35,7 +35,7 @@ from astropy import units
 from scipy.integrate import simps
 from scipy.optimize import root, least_squares, brentq
 
-from vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient
+from disc_verst.vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient
 
 sigmaSB = const.sigma_sb.cgs.value
 sigmaT = const.sigma_T.cgs.value
