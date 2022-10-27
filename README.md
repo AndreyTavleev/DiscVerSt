@@ -62,14 +62,14 @@ If you want to use tabular values of opacity and EoS to calculate the structure,
 You can use the latest pre-build Docker image:
 
 ``` shell
-$ docker pull ghcr.io/andrey890/discverst:latest
-$ docker tag ghcr.io/andrey890/discverst discverst
+$ docker pull ghcr.io/andreytavleev/discverst:latest
+$ docker tag ghcr.io/andreytavleev/discverst discverst
 ```
 
 Or build a Docker image by yourself
 
 ``` shell
-$ git clone https://github.com/Andrey890/DiscVerSt.git
+$ git clone https://github.com/AndreyTavleev/DiscVerSt.git
 $ cd DiscVerSt
 $ docker build -t discverst .
 ```
