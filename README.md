@@ -62,8 +62,8 @@ If you want to use tabular values of opacity and EoS to calculate the structure,
 You can use the latest pre-build Docker image:
 
 ``` shell
-$ docker pull ghcr.io/andrey890/vertical-structure-of-accretion-discs:latest
-$ docker tag ghcr.io/andrey890/vertical-structure-of-accretion-discs vertstr
+$ docker pull ghcr.io/andrey890/discverst:latest
+$ docker tag ghcr.io/andrey890/discverst discverst
 ```
 
 Or build a Docker image by yourself
@@ -71,13 +71,13 @@ Or build a Docker image by yourself
 ``` shell
 $ git clone https://github.com/Andrey890/DiscVerSt.git
 $ cd DiscVerSt
-$ docker build -t vertstr .
+$ docker build -t discverst .
 ```
 
-Then run 'vertstr' image as a container and try mesa_vs.main()
+Then run 'discverst' image as a container and try mesa_vs.main()
 
 ``` shell
-$ docker run -v$(pwd)/fig:/app/fig --rm -ti vertstr python3 -m disc_verst.mesa_vs
+$ docker run -v$(pwd)/fig:/app/fig --rm -ti discverst python3 -m disc_verst.mesa_vs
 ```
 
 	Calculating structure and making a structure plot.
@@ -139,7 +139,7 @@ You can use `mesa_vs` module inside the Docker with different output parameters:
 mass of central object, alpha, radius and viscous torque
 
 ``` shell
-$ docker run --rm -ti vertstr python3
+$ docker run --rm -ti discverst python3
 ```
 
 ``` python3
@@ -166,7 +166,7 @@ print(vertstr.tau())  # optical thickness of disc
 You can run your own files, that use this code, inside Docker
 
 ``` shell
-$ docker run -v/path_to/your_file/file.py:/app/file.py --rm -ti vertstr python3 file.py
+$ docker run -v/path_to/your_file/file.py:/app/file.py --rm -ti discverst python3 file.py
 ```
 
 ## Irradiated discs
