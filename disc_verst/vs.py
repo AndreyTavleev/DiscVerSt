@@ -436,7 +436,8 @@ def main():
     r = 400 * rg
     print('Finding Pi parameters of structure and making a structure plot. '
           '\nStructure with Kramers opacity and ideal gas EOS.')
-    print('M = {:g} grams \nr = {:g} cm = {:g} rg \nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, r / rg, alpha, Mdot))
+    print('M = {:g} grams \nr = {:g} cm = {:g} rg '
+          '\nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, r / rg, alpha, Mdot))
     h = np.sqrt(G * M * r)
     r_in = 3 * rg
     F = Mdot * h * (1 - np.sqrt(r_in / r))
@@ -455,8 +456,8 @@ def main():
     plt.plot(1 - t, Q, label=r'$\hat{Q}$')
     plt.plot(1 - t, T, label=r'$\hat{T}$')
     plt.xlabel('$z / z_0$')
-    plt.title(r'$M = {:g}\, M_{{\odot}},\, \dot{{M}} = {:g}\, {{\rm g/s}},\, \alpha = {:g}, r = {:g} \,\rm cm$'.format(
-        M / M_sun, Mdot, alpha, r))
+    plt.title(r'$M = {:g}\, M_{{\odot}},\, \dot{{M}} = {:g}\, {{\rm g/s}},\, '
+              r'\alpha = {:g}, r = {:g} \,\rm cm$'.format(M / M_sun, Mdot, alpha, r))
     plt.grid()
     plt.legend()
     os.makedirs('fig/', exist_ok=True)

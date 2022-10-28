@@ -134,6 +134,10 @@ class BaseExternalIrradiation(BaseMesaVerticalStructure):
     def cos_theta_irr(self, value):
         self.__cos_theta_irr = value
 
+    def Sigma0_init(self):
+        return 9.73e-24 * (self.r / 1e10) ** (-11 / 10) * self.F ** (10 / 10) * (self.Mx / M_sun) ** (
+                -1 / 10) * self.alpha ** (-4 / 5) / 1e6
+
 
 class BaseExternalIrradiationZeroAssumption(BaseMesaVerticalStructure):
     def __init__(self, Mx, alpha, r, F, C_irr=None, T_irr=None, eps=1e-5, abundance='solar', P_ph_0=None):
@@ -472,10 +476,6 @@ class ExternalIrradiation:
         result = -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm - self.epsilon(y, t) * self.z0 / self.Q_norm
         return result
 
-    def Sigma0_init(self):
-        return 9.73e-24 * (self.r / 1e10) ** (-11 / 10) * self.F ** (10 / 10) * (self.Mx / M_sun) ** (
-                -1 / 10) * self.alpha ** (-4 / 5) / 1e6
-
     def dq(self, x, norm):
         self.Sigma0_par = abs(x[1]) * norm
         self.z0 = abs(x[0]) * self.r
@@ -714,8 +714,10 @@ def main():
     rg = 2 * G * M / c ** 2
     r = 400 * rg
     print('Calculating structure and making a structure plot. '
-          '\nStructure with tabular MESA opacity and EOS.')
-    print('M = {:g} grams \nr = {:g} cm = {:g} rg \nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, r / rg, alpha, Mdot))
+          '\nStructure with tabular MESA opacity and EOS.'
+          '\nChemical composition is solar.')
+    print('M = {:g} grams \nr = {:g} cm = {:g} rg '
+          '\nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, r / rg, alpha, Mdot))
     h = np.sqrt(G * M * r)
     r_in = 3 * rg
     F = Mdot * h * (1 - np.sqrt(r_in / r))
@@ -732,8 +734,8 @@ def main():
     plt.plot(1 - t, Q, label=r'$\hat{Q}$')
     plt.plot(1 - t, T, label=r'$\hat{T}$')
     plt.xlabel('$z / z_0$')
-    plt.title(r'$M = {:g}\, M_{{\odot}},\, \dot{{M}} = {:g}\, {{\rm g/s}},\, \alpha = {:g}, r = {:g} \,\rm cm$'.format(
-        M / M_sun, Mdot, alpha, r))
+    plt.title(r'$M = {:g}\, M_{{\odot}},\, \dot{{M}} = {:g}\, {{\rm g/s}},\, '
+              r'\alpha = {:g}, r = {:g} \,\rm cm$'.format(M / M_sun, Mdot, alpha, r))
     plt.grid()
     plt.legend()
     os.makedirs('fig/', exist_ok=True)

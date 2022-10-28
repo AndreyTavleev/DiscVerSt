@@ -5,7 +5,7 @@ and make plots of structure or S-curve.
 
 Vertical_Profile -- calculates vertical structure and makes table with disc parameters as functions of vertical
     coordinate. Table also contains input parameters of structure, parameters in the symmetry plane and
-    parameter normalisations. Also makes a plot of structure (if 'make_pic' parameter is True).
+    parameter normalizations. Also makes a plot of structure (if 'make_pic' parameter is True).
 S_curve -- Calculates S-curve and makes table with disc parameters on the S-curve.
     Table contains input parameters of system, surface density Sigma0, viscous torque F,
     accretion rate Mdot, effective temperature Teff, geometrical half-thickness of the disc z0r,
@@ -46,18 +46,18 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
 
     Parameters
     ----------
-    M, alpha, r, Par, input
-        Base parameters of structure.
-    mu, abundance
-        Parameters that describe the chemical composition (ideal gas, tabular values).
-    nu_irr, L_X_irr, spectrum_irr, spectrum_irr_par
-        Additional parameters in case of advanced external irradiation scheme from (Mescheryakov et al. 2011).
-    args_spectrum_irr, kwargs_spectrum_irr, cos_theta_irr, cos_theta_irr_exp
-        Additional parameters in case of advanced external irradiation scheme from (Mescheryakov et al. 2011).
-    C_irr, T_irr
-        Additional parameters in case of simple external irradiation scheme.
-    P_ph_0
-        Additional parameter in case of external irradiation.
+    M : double
+        Mass of central object in grams.
+    alpha : double
+        Alpha parameter for alpha-prescription of viscosity.
+    r : double
+        Distance from central star (radius in cylindrical coordinate system) in cm.
+    Par : double
+        Can be viscous torque in g*cm^2/s^2, effective temperature in K, accretion rate in g/s or in eddington limits.
+        Choice depends on 'input' parameter.
+    input : str
+        Define the choice of 'Par' parameter. Can be 'F' (viscous torque), 'Teff' (effective temperature),
+        'Mdot' (accretion rate), 'Mdot_Mdot_edd' (Mdot in eddington limits) or 'Mdot_Msun_yr' (Mdot in Msun/yr).
     structure : str
         Type of vertical structure. Possible options are:
         'Kramers', 'BellLin' -- ideal gas EoS, analytical opacities and radiative temperature gradient;
@@ -69,11 +69,56 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                                                                    via T_irr or C_irr
         'MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr' -- advanced external irradiation scheme
                                                        from (Mescheryakov et al. 2011).
+    mu : double
+        Mean molecular weight. Use in case of ideal gas EoS.
+    abundance : dict or str
+        Chemical composition of disc. Use in case of MESA EoS.
+        Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
+        Use 'solar' str in case of solar composition.
+    nu_irr : array-like
+        If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'], nu_irr is the irradiation spectral flux argument.
+        Can be (X-ray) frequency (in Hz) or energy (in keV) array for spectral external irradiation flux.
+        Choose depends on the 'spectrum_irr_par'.
+    spectrum_irr : array-like or callable
+        If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'],
+        spectrum_irr is the spectrum of external irradiation flux, i.e.
+        the spectral (X-ray) external irradiation flux F_nu_irr = F_irr * spectrum_irr.
+        If spectrum_irr is array-like it must be in 1/Hz or in 1/keV depending on 'spectrum_irr_par',
+        must be normalized to unity, and its size must be equal to nu_irr.size.
+        If spectrum_irr is callable, then
+        ``F_nu_irr = F_irr * spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``.
+        The normalization of the spectrum_irr in that case is performed automatically.
+    spectrum_irr_par : str
+        Defines the irradiation spectral flux argument.
+        Can be 'nu' (frequency in Hz) and 'E_in_keV' (energy in keV).
+    args_spectrum_irr, kwargs_spectrum_irr : tuple and dict
+        Extra arguments and keyword arguments of spectrum_irr, if it's callable.
+        The calling signature is ``spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``
+    L_X_irr : double or None
+        If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'],
+        L_X_irr is the (X-ray) bolometric luminosity of external irradiation source.
+        If None, then ``L_X_irr = 0.1 * Mdot * c ** 2``.
+        The irradiation flux ``F_irr = L_X_irr / (4 * pi * r ** 2)``.
+    cos_theta_irr : double or None
+        If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'], cos_theta_irr is the cosine of angle
+        of incidence for external irradiation flux. If None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
+    cos_theta_irr_exp : double
+        If cos_theta_irr is None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
+    C_irr : double
+        If structure in ['MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero'],
+        C_irr is the irradiation parameter.
+    T_irr : double
+        If structure in ['MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero'],
+        T_irr is the irradiation temperature.
+    P_ph_0 : double
+        If structure contains Irradiation (either irradiation scheme),
+        it's the start estimation for pressure at the photosphere (pressure boundary condition).
+        Default is None, the estimation is calculated automatically.
 
     Returns
     -------
     vs : vertical structure
-        Chosen vertical structure.
+        Chosen NON-FITTED vertical structure.
     F : double
         Viscous torque in g*cm^2/s^2.
     Teff : double
@@ -234,7 +279,7 @@ def Convective_parameter(vs):
     Parameters
     ----------
     vs : vertical structure
-        Fitted vertical structure, for which convective parameter is calculated.
+        FITTED vertical structure, for which convective parameter is calculated.
 
     Returns
     -------
@@ -269,7 +314,7 @@ def Vertical_Profile(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin'
                      make_pic=True, path_plot=None, set_title=True, title='Vertical structure'):
     """
     Calculates vertical structure and makes table with disc parameters as functions of vertical coordinate.
-    Table also contains input parameters of structure, parameters in the symmetry plane and parameter normalisations.
+    Table also contains input parameters of structure, parameters in the symmetry plane and parameter normalizations.
     Also makes a plot of structure (if 'make_pic' parameter is True).
 
     Parameters
@@ -311,12 +356,14 @@ def Vertical_Profile(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin'
         If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'],
         spectrum_irr is the spectrum of external irradiation flux, i.e.
         the spectral (X-ray) external irradiation flux F_nu_irr = F_irr * spectrum_irr.
-        If spectrum_irr is array-like, then its size must be equal to nu_irr.size.
+        If spectrum_irr is array-like it must be in 1/Hz or in 1/keV depending on 'spectrum_irr_par',
+        must be normalized to unity, and its size must be equal to nu_irr.size.
         If spectrum_irr is callable, then
         ``F_nu_irr = F_irr * spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``.
-        The normalisation of the spectrum_irr in that case is performed automatically.
+        The normalization of the spectrum_irr in that case is performed automatically.
     spectrum_irr_par : str
-        Defines the irradiation spectral flux argument. Can be 'nu' (frequency in Hz) and 'E_in_keV' (energy in keV).
+        Defines the irradiation spectral flux argument.
+        Can be 'nu' (frequency in Hz) and 'E_in_keV' (energy in keV).
     args_spectrum_irr, kwargs_spectrum_irr : tuple and dict
         Extra arguments and keyword arguments of spectrum_irr, if it's callable.
         The calling signature is ``spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``
@@ -503,12 +550,14 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'],
         spectrum_irr is the spectrum of external irradiation flux, i.e.
         the spectral (X-ray) external irradiation flux F_nu_irr = F_irr * spectrum_irr.
-        If spectrum_irr is array-like, then its size must be equal to nu_irr.size.
+        If spectrum_irr is array-like it must be in 1/Hz or in 1/keV depending on 'spectrum_irr_par',
+        must be normalized to unity, and its size must be equal to nu_irr.size.
         If spectrum_irr is callable, then
         ``F_nu_irr = F_irr * spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``.
-        The normalisation of the spectrum_irr in that case is performed automatically.
+        The normalization of the spectrum_irr in that case is performed automatically.
     spectrum_irr_par : str
-        Defines the irradiation spectral flux argument. Can be 'nu' (frequency in Hz) and 'E_in_keV' (energy in keV).
+        Defines the irradiation spectral flux argument.
+        Can be 'nu' (frequency in Hz) and 'E_in_keV' (energy in keV).
     args_spectrum_irr, kwargs_spectrum_irr : tuple and dict
         Extra arguments and keyword arguments of spectrum_irr, if it's callable.
         The calling signature is ``spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``
@@ -834,12 +883,14 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
         If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'],
         spectrum_irr is the spectrum of external irradiation flux, i.e.
         the spectral (X-ray) external irradiation flux F_nu_irr = F_irr * spectrum_irr.
-        If spectrum_irr is array-like, then its size must be equal to nu_irr.size.
+        If spectrum_irr is array-like it must be in 1/Hz or in 1/keV depending on 'spectrum_irr_par',
+        must be normalized to unity, and its size must be equal to nu_irr.size.
         If spectrum_irr is callable, then
         ``F_nu_irr = F_irr * spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``.
         The normalization of the spectrum_irr in that case is performed automatically.
     spectrum_irr_par : str
-        Defines the irradiation spectral flux argument. Can be 'nu' (frequency in Hz) and 'E_in_keV' (energy in keV).
+        Defines the irradiation spectral flux argument.
+        Can be 'nu' (frequency in Hz) and 'E_in_keV' (energy in keV).
     args_spectrum_irr, kwargs_spectrum_irr : tuple and dict
         Extra arguments and keyword arguments of spectrum_irr, if it's callable.
         The calling signature is ``spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``

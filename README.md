@@ -82,6 +82,7 @@ $ docker run -v$(pwd)/fig:/app/fig --rm -ti discverst python3 -m disc_verst.mesa
 
 	Calculating structure and making a structure plot.
 	Structure with tabular MESA opacity and EoS.
+    Chemical composition is solar.
 	M = 1.98841e+34 grams
 	r = 1.1813e+09 cm = 400 rg
 	alpha = 0.01
@@ -182,7 +183,7 @@ Irradiation can be taken into account in two ways:
 
 2. In the second approximation the external flux is penetrated into the disc and affect the energy flux
    and disc temperature. In this case there are more additional parameters are required, that describe
-   the incident spectral flux. Such parameters are: frequency range `nu_irr`, type of frequency range 
+   the incident spectral flux. Such parameters are: frequency range `nu_irr`, units of frequency range 
    `spectrum_irr_par` (see below), spectrum `spectrum_irr`, luminosity of irradiation source `L_X_irr` 
    and the cosine of incident angle `cos_theta_irr`. The spectral incident flux then will be 
    `F_nu_irr = L_X_irr / (4 * pi * r ** 2) * spectrum_irr`.
@@ -190,10 +191,13 @@ Irradiation can be taken into account in two ways:
    1. Frequency range `nu_irr` is array-like and can be either in Hz or in energy units (keV), this is determined by 
       `spectrum_irr_par` in `['nu', 'E_in_keV']`.
    2. Spectrum `spectrum_irr` can be either an array-like or a Python function. 
-      In latter case the spectrum is calculated for the frequency range `nu_irr` and automatically normalized to unity 
-      over `nu_irr`. Note, that units of `nu_irr` and units of `spectrum_irr` arguments must be consistent. 
-      There are two optional parameters `args_spectrum_irr` and `kwargs_spectrum_irr` for arguments (keyword arguments) 
-      of spectrum function.
+      1. If `spectrum_irr` is array-like, it must be in 1/Hz or in 1/keV depending on 'spectrum_irr_par',
+         must be normalized to unity, and its size must be equal to `nu_irr.size`.
+      2. If `spectrum_irr` is a Python function, the spectrum is calculated 
+         for the frequency range `nu_irr` and automatically normalized to unity over `nu_irr`. 
+         Note, that units of `nu_irr` and units of `spectrum_irr` arguments must be consistent. 
+         There are two optional parameters `args_spectrum_irr` and `kwargs_spectrum_irr` 
+         for arguments (keyword arguments) of spectrum function.
    3. Cosine of incident angle `cos_theta_irr` can be either exact value or `None`. In the latter case
       cosine is calculated self-consistently as `cos_theta_irr_exp * z0 / r`, where `cos_theta_irr_exp` is
       additional parameter, namely the `dln(z0)/dln(r) - 1` derivative.
