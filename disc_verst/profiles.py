@@ -5,12 +5,11 @@ and make plots of structure or S-curve.
 
 Vertical_Profile -- calculates vertical structure and makes table with disc parameters as functions of vertical
     coordinate. Table also contains input parameters of structure, parameters in the symmetry plane and
-    parameter normalizations. Also makes a plot of structure (if 'make_pic' parameter is True).
+    parameter normalizations.
 S_curve -- Calculates S-curve and makes table with disc parameters on the S-curve.
     Table contains input parameters of system, surface density Sigma0, viscous torque F,
     accretion rate Mdot, effective temperature Teff, geometrical half-thickness of the disc z0r,
     parameters in the symmetry plane of disc on the S-curve.
-    Also makes a plot of S-curve (if 'make_pic' parameter is True).
 Radial_Profile -- Calculates radial structure of disc. Return table, which contains input parameters of the system,
     surface density Sigma0, viscous torque F, accretion rate Mdot, effective temperature Teff,
     geometrical half-thickness of the disc z0r and parameters in the symmetry plane of disc
@@ -21,7 +20,6 @@ import os
 
 import numpy as np
 from astropy import constants as const
-from matplotlib import pyplot as plt
 from scipy.integrate import simps
 from scipy.interpolate import InterpolatedUnivariateSpline
 
@@ -56,7 +54,8 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
         Can be viscous torque in g*cm^2/s^2, effective temperature in K, accretion rate in g/s or in eddington limits.
         Choice depends on 'input' parameter.
     input : str
-        Define the choice of 'Par' parameter. Can be 'F' (viscous torque), 'Teff' (effective temperature),
+        Define the choice of 'Par' parameter. Can be 'F' (viscous torque),
+        'Teff' (effective temperature, or viscous temperature in case of irradiation),
         'Mdot' (accretion rate), 'Mdot_Mdot_edd' (Mdot in eddington limits) or 'Mdot_Msun_yr' (Mdot in Msun/yr).
     structure : str
         Type of vertical structure. Possible options are:
@@ -155,7 +154,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
         F = Mdot * h * func
         Teff = (3 / (8 * np.pi) * (G * M) ** 4 * F / (sigmaSB * h ** 7)) ** (1 / 4)
     else:
-        raise Exception('Incorrect input, try Teff, Mdot, F of Mdot_Mdot_edd')
+        raise Exception("Incorrect input, try 'Teff', 'F', 'Mdot', 'Mdot_Mdot_edd' or 'Mdot_Msun_yr'.")
 
     if structure == 'Kramers':
         vs = vert.IdealKramersVerticalStructure(M, alpha, r, F, mu=mu)
@@ -310,12 +309,10 @@ def Vertical_Profile(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin'
                      args_spectrum_irr=(), kwargs_spectrum_irr={},
                      cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
                      z0r_estimation=None, Sigma0_estimation=None, P_ph_0=None,
-                     n=100, add_Pi_values=True, path_dots=None,
-                     make_pic=True, path_plot=None, set_title=True, title='Vertical structure'):
+                     n=100, add_Pi_values=True, path_dots=None):
     """
     Calculates vertical structure and makes table with disc parameters as functions of vertical coordinate.
     Table also contains input parameters of structure, parameters in the symmetry plane and parameter normalizations.
-    Also makes a plot of structure (if 'make_pic' parameter is True).
 
     Parameters
     ----------
@@ -329,7 +326,8 @@ def Vertical_Profile(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin'
         Can be viscous torque in g*cm^2/s^2, effective temperature in K, accretion rate in g/s or in eddington limits.
         Choice depends on 'input' parameter.
     input : str
-        Define the choice of 'Par' parameter. Can be 'F' (viscous torque), 'Teff' (effective temperature),
+        Define the choice of 'Par' parameter. Can be 'F' (viscous torque),
+        'Teff' (effective temperature, or viscous temperature in case of irradiation),
         'Mdot' (accretion rate), 'Mdot_Mdot_edd' (Mdot in eddington limits) or 'Mdot_Msun_yr' (Mdot in Msun/yr).
     mu : double
         Mean molecular weight. Use in case of ideal gas EoS.
@@ -400,21 +398,10 @@ def Vertical_Profile(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin'
         Whether to write Pi-parameters (see Ketsaris & Shakura, 1998) to the output file header.
     path_dots : str
         Where to save data table.
-    make_pic : bool
-        Whether to make plot of structure.
-    path_plot : str
-        Where to save structure plot.
-    set_title : bool
-        Whether to make title of the plot.
-    title : str
-        The title of the plot.
 
     """
     if path_dots is None:
-        print("ATTENTION: the data wil not be saved, since 'path_dots' is None")
-    if make_pic and path_plot is None:
-        print("ATTENTION: 'make_pic' == True. "
-              "The plot will only be created, but not be saved, since 'path_plot' is None")
+        raise Exception("ATTENTION: the data wil not be saved, since 'path_dots' is None")
     vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance,
                                         nu_irr=nu_irr, L_X_irr=L_X_irr,
                                         spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
@@ -439,6 +426,11 @@ def Vertical_Profile(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin'
     tau_arr = np.r_[2 / 3, tau_arr]
     dots_arr = np.c_[t, S, P, abs(Q), T, rho, varkappa, tau_arr, grad_plot(np.log(P))]
     header_input_irr = ''
+    if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
+                     'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
+        Teff_string = 'Tvis'
+    else:
+        Teff_string = 'Teff'
     try:
         _ = eos.c_p
         dots_arr = np.c_[dots_arr, eos.grad_ad, np.exp(eos.lnfree_e)]
@@ -450,8 +442,9 @@ def Vertical_Profile(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin'
         header_conv = ''
     header_input = '\nS, P, Q, T -- normalized values, rho -- in g/cm^3, ' \
                    'varkappa -- in cm^2/g \nt = 1 - z/z0 ' \
-                   '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, Teff = {} K, Mdot = {:e} g/s, ' \
-                   'F = {:e} g*cm^2/s^2, structure = {}'.format(M / M_sun, alpha, r, r / rg, Teff, Mdot, F, structure)
+                   '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, {} = {} K, Mdot = {:e} g/s, ' \
+                   'F = {:e} g*cm^2/s^2, structure = {}'.format(M / M_sun, alpha, r, r / rg, Teff_string,
+                                                                Teff, Mdot, F, structure)
     if structure in ['Kramers', 'BellLin', 'MesaIdealGas']:
         header_input += ', mu = {}'.format(mu)
     else:
@@ -476,36 +469,19 @@ def Vertical_Profile(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin'
         header += '\nPi1 = {:f}, Pi2 = {:f}, Pi3 = {:f}, Pi4 = {:f}'.format(*vs.Pi_finder())
     if path_dots is not None:
         np.savetxt(path_dots, dots_arr, header=header)
-    if not make_pic:
-        return
-    plt.plot(1 - t, S, label=r'$\hat{\Sigma}$')
-    plt.plot(1 - t, P, label=r'$\hat{P}$')
-    plt.plot(1 - t, Q, label=r'$\hat{Q}$')
-    plt.plot(1 - t, T, label=r'$\hat{T}$')
-    plt.grid()
-    plt.legend()
-    plt.xlabel('$z / z_0$')
-    if set_title:
-        plt.title(title)
-    plt.tight_layout()
-    if path_plot is not None:
-        plt.savefig(path_plot)
-        plt.close()
+    return
 
 
 def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu=0.6, abundance='solar', nu_irr=None,
             L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
             cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
             z0r_start_estimation=None, Sigma0_start_estimation=None,
-            n=100, tau_break=True, path_dots=None, add_Pi_values=True,
-            make_pic=True, output='Mdot', xscale='log', yscale='log',
-            path_plot=None, set_title=True, title='S-curve'):
+            n=100, tau_break=True, path_dots=None, add_Pi_values=True):
     """
     Calculates S-curve and makes table with disc parameters on the S-curve.
     Table contains input parameters of system, surface density Sigma0, viscous torque F,
     accretion rate Mdot, effective temperature Teff, geometrical half-thickness of the disc z0r,
     parameters in the symmetry plane of disc on the S-curve.
-    Also makes a plot of S-curve (if 'make_pic' parameter is True).
 
     Parameters
     ----------
@@ -523,7 +499,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         Distance from central star (radius in cylindrical coordinate system) in cm.
     input : str
         Define the choice of 'Par_min' and 'Par_max' parameters.
-        Can be 'F' (viscous torque), 'Teff' (effective temperature),
+        Can be 'F' (viscous torque), 'Teff' (effective temperature, or viscous temperature in case of irradiation),
         'Mdot' (accretion rate), 'Mdot_Mdot_edd' (Mdot in eddington limits) or 'Mdot_Msun_yr' (Mdot in Msun/yr).
     structure : str
         Type of vertical structure. Possible options are:
@@ -594,33 +570,10 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         Where to save data table.
     add_Pi_values : bool
         Whether to write Pi-parameters (see Ketsaris & Shakura, 1998) to the output file.
-    make_pic : bool
-        Whether to make S-curve plot.
-    output : str
-        In which y-coordinate draw S-curve plot. Can be 'Teff', 'Mdot', 'Mdot_Mdot_edd', 'F', 'z0r' or 'T_C'.
-    xscale : str
-        Scale of x-axis. Can be 'linear', 'log' or 'parlog' (linear scale, but logarithmic values).
-    yscale : str
-        Scale of y-axis. Can be 'linear', 'log' or 'parlog' (linear scale, but logarithmic values).
-    path_plot : str
-        Where to save S-curve plot.
-    set_title : bool
-        Whether to make title of the plot.
-    title : str
-        The title of the plot.
 
     """
     if path_dots is None:
-        print("ATTENTION: the data wil not be saved, since 'path_dots' is None")
-    if make_pic and path_plot is None:
-        print("ATTENTION: 'make_pic' == True. "
-              "The plot will only be created, but not be saved, since 'path_plot' is None")
-    if xscale not in ['linear', 'log', 'parlog']:
-        raise Exception('Incorrect xscale, try linear, log or parlog')
-    if yscale not in ['linear', 'log', 'parlog']:
-        raise Exception('Incorrect yscale, try linear, log or parlog')
-    Sigma_plot = []
-    Output_Plot = []
+        raise Exception("ATTENTION: the data wil not be saved, since 'path_dots' is None")
 
     PradPgas10_index = 0  # where Prad = Pgas
     tau_index = n  # where tau < 1
@@ -638,10 +591,15 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     sigma_temp = np.infty
     except_fits = 0
     P_ph_0 = None
+    if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
+                     'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
+        Teff_string = 'Tvis'
+    else:
+        Teff_string = 'Teff'
 
     if path_dots is not None:
         rg = 2 * G * M / c ** 2
-        header = 'Sigma0 \tTeff \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas_c \tvarkappa_c'
+        header = 'Sigma0 \t{} \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas_c \tvarkappa_c'.format(Teff_string)
         header_end = '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, structure = {}'.format(
             M / M_sun, alpha, r, r / rg, structure)
         if structure in ['Kramers', 'BellLin', 'MesaIdealGas']:
@@ -692,7 +650,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             z0r_estimation = z0r
 
         tau = vs.tau()
-        print('Mdot = {:1.3e} g/s, Teff = {:g} K, tau = {:g}, z0r = {:g}'.format(Mdot, Teff, tau, z0r))
+        print('Mdot = {:1.3e} g/s, {} = {:g} K, tau = {:g}, z0r = {:g}'.format(Mdot, Teff_string, Teff, tau, z0r))
 
         if tau < 1 and tau_key:
             tau_index = i - except_fits
@@ -734,30 +692,11 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
                 cost_func = sum(result.fun ** 2)
             output_string.extend([cost_func, vs.converged, vs.Sigma_ph])
 
-        Sigma_plot.append(Sigma0)
-
         if i == 0:
             sigma_temp = Sigma0
         else:
             delta_Sigma_plus = Sigma0 - sigma_temp
             sigma_temp = Sigma0
-
-        if make_pic:
-            if output == 'Teff':
-                Output_Plot.append(Teff)
-            elif output == 'Mdot':
-                Output_Plot.append(Mdot)
-            elif output == 'Mdot_Mdot_edd':
-                Mdot_edd = 1.39e18 * M / M_sun
-                Output_Plot.append(Mdot / Mdot_edd)
-            elif output == 'F':
-                Output_Plot.append(F)
-            elif output == 'z0r':
-                Output_Plot.append(z0r)
-            elif output == 'T_C':
-                Output_Plot.append(T_C)
-            else:
-                raise Exception('Incorrect output, try Teff, Mdot, Mdot_Mdot_edd, F, z0r or T_C')
 
         if PradPgas_C < 1.0 and key:
             PradPgas10_index = i - 1 - except_fits
@@ -778,55 +717,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                          'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
             file.write('\n# Except_fits = {}'.format(except_fits))
-
-    if not make_pic:
-        return 0
-
-    xlabel = r'$\Sigma_0, \, \rm g/cm^2$'
-
-    if xscale == 'parlog':
-        Sigma_plot = np.log10(Sigma_plot)
-        xlabel = r'$\log \,$' + xlabel
-    if yscale == 'parlog':
-        Output_Plot = np.log10(Output_Plot)
-
-    pl, = plt.plot(Sigma_plot[:tau_index + 1], Output_Plot[:tau_index + 1],
-                   label=r'$P_{{\rm gas}} > P_{{\rm rad}}, \alpha = {:g}$'.format(alpha))
-    if tau_index != n:
-        plt.plot(Sigma_plot[tau_index:], Output_Plot[tau_index:], color=pl.get_c(), alpha=0.5, label=r'$\tau<1$')
-    if PradPgas10_index != 0:
-        plt.plot(Sigma_plot[:PradPgas10_index + 1], Output_Plot[:PradPgas10_index + 1],
-                 label=r'$P_{\rm gas} < P_{\rm rad}$')
-
-    if xscale != 'parlog':
-        plt.xscale(xscale)
-    if yscale != 'parlog':
-        plt.yscale(yscale)
-
-    if output == 'Teff':
-        ylabel = r'$T_{\rm eff}, \, \rm K$'
-    elif output == 'Mdot':
-        ylabel = r'$\dot{M}, \, \rm g/s$'
-    elif output == 'Mdot_Mdot_edd':
-        ylabel = r'$\dot{M}/\dot{M}_{\rm edd} $'
-    elif output == 'F':
-        ylabel = r'$F, \, \rm g~cm^2 / s^2$'
-    elif output == 'z0r':
-        ylabel = r'$z_0/r$'
-    elif output == 'T_C':
-        ylabel = r'$T_{\rm c}, \rm K$'
-    if yscale == 'parlog':
-        ylabel = r'$\log \,$' + ylabel
-    plt.ylabel(ylabel)
-    plt.xlabel(xlabel)
-    plt.grid(True, which='both', ls='-')
-    plt.legend()
-    if set_title:
-        plt.title(title)
-    plt.tight_layout()
-    if path_plot is not None:
-        plt.savefig(path_plot)
-        plt.close()
+    return
 
 
 def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin', mu=0.6, abundance='solar',
@@ -930,7 +821,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
 
     """
     if path_dots is None:
-        print("ATTENTION: the data wil not be saved, since 'path_dots' is None")
+        raise Exception("ATTENTION: the data wil not be saved, since 'path_dots' is None")
 
     tau_key = True
     z0r_estimation = z0r_start_estimation
@@ -942,11 +833,20 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
         Mdot = Par
     elif input == 'Mdot_Mdot_edd':
         Mdot = Par * 1.39e18 * M / M_sun
+    elif input == 'Mdot_Msun_yr':
+        Mdot = Par * M_sun / 31557600.0
     else:
-        raise Exception("Incorrect input, try 'Mdot' or 'Mdot_Mdot_edd'.")
+        raise Exception("Incorrect input, try 'Mdot', 'Mdot_Mdot_edd' or 'Mdot_Msun_yr'.")
+
+    if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
+                     'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
+        Teff_string = 'Tvis'
+    else:
+        Teff_string = 'Teff'
 
     if path_dots is not None:
-        header = 'r \tr/rg \tSigma0 \tTeff \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas_c \tvarkappa_c'
+        header = 'r \tr/rg \tSigma0 \t{} \tF \tz0r \trho_c \tT_c \tP_c ' \
+                 '\ttau \tPradPgas_c \tvarkappa_c'.format(Teff_string)
         header_end = '\nM = {:e} Msun, alpha = {}, Mdot = {} g/s, structure = {}'.format(
             M / M_sun, alpha, Mdot, structure)
         if structure in ['Kramers', 'BellLin', 'MesaIdealGas']:
@@ -998,7 +898,8 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
 
         tau = vs.tau()
         rg = 2 * G * M / c ** 2
-        print('r = {:1.3e} cm = {:g} rg, Teff = {:g} K, tau = {:g}, z0r = {:g}'.format(r, r / rg, Teff, tau, z0r))
+        print('r = {:1.3e} cm = {:g} rg, {} = {:g} K, tau = {:g}, z0r = {:g}'.format(r, r / rg, Teff_string,
+                                                                                     Teff, tau, z0r))
 
         if tau < 1 and tau_key:
             tau_key = False
@@ -1050,37 +951,74 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
 
 
 def main():
+    from matplotlib import pyplot as plt
+    from astropy.io import ascii
     M = 1.5 * M_sun
     alpha = 0.2
     r = 1e10
     Teff = 1e4
     os.makedirs('fig/', exist_ok=True)
 
-    print('Calculation of vertical structure. Return structure table and plot.')
-    print('M = {:g} M_sun \nr = {:g} cm \nalpha = {:g} \nTeff = {:g} K'.format(M / M_sun, r, alpha, Teff))
+    print('Calculation of vertical structure. Return structure table.')
+    print('M = {:g} M_sun \nr = {:g} cm \nalpha = {:g} \nTeff = {:g} K\n'.format(M / M_sun, r, alpha, Teff))
 
-    Vertical_Profile(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100, add_Pi_values=True,
-                     path_dots='fig/vs.dat', make_pic=True, path_plot='fig/vs.pdf',
-                     set_title=True,
-                     title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, T_{{\rm eff}} = {:g} \, '
-                           r'{{\rm K}}$'.format(M / M_sun, r, alpha, Teff))
-    print('Structure is calculated successfully. Plot is saved to fig/vs.pdf, table is saved to fig/vs.dat. \n')
+    Vertical_Profile(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin',
+                     n=100, add_Pi_values=True, path_dots='fig/vs.dat')
+    print('Structure is calculated successfully. Table is saved to fig/vs.dat.')
+    vs_data = ascii.read('fig/vs.dat')
+    print('Making the structure plot.')
+    plt.plot(1 - vs_data['t'], vs_data['S'], label=r'$\hat{\Sigma}$')
+    plt.plot(1 - vs_data['t'], vs_data['P'], label=r'$\hat{P}$')
+    plt.plot(1 - vs_data['t'], vs_data['Q'], label=r'$\hat{Q}$')
+    plt.plot(1 - vs_data['t'], vs_data['T'], label=r'$\hat{T}$')
+    plt.grid()
+    plt.legend()
+    plt.xlabel('$z / z_0$')
+    plt.title(r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, '
+              r'T_{{\rm eff}} = {:g} \, {{\rm K}}$'.format(M / M_sun, r, alpha, Teff))
+    plt.tight_layout()
+    plt.savefig('fig/vs.pdf')
+    plt.close()
+    print('Plot of structure is successfully saved to fig/vs.pdf.\n')
 
-    print('Calculation of S-curve for Teff from 4e3 K to 1e4 K. Return S-curve table and Sigma0-Mdot plot.\n')
-
+    print('Calculation of S-curve for Teff from 4e3 K to 1e4 K. Return S-curve table.')
     S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False,
-            path_dots='fig/S-curve.dat', add_Pi_values=True, make_pic=True, output='Mdot',
-            xscale='parlog', yscale='parlog', path_plot='fig/S-curve.pdf', set_title=True,
-            title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / M_sun, r, alpha))
-    print('S-curve is calculated successfully. Plot is saved to fig/S-curve.pdf, table is saved to fig/S-curve.dat.')
+            path_dots='fig/S-curve.dat', add_Pi_values=True)
+    print('S-curve is calculated successfully. Table is saved to fig/S-curve.dat.')
+    s_curve_data = ascii.read('fig/S-curve.dat')
+    tau = s_curve_data['tau']
+    print('Making the S-curve plot.')
+    plt.plot(s_curve_data['Sigma0'][tau>1], s_curve_data['Teff'][tau>1])
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.ylabel(r'$T_{\rm eff}, \, \rm K$')
+    plt.xlabel(r'$\Sigma_0, \, \rm g/cm^2$')
+    plt.grid(True, which='both', ls='-')
+    plt.title(r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, '
+              r'\alpha = {:g}$'.format(M / M_sun, r, alpha))
+    plt.tight_layout()
+    plt.savefig('fig/S-curve.pdf')
+    plt.close()
+    print('Plot of S-curve is successfully saved to fig/S-curve.pdf.\n')
 
-    print('Calculation of radial structure of disc for radius from 3.1*rg to 1e3*rg and Mdot = Mdot_edd. '
-          'Return radial structure table.\n')
-
-    rg = 2 * G * M / c ** 2
-    Radial_Profile(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200,
+    print('Calculation of radial structure of disc for radius from 1e9 cm to 1e12 cm and Mdot = Mdot_edd. '
+          'Return radial structure table.')
+    Radial_Profile(M, alpha, 1e9, 1e12, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200,
                    tau_break=True, path_dots='fig/radial_struct.dat', add_Pi_values=True)
     print('Radial structure is calculated successfully. Table is saved to fig/radial_struct.dat.')
+    rad_struct_data = ascii.read('fig/radial_struct.dat')
+    print('Making the radial structure plot.')
+    plt.plot(rad_struct_data['r'], rad_struct_data['z0r'])
+    plt.xscale('log')
+    plt.ylabel(r'$z_0 / r$')
+    plt.xlabel(r'$r, \,\rm cm$')
+    plt.grid(True, which='both', ls='-')
+    plt.title(r'$M = {:g} \, M_{{\odot}}, \dot{{M}} = 1\,\dot{{M}}_{{\rm edd}}, '
+              r'\alpha = {:g}$'.format(M / M_sun, alpha))
+    plt.tight_layout()
+    plt.savefig('fig/radial_struct.pdf')
+    plt.close()
+    print('Plot of radial structure is successfully saved to fig/radial_struct.pdf.')
 
     return
 

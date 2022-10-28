@@ -9,6 +9,7 @@ This code calculates vertical structure of accretion discs around neutron stars 
       * [Tabular opacities and EoS](#Tabular-opacities-and-EoS)
    * [Calculate structure](#Calculate-structure)
    * [Irradiated discs](#Irradiated-discs)
+   * [Structure Choice](#Structure-Choice)
    * [Vertical and radial profile calculation, S-curves](#Vertical-and-radial-profile-calculation-S-curves)
 
 ## Installation
@@ -279,21 +280,49 @@ print(vertstr.tau())  # optical thickness of disc
 print(vertstr.C_irr, vertstr.T_irr)  # irradiation constant and temperature
 ```
 
+## Structure Choice
+Module `profiles` contains `StructureChoice()` function, serves as interface for creating 
+the right structure class in a simpler way. One can use other input parameters instead viscous torque `F`
+(effective temperature, accretion rate) using `input` parameter,
+and choose the structure type using `structure` parameter.
+``` python3
+from disc_verst.profiles import StructureChoice
+
+M = 2e33  # Mass of central object in grams
+alpha = 0.01  # alpha parameter
+r = 4e9  # radius in cm
+input = 'Teff'  # the input parameter will be effective temperature
+Par = 1e4  # instead of viscous torque F
+structure = 'BellLin'  # type of structure
+mu = 0.6  # mean molecular weight for this type
+
+# Returns the instance of chosen structure type.
+# Also returns viscous torque F, effective temperature Teff and accretion rate Mdot.
+vertstr, F, Teff, Mdot = StructureChoice(M=M, alpha=alpha, r=r, Par=Par, 
+                                         input=input, structure=structure, mu=mu)
+z0r, result = vertstr.fit()  # calculate the structure
+```
+The `StructureChoice` function has the detailed documentation
+``` python3
+from disc_verst import profiles
+
+help(profiles.StructureChoice)
+```
+
 ## Vertical and radial profile calculation, S-curves
 
 Module `profiles` contains functions, that calculate vertical and radial disc profiles and S-curves, and return tables 
 with disc parameters. With profiles.main() the vertical structure, S-curve and radial structure 
-can be calculated for default parameters, stored as a plot and tables:
+can be calculated for default parameters, stored as tables and plots:
 ``` shell
 $ python3 -m disc_verst.profiles
 ```
 
 `profiles` contains three functions: `Vertical_Profile`, `S_curve` and `Radial_Profile`. 
 
-`Vertical_Profile` returns table with parameters of disc as functions of vertical coordinate at specific radius. 
-Also makes plot of structure.
+`Vertical_Profile` returns table with parameters of disc as functions of vertical coordinate at specific radius.
 
-`S_curve` calculates S-curve and return table with disc parameters on the curve. Also makes plot of S-curve.
+`S_curve` calculates S-curve and return table with disc parameters on the curve.
 
 `Radial_Profile` returns table with parameters of disc as functions of radius for a given radius range.
 
@@ -306,20 +335,15 @@ alpha = 0.2
 r = 1e10
 Teff = 1e4
 
-profiles.Vertical_Profile(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', n=100, add_Pi_values=True,
-                    	  path_dots='vs.dat', make_pic=True, path_plot='vs.pdf',
-                    	  set_title=True,
-                    	  title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, '
-                    	      r'T_{{\rm eff}} = {:g} \, {{\rm K}}$'.format(M / 2e33, r, alpha, Teff))
+profiles.Vertical_Profile(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', 
+                          n=100, add_Pi_values=True, path_dots='vs.dat')
 
-profiles.S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False,
-                 path_dots='S-curve.dat', add_Pi_values=True, make_pic=True, output='Mdot',
-                 xscale='parlog', yscale='parlog', path_plot='S-curve.pdf', set_title=True,
-                 title=r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}$'.format(M / 2e33, r, alpha))
+profiles.S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, 
+                 n=200, tau_break=False, path_dots='S-curve.dat', add_Pi_values=True)
 
 rg = 3e5 * (M / 2e33)  # Schwarzschild radius
-profiles.Radial_Profile(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200, 
-		                tau_break=True, path_dots='radial_struct.dat', add_Pi_values=True)
+profiles.Radial_Profile(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, 
+                        n=200, tau_break=True, path_dots='radial_struct.dat', add_Pi_values=True)
 ```
 Both `profiles` module and functions in it have help
 ``` python3
