@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-Module contains functions that calculate vertical structure and S-curve. Functions return tables with calculated data
-and make plots of structure or S-curve.
+Module contains functions that calculate vertical and radial structure and S-curve.
+Functions return tables with calculated data of structure or S-curve.
 
+StructureChoice -- Initialize the chosen vertical structure class.
+    It serves as interface for creating the right structure class in a simpler way.
 Vertical_Profile -- calculates vertical structure and makes table with disc parameters as functions of vertical
     coordinate. Table also contains input parameters of structure, parameters in the symmetry plane and
     parameter normalizations.
