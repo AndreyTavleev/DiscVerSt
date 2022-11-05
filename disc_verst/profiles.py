@@ -828,6 +828,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
     sigma_par_estimation = Sigma0_start_estimation
     P_ph_0 = None
     except_fits = 0
+    r_arr = np.geomspace(r_start, r_end, n)
 
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                      'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
@@ -855,29 +856,21 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
         np.savetxt(path_dots, [], header=header)
 
     try:
-        input_broadcast = np.broadcast(Par, cos_theta_irr, cos_theta_irr_exp, C_irr, T_irr)
-    except ValueError:
-        raise ValueError("All array-like input parameters must have the same size n = {}.".format(n)) from None
+        input_broadcast = np.broadcast(r_arr, Par, cos_theta_irr, cos_theta_irr_exp, C_irr, T_irr)
+    except ValueError as e:
+        raise ValueError("Array-like input parameters must have the same size n = {}.".format(n)) from e
 
-    if input_broadcast.size not in [1, n]:
-        raise ValueError("All array-like input parameters must have the same size n = {}.".format(n))
-
-    input_arr = list(input_broadcast)
-
-    for i, r in enumerate(np.geomspace(r_start, r_end, n)):
+    for i, input_pars in enumerate(input_broadcast):
         print(i)
-        if len(input_arr) == n:
-            input_pars = input_arr[i]
-        else:
-            input_pars = input_arr[0]
-        vs, F, Teff, Mdot = StructureChoice(M=M, alpha=alpha, r=r, Par=input_pars[0], input=input,
+        r = input_pars[0]
+        vs, F, Teff, Mdot = StructureChoice(M=M, alpha=alpha, r=r, Par=input_pars[1], input=input,
                                             structure=structure, mu=mu, abundance=abundance,
                                             nu_irr=nu_irr, L_X_irr=L_X_irr,
                                             spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
                                             args_spectrum_irr=args_spectrum_irr,
                                             kwargs_spectrum_irr=kwargs_spectrum_irr,
-                                            cos_theta_irr=input_pars[1], cos_theta_irr_exp=input_pars[2],
-                                            C_irr=input_pars[3], T_irr=input_pars[4], P_ph_0=P_ph_0)
+                                            cos_theta_irr=input_pars[2], cos_theta_irr_exp=input_pars[3],
+                                            C_irr=input_pars[4], T_irr=input_pars[5], P_ph_0=P_ph_0)
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
             try:
                 result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=sigma_par_estimation)
