@@ -53,7 +53,8 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
     r : double
         Distance from central star (radius in cylindrical coordinate system) in cm.
     Par : double
-        Can be viscous torque in g*cm^2/s^2, effective temperature in K, accretion rate in g/s or in eddington limits.
+        Can be viscous torque in g*cm^2/s^2, effective temperature in K,
+        accretion rate in g/s, in eddington limits or in Msun/yr.
         Choice depends on 'input' parameter.
     input : str
         Define the choice of 'Par' parameter. Can be 'F' (viscous torque),
@@ -133,7 +134,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
     r_in = 3 * rg
     if r <= r_in:
         raise Exception('Radius r should be greater than inner radius r_in = 3*rg. '
-                        'Actual radius r = {:g} rg'.format(r / rg))
+                        'Actual radius r = {:g} rg.'.format(r / rg))
     func = 1 - np.sqrt(r_in / r)
     if input == 'Teff':
         Teff = Par
@@ -299,7 +300,8 @@ def Convective_parameter(vs):
     try:
         _ = eos.c_p
     except AttributeError:
-        raise Exception('Incorrect vertical structure. Use vertical structure with MESA EoS.')
+        raise Exception('Incorrect vertical structure for convective parameter calculation. '
+                        'Use vertical structure with MESA EoS.') from None
     conv_param_sigma = simps(2 * rho * (grad_plot(np.log(P)) > eos.grad_ad), t * vs.z0) / (
             S[-1] * vs.sigma_norm)
     conv_param_z = simps(grad_plot(np.log(P)) > eos.grad_ad, t * vs.z0) / vs.z0
@@ -325,7 +327,8 @@ def Vertical_Profile(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin'
     r : double
         Distance from central star (radius in cylindrical coordinate system) in cm.
     Par : double
-        Can be viscous torque in g*cm^2/s^2, effective temperature in K, accretion rate in g/s or in eddington limits.
+        Can be viscous torque in g*cm^2/s^2, effective temperature in K,
+        accretion rate in g/s, in eddington limits or in Msun/yr.
         Choice depends on 'input' parameter.
     input : str
         Define the choice of 'Par' parameter. Can be 'F' (viscous torque),
@@ -403,7 +406,7 @@ def Vertical_Profile(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin'
 
     """
     if path_dots is None:
-        raise Exception("ATTENTION: the data wil not be saved, since 'path_dots' is None")
+        raise Exception("ATTENTION: the data wil not be saved, since 'path_dots' is None.")
     vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance,
                                         nu_irr=nu_irr, L_X_irr=L_X_irr,
                                         spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
@@ -478,7 +481,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
             cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
             z0r_start_estimation=None, Sigma0_start_estimation=None,
-            n=100, tau_break=True, path_dots=None, add_Pi_values=True):
+            n=100, tau_break=True, add_Pi_values=True, path_dots=None):
     """
     Calculates S-curve and makes table with disc parameters on the S-curve.
     Table contains input parameters of system, surface density Sigma0, viscous torque F,
@@ -489,10 +492,10 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     ----------
     Par_min : double
         The starting value of Par. Par_min and Par_max can be viscous torque in g*cm^2/s^2, effective temperature in K,
-        accretion rate in g/s or in eddington limits. Choice depends on 'input' parameter.
+        accretion rate in g/s, in eddington limits or in Msun/yr. Choice depends on 'input' parameter.
     Par_max : double
         The end value of Par. Par_min and Par_max can be viscous torque in g*cm^2/s^2, effective temperature in K,
-        accretion rate in g/s or in eddington limits. Choice depends on 'input' parameter.
+        accretion rate in g/s, in eddington limits or in Msun/yr. Choice depends on 'input' parameter.
     M : double
         Mass of central object in grams.
     alpha : double
@@ -568,24 +571,19 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         Number of dots to calculate.
     tau_break : bool
         Whether to end calculation, when tau<1.
-    path_dots : str
-        Where to save data table.
     add_Pi_values : bool
         Whether to write Pi-parameters (see Ketsaris & Shakura, 1998) to the output file.
+    path_dots : str
+        Where to save data table.
 
     """
     if path_dots is None:
-        raise Exception("ATTENTION: the data wil not be saved, since 'path_dots' is None")
+        raise Exception("ATTENTION: the data wil not be saved, since 'path_dots' is None.")
 
-    PradPgas10_index = 0  # where Prad = Pgas
-    tau_index = n  # where tau < 1
-    Sigma_minus_index = 0  # for Sigma_minus
-    key = True  # for Prad = Pgas
-    tau_key = True  # for tau < 1
-    Sigma_minus_key = True  # for Sigma_minus
-
-    Sigma_plus_key = True  # for Sigma_plus
-    Sigma_plus_index = 0  # for Sigma_plus
+    Sigma_minus_index = 0
+    Sigma_plus_index = 0
+    Sigma_minus_key = True
+    Sigma_plus_key = True
     delta_Sigma_plus = -1
     z0r_estimation = z0r_start_estimation
     sigma_par_estimation = Sigma0_start_estimation
@@ -654,12 +652,9 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
         tau = vs.tau()
         print('Mdot = {:1.3e} g/s, {} = {:g} K, tau = {:g}, z0r = {:g}'.format(Mdot, Teff_string, Teff, tau, z0r))
 
-        if tau < 1 and tau_key:
-            tau_index = i - except_fits
-            tau_key = False
-            if tau_break:
-                print('Note: tau<1, tau_break=True. Cycle ends, when tau<1.')
-                break
+        if tau < 1 and tau_break:
+            print('Note: tau<1, tau_break=True. Cycle ends, when tau<1.')
+            break
 
         varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
         PradPgas_C = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
@@ -682,7 +677,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             QirrQvis = vs.Q_irr / vs.Q0
             T_irr_, C_irr_ = vs.T_irr, vs.C_irr
             output_string.extend([QirrQvis, T_irr_, C_irr_])
-            print('T_irr, C_irr = {:g}, {:g}'.format(T_irr_, C_irr_))
+            print('T_irr, C_irr = {:g} K, {:g}'.format(T_irr_, C_irr_))
 
         if add_Pi_values:
             output_string.extend(vs.Pi_finder())
@@ -700,9 +695,6 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
             delta_Sigma_plus = Sigma0 - sigma_temp
             sigma_temp = Sigma0
 
-        if PradPgas_C < 1.0 and key:
-            PradPgas10_index = i - 1 - except_fits
-            key = False
         if delta_Sigma_plus > 0.0 and Sigma_plus_key:
             Sigma_plus_index = i - 1 - except_fits
             Sigma_plus_key = False
@@ -726,7 +718,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
                    nu_irr=None, L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(),
                    kwargs_spectrum_irr={}, cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
                    z0r_start_estimation=None, Sigma0_start_estimation=None,
-                   n=100, tau_break=True, path_dots=None, add_Pi_values=True):
+                   n=100, tau_break=True, add_Pi_values=True, path_dots=None):
     """
     Calculates radial structure of disc. Return table, which contains input parameters of the system,
     surface density Sigma0, viscous torque F, accretion rate Mdot, effective temperature Teff,
@@ -745,12 +737,15 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
     r_end : double
         The end value of radius. Radius (in cylindrical coordinate system, in cm)
         is the distance from central star.
-    Par : double
-        Par can be accretion rate in g/s, in eddington limits or in Msun/yr. Choice depends on 'input' parameter.
+    Par : double or array-like
+        Can be viscous torque in g*cm^2/s^2, effective temperature in K,
+        accretion rate in g/s, in eddington limits or in Msun/yr.
+        Choice depends on 'input' parameter.
+        If Par is array-like, its size must be equal to n (number of dots to calculate).
     input : str
         Define the choice of 'Par' parameter.
-        Can be 'Mdot' (accretion rate), 'Mdot_Mdot_edd' (Mdot in eddington limits)
-        or 'Mdot_Msun_yr' (Mdot in Msun/yr).
+        Can be 'F' (viscous torque), 'Teff' (effective temperature, or viscous temperature in case of irradiation),
+        'Mdot' (accretion rate), 'Mdot_Mdot_edd' (Mdot in eddington limits) or 'Mdot_Msun_yr' (Mdot in Msun/yr).
     structure : str
         Type of vertical structure. Possible options are:
         'Kramers', 'BellLin' -- ideal gas EoS, analytical opacities and radiative temperature gradient;
@@ -792,17 +787,21 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
         L_X_irr is the (X-ray) bolometric luminosity of external irradiation source.
         If None, then ``L_X_irr = 0.1 * Mdot * c ** 2``.
         The irradiation flux ``F_irr = L_X_irr / (4 * pi * r ** 2)``.
-    cos_theta_irr : double or None
+    cos_theta_irr : double or array-like or None
         If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'], cos_theta_irr is the cosine of angle
         of incidence for external irradiation flux. If None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
-    cos_theta_irr_exp : double
+        If cos_theta_irr is array-like, its size must be equal to n (number of dots to calculate).
+    cos_theta_irr_exp : double or array-like
         If cos_theta_irr is None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
-    C_irr : double
+        If cos_theta_irr_exp is array-like, its size must be equal to n (number of dots to calculate).
+    C_irr : double or array-like
         If structure in ['MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero'],
         C_irr is the irradiation parameter.
-    T_irr : double
+        If C_irr is array-like, its size must be equal to n (number of dots to calculate).
+    T_irr : double or array-like
         If structure in ['MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero'],
         T_irr is the irradiation temperature.
+        If T_irr is array-like, its size must be equal to n (number of dots to calculate).
     z0r_start_estimation : double
         Start estimation of z0r free parameter to fit the first point of radial structure.
         Further, z0r estimation of the next point is the z0r value of the previous point.
@@ -816,29 +815,19 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
         Number of dots to calculate.
     tau_break : bool
         Whether to end calculation, when tau<1.
-    path_dots : str
-        Where to save data table.
     add_Pi_values : bool
         Whether to write Pi-parameters (see Ketsaris & Shakura, 1998) to the output file.
+    path_dots : str
+        Where to save data table.
 
     """
     if path_dots is None:
-        raise Exception("ATTENTION: the data wil not be saved, since 'path_dots' is None")
+        raise Exception("ATTENTION: the data wil not be saved, since 'path_dots' is None.")
 
-    tau_key = True
     z0r_estimation = z0r_start_estimation
     sigma_par_estimation = Sigma0_start_estimation
     P_ph_0 = None
     except_fits = 0
-
-    if input == 'Mdot':
-        Mdot = Par
-    elif input == 'Mdot_Mdot_edd':
-        Mdot = Par * 1.39e18 * M / M_sun
-    elif input == 'Mdot_Msun_yr':
-        Mdot = Par * M_sun / 31557600.0
-    else:
-        raise Exception("Incorrect input, try 'Mdot', 'Mdot_Mdot_edd' or 'Mdot_Msun_yr'.")
 
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                      'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
@@ -847,10 +836,9 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
         Teff_string = 'Teff'
 
     if path_dots is not None:
-        header = 'r \tr/rg \tSigma0 \t{} \tF \tz0r \trho_c \tT_c \tP_c ' \
+        header = 'r \tr/rg \tSigma0 \tMdot \t{} \tF \tz0r \trho_c \tT_c \tP_c ' \
                  '\ttau \tPradPgas_c \tvarkappa_c'.format(Teff_string)
-        header_end = '\nM = {:e} Msun, alpha = {}, Mdot = {} g/s, structure = {}'.format(
-            M / M_sun, alpha, Mdot, structure)
+        header_end = '\nM = {:e} Msun, alpha = {}, structure = {}'.format(M / M_sun, alpha, structure)
         if structure in ['Kramers', 'BellLin', 'MesaIdealGas']:
             header_end += ', mu = {}'.format(mu)
         else:
@@ -866,15 +854,30 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
         header = header + '\nAll values are in CGS units.' + header_end
         np.savetxt(path_dots, [], header=header)
 
+    try:
+        input_broadcast = np.broadcast(Par, cos_theta_irr, cos_theta_irr_exp, C_irr, T_irr)
+    except ValueError:
+        raise ValueError("All array-like input parameters must have the same size n = {}.".format(n)) from None
+
+    if input_broadcast.size not in [1, n]:
+        raise ValueError("All array-like input parameters must have the same size n = {}.".format(n))
+
+    input_arr = list(input_broadcast)
+
     for i, r in enumerate(np.geomspace(r_start, r_end, n)):
         print(i)
-        vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance,
+        if len(input_arr) == n:
+            input_pars = input_arr[i]
+        else:
+            input_pars = input_arr[0]
+        vs, F, Teff, Mdot = StructureChoice(M=M, alpha=alpha, r=r, Par=input_pars[0], input=input,
+                                            structure=structure, mu=mu, abundance=abundance,
                                             nu_irr=nu_irr, L_X_irr=L_X_irr,
                                             spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
                                             args_spectrum_irr=args_spectrum_irr,
                                             kwargs_spectrum_irr=kwargs_spectrum_irr,
-                                            cos_theta_irr=cos_theta_irr, cos_theta_irr_exp=cos_theta_irr_exp,
-                                            C_irr=C_irr, T_irr=T_irr, P_ph_0=P_ph_0)
+                                            cos_theta_irr=input_pars[1], cos_theta_irr_exp=input_pars[2],
+                                            C_irr=input_pars[3], T_irr=input_pars[4], P_ph_0=P_ph_0)
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
             try:
                 result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=sigma_par_estimation)
@@ -900,19 +903,17 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
 
         tau = vs.tau()
         rg = 2 * G * M / c ** 2
-        print('r = {:1.3e} cm = {:g} rg, {} = {:g} K, tau = {:g}, z0r = {:g}'.format(r, r / rg, Teff_string,
-                                                                                     Teff, tau, z0r))
+        print('r = {:1.3e} cm = {:g} rg, Mdot = {:1.3e} g/s, {} = {:g} K, tau = {:g}, z0r = {:g}'.format(
+            r, r / rg, Mdot, Teff_string, Teff, tau, z0r))
 
-        if tau < 1 and tau_key:
-            tau_key = False
-            if tau_break:
-                print('Note: tau<1, tau_break=True. Cycle ends, when tau<1.')
-                break
+        if tau < 1 and tau_break:
+            print('Note: tau<1, tau_break=True. Cycle ends, when tau<1.')
+            break
 
         varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
         PradPgas_C = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
 
-        output_string = [r, r / rg, Sigma0, Teff, F, z0r, rho_C, T_C, P_C, tau, PradPgas_C, varkappa_C]
+        output_string = [r, r / rg, Sigma0, Mdot, Teff, F, z0r, rho_C, T_C, P_C, tau, PradPgas_C, varkappa_C]
         print('Sigma0 = {:g} g/cm^2'.format(Sigma0))
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
@@ -929,7 +930,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
             QirrQvis = vs.Q_irr / vs.Q0
             T_irr_, C_irr_ = vs.T_irr, vs.C_irr
             output_string.extend([QirrQvis, T_irr_, C_irr_])
-            print('T_irr, C_irr = {:g}, {:g}'.format(T_irr_, C_irr_))
+            print('T_irr, C_irr = {:g} K, {:g}'.format(T_irr_, C_irr_))
 
         if add_Pi_values:
             output_string.extend(vs.Pi_finder())
@@ -990,7 +991,7 @@ def main():
     s_curve_data = ascii.read('fig/S-curve.dat')
     tau = s_curve_data['tau']
     print('Making the S-curve plot.')
-    plt.plot(s_curve_data['Sigma0'][tau>1], s_curve_data['Teff'][tau>1])
+    plt.plot(s_curve_data['Sigma0'][tau > 1], s_curve_data['Teff'][tau > 1])
     plt.xscale('log')
     plt.yscale('log')
     plt.ylabel(r'$T_{\rm eff}, \, \rm K$')
