@@ -1,4 +1,5 @@
+setuptools
 numpy
+astropy
 scipy
 matplotlib
-astropy

@@ -1,0 +1,34 @@
+[project]
+name = "disc-verst"
+version = "1.0"
+authors = [
+  {email = "tavleev.as15@physics.msu.ru"},
+  {name = "Andrey Tavleev"}
+]
+description = "Vertical structure of accretion discs calculation"
+readme = "README.md"
+license = {file = "LICENSE.md"}
+keywords = ["science", "astrophysics"]
+requires-python = ">=3.6"
+dependencies = [
+    "numpy",
+    "astropy",
+    "matplotlib",
+    "scipy",
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Programming Language :: Python :: 3",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["disc_verst"]
+
+[project.urls]
+repository = "https://github.com/AndreyTavleev/DiscVerSt"
