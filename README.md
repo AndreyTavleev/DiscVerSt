@@ -57,7 +57,7 @@ $ python3 -m disc_verst.vs
 ### Tabular opacities and EoS
 
 ['mesa2py'](https://github.com/hombit/mesa2py) is used to bind tabular opacities and EoS 
-from [MESA code](http://mesa.sourceforge.net) with Python3.
+from [MESA code](http://docs.mesastar.org) with Python3.
 If you want to use tabular values of opacity and EoS to calculate the structure, you should use Docker.
 
 You can use the latest pre-build Docker image:
@@ -111,12 +111,12 @@ help(disc_verst.vs)
 help(disc_verst.mesa_vs)
 ```
 
-### Usage:
-You can use `vs` module with different output parameters: mass of central object, alpha, radius and viscous torque
+### Usage with analytical opacities and EoS::
 
 ``` python3
 from disc_verst import vs
 
+# Input parameters:
 M = 2e33  # Mass of central object in grams
 alpha = 0.01  # alpha parameter
 r = 2e9  # radius in cm
@@ -126,7 +126,7 @@ mu = 0.6  # molecular weight
 # Structure with (Bell & Lin, 1994) power-law opacities and ideal gas EoS
 # with molecular weight mu and radiative temperature gradient.
 
-vertstr = vs.IdealBellLin1994VerticalStructure(Mx=M, alpha=alpha, r=r, F=F, mu=mu)  # create the structure
+vertstr = vs.IdealBellLin1994VerticalStructure(Mx=M, alpha=alpha, r=r, F=F, mu=mu)  # create the structure object
 z0r, result = vertstr.fit()  # calculate structure
 varkappa_C, rho_C, T_C, P_C, Sigma0 = vertstr.parameters_C()
 print(z0r)  # semi-thickness z0/r of disc
@@ -137,9 +137,6 @@ print(vertstr.tau())  # optical thickness of disc
 
 ### Usage with tabular opacities and EoS:
 
-You can use `mesa_vs` module inside the Docker with different output parameters: 
-mass of central object, alpha, radius and viscous torque
-
 ``` shell
 $ docker run --rm -ti discverst python3
 ```
@@ -147,6 +144,7 @@ $ docker run --rm -ti discverst python3
 ``` python3
 from disc_verst import mesa_vs
 
+# Input parameters:
 M = 2e33  # Mass of central object in grams
 alpha = 0.01  # alpha parameter
 r = 2e9  # radius in cm
@@ -156,7 +154,7 @@ F = 2e34  # viscous torque
 # and both radiative and convective energy transport,
 # default chemical composition is solar.
 
-vertstr = mesa_vs.MesaVerticalStructureRadConv(Mx=M, alpha=alpha, r=r, F=F)  # create the structure
+vertstr = mesa_vs.MesaVerticalStructureRadConv(Mx=M, alpha=alpha, r=r, F=F)  # create the structure object
 z0r, result = vertstr.fit()  # calculate structure
 varkappa_C, rho_C, T_C, P_C, Sigma0 = vertstr.parameters_C()
 print(z0r)  # semi-thickness z0/r of disc
@@ -173,7 +171,7 @@ $ docker run -v/path_to/your_file/file.py:/app/file.py --rm -ti discverst python
 
 ## Irradiated discs
 
-Module `mesa_vs` also contains classes, that represent 
+Module `mesa_vs` also contains classes that represent 
 the vertical structure of self-irradiated discs.
 
 Irradiation can be taken into account in two ways:
@@ -208,6 +206,7 @@ Irradiation can be taken into account in two ways:
 ``` python3
 from disc_verst import mesa_vs
 
+# Input parameters:
 M = 2e33  # Mass of central object in grams
 alpha = 0.01  # alpha parameter
 r = 2e9  # radius in cm
@@ -221,7 +220,7 @@ Tirr = 1.2e4  # irradiation temperature
 # through the simple scheme.
 
 vertstr = mesa_vs.MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(
-                     Mx=M, alpha=alpha, r=r, F=F, T_irr=Tirr)  # create the structure
+                     Mx=M, alpha=alpha, r=r, F=F, T_irr=Tirr)  # create the structure object
 z0r, result = vertstr.fit()  # calculate structure
 varkappa_C, rho_C, T_C, P_C, Sigma0 = vertstr.parameters_C()
 print(z0r)  # semi-thickness z0/r of disc
@@ -246,6 +245,7 @@ Then calculate structure with this spectrum:
 from disc_verst import mesa_vs
 import numpy as np
 
+# Input parameters:
 M = 2e33  # Mass of central object in grams
 alpha = 0.01  # alpha parameter
 r = 4e9  # radius in cm
@@ -269,7 +269,7 @@ vertstr = mesa_vs.MesaVerticalStructureRadConvExternalIrradiation(
                      spectrum_irr_par=spectrum_par, 
                      kwargs_spectrum_irr=kwargs,
                      cos_theta_irr=cos_theta_irr, 
-                     cos_theta_irr_exp=cos_theta_irr_exp)  # create the structure
+                     cos_theta_irr_exp=cos_theta_irr_exp)  # create the structure object
 result = vertstr.fit()  # calculate structure
 z0r, Sigma0 = result.x  # Sigma0 is additional free parameter to find
 varkappa_C, rho_C, T_C, P_C, Sigma0 = vertstr.parameters_C()
@@ -282,12 +282,13 @@ print(vertstr.C_irr, vertstr.T_irr)  # irradiation constant and temperature
 
 ## Structure Choice
 Module `profiles` contains `StructureChoice()` function, serves as interface for creating 
-the right structure class in a simpler way. One can use other input parameters instead viscous torque `F`
-(effective temperature, accretion rate) using `input` parameter,
+the right structure object in a simpler way. One can use other input parameters instead viscous torque `F`
+(such as effective temperature and accretion rate) using `input` parameter,
 and choose the structure type using `structure` parameter.
 ``` python3
 from disc_verst.profiles import StructureChoice
 
+# Input parameters:
 M = 2e33  # Mass of central object in grams
 alpha = 0.01  # alpha parameter
 r = 4e9  # radius in cm
@@ -330,12 +331,13 @@ $ python3 -m disc_verst.profiles
 ``` python3
 from disc_verst import profiles
 
+# Input parameters:
 M = 1.5 * 2e33  # 1.5 * M_sun
 alpha = 0.2
 r = 1e10
 Teff = 1e4
 
-profiles.Vertical_Profile(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin', 
+profiles.Vertical_Profile(M, alpha, r, Teff, input='Teff', structure='BellLin', mu=0.62,
                           n=100, add_Pi_values=True, path_dots='vs.dat')
 
 profiles.S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, 

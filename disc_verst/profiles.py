@@ -18,8 +18,6 @@ Radial_Profile -- Calculates radial structure of disc. Return table, which conta
     as functions of radius.
 
 """
-import os
-
 import numpy as np
 from astropy import constants as const
 from scipy.integrate import simps
@@ -308,7 +306,7 @@ def Convective_parameter(vs):
     return conv_param_z, conv_param_sigma
 
 
-def Vertical_Profile(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin', abundance='solar', nu_irr=None,
+def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar', nu_irr=None,
                      L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None,
                      args_spectrum_irr=(), kwargs_spectrum_irr={},
                      cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
@@ -477,7 +475,7 @@ def Vertical_Profile(M, alpha, r, Par, input='Teff', mu=0.6, structure='BellLin'
     return
 
 
-def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu=0.6, abundance='solar', nu_irr=None,
+def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='solar', nu_irr=None,
             L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
             cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
             z0r_start_estimation=None, Sigma0_start_estimation=None,
@@ -714,7 +712,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input='Teff', structure='BellLin', mu
     return
 
 
-def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellLin', mu=0.6, abundance='solar',
+def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abundance='solar',
                    nu_irr=None, L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(),
                    kwargs_spectrum_irr={}, cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
                    z0r_start_estimation=None, Sigma0_start_estimation=None,
@@ -741,7 +739,8 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
         Can be viscous torque in g*cm^2/s^2, effective temperature in K,
         accretion rate in g/s, in eddington limits or in Msun/yr.
         Choice depends on 'input' parameter.
-        If Par is array-like, its size must be equal to n (number of dots to calculate).
+        Par can be array-like, that is, it changes along the radius.
+        In that case its size must be equal to n (number of dots to calculate).
     input : str
         Define the choice of 'Par' parameter.
         Can be 'F' (viscous torque), 'Teff' (effective temperature, or viscous temperature in case of irradiation),
@@ -790,18 +789,22 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
     cos_theta_irr : double or array-like or None
         If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'], cos_theta_irr is the cosine of angle
         of incidence for external irradiation flux. If None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
-        If cos_theta_irr is array-like, its size must be equal to n (number of dots to calculate).
+        cos_theta_irr can be array-like, that is, it changes along the radius.
+        In that case its size must be equal to n (number of dots to calculate).
     cos_theta_irr_exp : double or array-like
         If cos_theta_irr is None, ``cos_theta_irr = cos_theta_irr_exp * (z0/r)``.
-        If cos_theta_irr_exp is array-like, its size must be equal to n (number of dots to calculate).
+        cos_theta_irr_exp can be array-like, that is, it changes along the radius.
+        In that case its size must be equal to n (number of dots to calculate).
     C_irr : double or array-like
         If structure in ['MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero'],
         C_irr is the irradiation parameter.
-        If C_irr is array-like, its size must be equal to n (number of dots to calculate).
+        C_irr can be array-like, that is, it changes along the radius.
+        In that case its size must be equal to n (number of dots to calculate).
     T_irr : double or array-like
         If structure in ['MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero'],
         T_irr is the irradiation temperature.
-        If T_irr is array-like, its size must be equal to n (number of dots to calculate).
+        T_irr can be array-like, that is, it changes along the radius.
+        In that case its size must be equal to n (number of dots to calculate).
     z0r_start_estimation : double
         Start estimation of z0r free parameter to fit the first point of radial structure.
         Further, z0r estimation of the next point is the z0r value of the previous point.
@@ -949,6 +952,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input='Mdot', structure='BellL
 def main():
     from matplotlib import pyplot as plt
     from astropy.io import ascii
+    import os
     M = 1.5 * M_sun
     alpha = 0.2
     r = 1e10
@@ -958,7 +962,7 @@ def main():
     print('Calculation of vertical structure. Return structure table.')
     print('M = {:g} M_sun \nr = {:g} cm \nalpha = {:g} \nTeff = {:g} K\n'.format(M / M_sun, r, alpha, Teff))
 
-    Vertical_Profile(M, alpha, r, Teff, input='Teff', mu=0.62, structure='BellLin',
+    Vertical_Profile(M, alpha, r, Teff, input='Teff', structure='BellLin', mu=0.62,
                      n=100, add_Pi_values=True, path_dots='fig/vs.dat')
     print('Structure is calculated successfully. Table is saved to fig/vs.dat.')
     vs_data = ascii.read('fig/vs.dat')
