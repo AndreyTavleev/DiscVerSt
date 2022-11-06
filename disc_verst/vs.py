@@ -73,11 +73,11 @@ class BaseVerticalStructure:
     Methods
     -------
     fit()
-        Solve optimization problem and calculate the vertical structure.
+        Solves optimization problem and calculate the vertical structure.
     integrate()
-        Integrate the system and return values of four dimensionless functions.
+        Integrates the system and return values of four dimensionless functions.
     Pi_finder()
-        Return the Pi values (see Ketsaris & Shakura, 1998).
+        Returns the Pi values (see Ketsaris & Shakura, 1998).
     parameters_C()
         Calculates parameters of disc in the symmetry plane.
     tau()
@@ -117,7 +117,7 @@ class BaseVerticalStructure:
     def law_of_rho(self, P, T, full_output):
         raise NotImplementedError
 
-    def law_of_opacity(self, rho, T, lnfree_e):
+    def law_of_opacity(self, rho, T, lnfree_e, return_grad):
         raise NotImplementedError
 
     def viscosity(self, y):
@@ -126,14 +126,14 @@ class BaseVerticalStructure:
     def rho(self, y, full_output):
         return self.law_of_rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, full_output=full_output)
 
-    def opacity(self, y, lnfree_e):
+    def opacity(self, y, lnfree_e, return_grad):
         rho = self.rho(y, full_output=False)
-        return self.law_of_opacity(rho, y[Vars.T] * self.T_norm, lnfree_e=lnfree_e)
+        return self.law_of_opacity(rho, y[Vars.T] * self.T_norm, lnfree_e=lnfree_e, return_grad=return_grad)
 
     def photospheric_pressure_equation(self, tau, P):
         T = self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)
         rho, eos = self.law_of_rho(P, T, True)
-        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
+        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e, return_grad=False)
         return self.z0 * self.omegaK ** 2 / varkappa
 
     def P_ph(self):
@@ -186,7 +186,7 @@ class BaseVerticalStructure:
         Parameters
         ----------
         t : array-like
-            Modified vertical coordinate (t = 1 - z).
+            Modified vertical coordinate (t = 1 - z/z0).
         y :
             Current values of (dimensionless) unknown functions.
 
@@ -218,7 +218,8 @@ class BaseVerticalStructure:
         Parameters
         ----------
         t : array-like
-            Interval of integration and evaluation.
+            Interval of modified vertical coordinate (t = 1 - z/z0) for integration and evaluation.
+            t[0] must be equal to zero, t[-1] must be less or equal to unity.
 
         Returns
         -------
@@ -229,6 +230,7 @@ class BaseVerticalStructure:
 
         """
         assert t[0] == 0
+        assert t[-1] <= 1
         solution = solve_ivp(self.dydt, (t[0], t[-1]), self.initial(), t_eval=t, rtol=self.eps, method='RK23')
         return [solution.y, solution.message]
 
@@ -245,9 +247,9 @@ class BaseVerticalStructure:
         t = np.linspace(0, 1, 100)
         y = self.integrate(t)[0]
         rho, eos = self.rho(y, full_output=True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
         tau_norm = simps(varkappa * rho, t)
-        return self.z0 * tau_norm
+        return self.z0 * tau_norm + 2 / 3
 
     def y_c(self):
         y = self.integrate([0, 1])
@@ -268,7 +270,7 @@ class BaseVerticalStructure:
         T_C = y_c[Vars.T] * self.T_norm
         P_C = y_c[Vars.P] * self.P_norm
         rho_C, eos = self.rho(y_c, full_output=True)
-        varkappa_C = self.opacity(y_c, lnfree_e=eos.lnfree_e)
+        varkappa_C = self.opacity(y_c, lnfree_e=eos.lnfree_e, return_grad=False)
         return np.array([varkappa_C, rho_C, T_C, P_C, Sigma0])
 
     def tau0(self):
@@ -304,7 +306,7 @@ class BaseVerticalStructure:
 
     def fit(self, start_estimation_z0r=None):
         """
-        Solve optimization problem and calculate the vertical structure.
+        Solves optimization problem and calculates the vertical structure.
 
         Parameters
         ----------
@@ -347,13 +349,13 @@ class BaseVerticalStructure:
 
 class RadiativeTempGradient:
     """
-    Temperature gradient class. Calculate radiative d(lnT)/d(lnP) in the Eddington approximation.
+    Temperature gradient class. Calculates radiative d(lnT)/d(lnP) in the Eddington approximation.
 
     """
 
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, full_output=True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
 
         if t == 1:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
@@ -369,7 +371,7 @@ class RadiativeTempGradient:
 class RadiativeTempGradientPrad:
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, full_output=True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
 
         if t == 1:
             dTdz_der = (self.dQdz(y, t) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
@@ -399,8 +401,10 @@ class IdealGasMixin:
         else:
             eos_temp = namedtuple(
                 'eos_temp',
-                ('lnfree_e',), )
-            eos = eos_temp(0.0)
+                ('dlnRho_dlnPgas_const_T', 'dlnRho_dlnT_const_Pgas',
+                 'mu', 'lnfree_e', 'grad_ad',), )
+            eos = eos_temp(dlnRho_dlnPgas_const_T=1.0, dlnRho_dlnT_const_Pgas=-1.0, mu=self.mu, lnfree_e=0.0,
+                           grad_ad=0.4)
             return P * self.mu / (R_gas * T), eos
 
 
@@ -409,8 +413,12 @@ class KramersOpacityMixin:
     zeta = 1
     gamma = -7 / 2
 
-    def law_of_opacity(self, rho, T, lnfree_e):
-        return self.varkappa0 * (rho ** self.zeta) * (T ** self.gamma)
+    def law_of_opacity(self, rho, T, lnfree_e, return_grad):
+        if not return_grad:
+            return self.varkappa0 * (rho ** self.zeta) * (T ** self.gamma)
+        else:
+            dlnkap_dlnRho, dlnkap_dlnT = self.zeta, self.gamma
+            return self.varkappa0 * (rho ** self.zeta) * (T ** self.gamma), dlnkap_dlnRho, dlnkap_dlnT
 
 
 class BellLin1994TwoComponentOpacityMixin:
@@ -427,8 +435,15 @@ class BellLin1994TwoComponentOpacityMixin:
     def opacity_ff(self, rho, T):
         return self.varkappa0_ff * (rho ** self.zeta_ff) * (T ** self.gamma_ff)
 
-    def law_of_opacity(self, rho, T, lnfree_e):
-        return np.minimum(self.opacity_h(rho, T), self.opacity_ff(rho, T))
+    def law_of_opacity(self, rho, T, lnfree_e, return_grad):
+        if not return_grad:
+            return np.minimum(self.opacity_h(rho, T), self.opacity_ff(rho, T))
+        else:
+            if self.opacity_h(rho, T) < self.opacity_ff(rho, T):
+                dlnkap_dlnRho, dlnkap_dlnT = self.zeta_h, self.gamma_h
+            else:
+                dlnkap_dlnRho, dlnkap_dlnT = self.zeta_ff, self.gamma_ff
+            return np.minimum(self.opacity_h(rho, T), self.opacity_ff(rho, T)), dlnkap_dlnRho, dlnkap_dlnT
 
 
 class Prad:
@@ -442,7 +457,7 @@ class Prad:
         # print(np.log10(P), np.log10(T))
 
         rho, eos = self.law_of_rho(P, T, True)
-        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
+        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e, return_grad=False)
 
         # if self.z0 * self.omegaK ** 2 / varkappa - (sigmaSB / c) * self.Teff ** 4 < 0:
         #     print(self.z0 * self.omegaK ** 2 / varkappa - (sigmaSB / c) * self.Teff ** 4)
@@ -539,7 +554,8 @@ def main():
     r = 400 * rg
     print('Finding Pi parameters of structure and making a structure plot. '
           '\nStructure with Kramers opacity and ideal gas EOS.')
-    print('M = {:g} grams \nr = {:g} cm = {:g} rg \nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, r / rg, alpha, Mdot))
+    print('M = {:g} grams \nr = {:g} cm = {:g} rg '
+          '\nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, r / rg, alpha, Mdot))
     h = np.sqrt(G * M * r)
     r_in = 3 * rg
     F = Mdot * h * (1 - np.sqrt(r_in / r))
@@ -568,12 +584,11 @@ def main():
     plt.plot(1 - t, Q, label=r'$\hat{Q}$')
     plt.plot(1 - t, T, label=r'$\hat{T}$')
     plt.xlabel('$z / z_0$')
-    plt.title(r'$M = {:g}\, M_{{\odot}},\, \dot{{M}} = {:g}\, {{\rm g/s}},\, \alpha = {:g}, r = {:g} \,\rm cm$'.format(
-        M / M_sun, Mdot, alpha, r))
+    plt.title(r'$M = {:g}\, M_{{\odot}},\, \dot{{M}} = {:g}\, {{\rm g/s}},\, '
+              r'\alpha = {:g}, r = {:g} \,\rm cm$'.format(M / M_sun, Mdot, alpha, r))
     plt.grid()
     plt.legend()
-    if not os.path.exists('fig/'):
-        os.makedirs('fig/')
+    os.makedirs('fig/', exist_ok=True)
     plt.savefig('fig/vs.pdf')
     print('Plot of structure is successfully saved to fig/vs.pdf.')
     return
