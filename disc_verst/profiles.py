@@ -3,11 +3,11 @@
 Module contains functions that calculate vertical and radial structure and S-curve.
 Functions return tables with calculated data of structure or S-curve.
 
-StructureChoice -- Initialize the chosen vertical structure class.
+StructureChoice -- Initialise the chosen vertical structure class.
     It serves as interface for creating the right structure class in a simpler way.
 Vertical_Profile -- calculates vertical structure and makes table with disc parameters as functions of vertical
     coordinate. Table also contains input parameters of structure, parameters in the symmetry plane and
-    parameter normalizations.
+    parameter normalisations.
 S_curve -- Calculates S-curve and makes table with disc parameters on the S-curve.
     Table contains input parameters of system, surface density Sigma0, viscous torque F,
     accretion rate Mdot, effective temperature Teff, geometrical half-thickness of the disc z0r,
@@ -40,7 +40,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                     spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
                     C_irr=None, T_irr=None, cos_theta_irr=None, cos_theta_irr_exp=1 / 12, P_ph_0=None):
     """
-    Initialize the chosen vertical structure class.
+    Initialise the chosen vertical structure class.
 
     Parameters
     ----------
@@ -84,10 +84,10 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
         spectrum_irr is the spectrum of external irradiation flux, i.e.
         the spectral (X-ray) external irradiation flux F_nu_irr = F_irr * spectrum_irr.
         If spectrum_irr is array-like it must be in 1/Hz or in 1/keV depending on 'spectrum_irr_par',
-        must be normalized to unity, and its size must be equal to nu_irr.size.
+        must be normalised to unity, and its size must be equal to nu_irr.size.
         If spectrum_irr is callable, then
         ``F_nu_irr = F_irr * spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``.
-        The normalization of the spectrum_irr in that case is performed automatically.
+        The normalisation of the spectrum_irr in that case is performed automatically.
     spectrum_irr_par : str
         Defines the irradiation spectral flux argument.
         Can be 'nu' (frequency in Hz) and 'E_in_keV' (energy in keV).
@@ -122,7 +122,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
     F : double
         Viscous torque in g*cm^2/s^2.
     Teff : double
-        Effective temperature in Kelvins.
+        Effective temperature (viscous temperature in case of irradiation) in Kelvins.
     Mdot : double
         Accretion rate in g/s.
 
@@ -314,7 +314,7 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
                      n=100, add_Pi_values=True, path_dots=None):
     """
     Calculates vertical structure and makes table with disc parameters as functions of vertical coordinate.
-    Table also contains input parameters of structure, parameters in the symmetry plane and parameter normalizations.
+    Table also contains input parameters of structure, parameters in the symmetry plane and parameter normalisations.
 
     Parameters
     ----------
@@ -358,10 +358,10 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
         spectrum_irr is the spectrum of external irradiation flux, i.e.
         the spectral (X-ray) external irradiation flux F_nu_irr = F_irr * spectrum_irr.
         If spectrum_irr is array-like it must be in 1/Hz or in 1/keV depending on 'spectrum_irr_par',
-        must be normalized to unity, and its size must be equal to nu_irr.size.
+        must be normalised to unity, and its size must be equal to nu_irr.size.
         If spectrum_irr is callable, then
         ``F_nu_irr = F_irr * spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``.
-        The normalization of the spectrum_irr in that case is performed automatically.
+        The normalisation of the spectrum_irr in that case is performed automatically.
     spectrum_irr_par : str
         Defines the irradiation spectral flux argument.
         Can be 'nu' (frequency in Hz) and 'E_in_keV' (energy in keV).
@@ -402,6 +402,35 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
     path_dots : str
         Where to save data table.
 
+    Returns
+    -------
+    Table with calculated Vertical disc profile will save to path_dots. Table contains:
+        1) input parameters of the system -- M in Msun, alpha, r in cm and in rg, effective temperature Teff
+           (viscous temperature Tvis in case of irradiation), accretion rate Mdot, viscous torque F,
+           structure type, mu (in case of analytical EoS) or abundance (in case of tabular EoS);
+        2) varkappa_c, rho_c, T_c, P_c, Sigma0, PradPgas_c, z0r, tau -- opacity, bulk density, temperature,
+           gas pressure, surface density, Prad/Pgas, half-thickness and full Rosseland optical depth of the disc;
+        3) Sigma_norm, P_norm, T_norm, Q_norm -- normalisations of column density,
+           gas pressure, temperature and flux coordinates;
+    In case of convection:
+        5) conv_param_z, conv_param_sigma -- z-fraction and mass-fraction of convective region.
+           Changes from 0 (fully radiative) to 1 (fully convective);
+    If add_Pi_values:
+        6) Pi1, Pi2, Pi3, Pi4 -- Pi-parameters (see Ketsaris & Shakura, 1998).
+    If structure contains Irradiation (either irradiation scheme):
+        7) T_irr, C_irr, QirrQvis -- irradiation temperature, irradiation parameter and Qirr/Qvis.
+    If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
+        8) cost, Sigma_ph -- cost function and column density of the layers above the photosphere.
+           If structure is fitted successfully, cost must be less than 1e-16.
+
+    Table contains as functions of t=1-z/z0:
+        1) S, P, Q, T -- normalised column density, gas pressure, flux and temperature;
+        2) rho, varkappa, tau -- bulk density, opacity and Rosseland optical depth;
+        3) grad -- actual temperature gradient dlnT/dlnP.
+    In case of tabular EoS:
+        5) grad_ad, free_e -- adiabatic temperature gradient dlnT/dlnP and
+           mean number of free electrons per nucleon.
+
     """
     if path_dots is None:
         raise Exception("ATTENTION: the data wil not be saved, since 'path_dots' is None.")
@@ -429,6 +458,7 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
     tau_arr = np.r_[2 / 3, tau_arr]
     dots_arr = np.c_[t, S, P, abs(Q), T, rho, varkappa, tau_arr, grad_plot(np.log(P))]
     header_input_irr = ''
+    header_Pi = ''
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                      'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
         Teff_string = 'Tvis'
@@ -443,7 +473,7 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
     except AttributeError:
         header = 't\t S\t P\t Q\t T\t rho\t varkappa\t tau\t grad'
         header_conv = ''
-    header_input = '\nS, P, Q, T -- normalized values, rho -- in g/cm^3, ' \
+    header_input = '\nS, P, Q, T -- normalised values, rho -- in g/cm^3, ' \
                    'varkappa -- in cm^2/g \nt = 1 - z/z0 ' \
                    '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, {} = {} K, Mdot = {:e} g/s, ' \
                    'F = {:e} g*cm^2/s^2, structure = {}'.format(M / M_sun, alpha, r, r / rg, Teff_string,
@@ -461,15 +491,14 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
                 cost_func = result.cost * 2
             except AttributeError:
                 cost_func = sum(result.fun ** 2)
-            header_input_irr += ', cost = {:g}, converged = {}, Sigma_ph = {:g} g/cm^2'.format(
-                cost_func, vs.converged, vs.Sigma_ph)
-    header_C = '\nvarkappa_C = {:e} cm^2/g, rho_C = {:e} g/cm^3, T_C = {:e} K, P_C = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
-               'PradPgas_C = {:e}, z0r = {:e}, tau = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r, tau)
+            header_input_irr += ', cost = {:g}, Sigma_ph = {:g} g/cm^2'.format(cost_func, vs.Sigma_ph)
+    header_C = '\nvarkappa_c = {:e} cm^2/g, rho_c = {:e} g/cm^3, T_c = {:e} K, P_c = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
+               'PradPgas_c = {:e}, z0r = {:e}, tau = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r, tau)
     header_norm = '\nSigma_norm = {:e}, P_norm = {:e}, T_norm = {:e}, Q_norm = {:e}'.format(
         vs.sigma_norm, vs.P_norm, vs.T_norm, vs.Q_norm)
-    header = header + header_input + header_input_irr + header_C + header_norm + header_conv
     if add_Pi_values:
-        header += '\nPi1 = {:f}, Pi2 = {:f}, Pi3 = {:f}, Pi4 = {:f}'.format(*vs.Pi_finder())
+        header_Pi = '\nPi1 = {:f}, Pi2 = {:f}, Pi3 = {:f}, Pi4 = {:f}'.format(*vs.Pi_finder())
+    header = header + header_input + header_C + header_norm + header_conv + header_Pi + header_input_irr
     if path_dots is not None:
         np.savetxt(path_dots, dots_arr, header=header)
     return
@@ -530,10 +559,10 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
         spectrum_irr is the spectrum of external irradiation flux, i.e.
         the spectral (X-ray) external irradiation flux F_nu_irr = F_irr * spectrum_irr.
         If spectrum_irr is array-like it must be in 1/Hz or in 1/keV depending on 'spectrum_irr_par',
-        must be normalized to unity, and its size must be equal to nu_irr.size.
+        must be normalised to unity, and its size must be equal to nu_irr.size.
         If spectrum_irr is callable, then
         ``F_nu_irr = F_irr * spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``.
-        The normalization of the spectrum_irr in that case is performed automatically.
+        The normalisation of the spectrum_irr in that case is performed automatically.
     spectrum_irr_par : str
         Defines the irradiation spectral flux argument.
         Can be 'nu' (frequency in Hz) and 'E_in_keV' (energy in keV).
@@ -574,6 +603,32 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
     path_dots : str
         Where to save data table.
 
+    Returns
+    -------
+    Table with calculated S-curve will save to path_dots. Table contains:
+        1) input parameters of the system -- M in Msun, alpha, r in cm and in rg, structure type,
+           mu (in case of analytical EoS) or abundance (in case of tabular EoS);
+        2) Sigma0, Teff (Tvis), Mdot, F, z0r -- surface density,
+           effective temperature (viscous temperature in case of irradiation),
+           accretion rate, viscous torque, half-thickness of the disc;
+        3) rho_c, T_c, P_c, PradPgas_c, varkappa_c, free_e_c -- bulk density, temperature, gas pressure,
+           Prad/Pgas, opacity and mean number of free electrons per nucleon in the central plane;
+        4) tau -- full Rosseland optical depth of the disc;
+    In case of convection:
+        5) conv_param_z, conv_param_sigma -- z-fraction and mass-fraction of convective region.
+           Changes from 0 (fully radiative) to 1 (fully convective).
+    If add_Pi_values:
+        6) Pi1, Pi2, Pi3, Pi4 -- Pi-parameters (see Ketsaris & Shakura, 1998).
+    If structure contains Irradiation (either irradiation scheme):
+        7) QirrQvis, T_irr, C_irr -- Qirr/Qvis, irradiation temperature and irradiation parameter.
+    If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
+        8) cost, Sigma_ph -- cost function and column density of the layers above the photosphere.
+           If structure is fitted successfully, cost must be less than 1e-16.
+
+    Also table contains Sigma_plus_index, Sigma_minus_index -- turn point indexes of the S-curve.
+    If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'], table contains
+    except fits -- number of unsuccessfully fitted structures.
+
     """
     if path_dots is None:
         raise Exception("ATTENTION: the data wil not be saved, since 'path_dots' is None.")
@@ -605,13 +660,13 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
         else:
             header_end += ', abundance = {}'.format(abundance)
             header += ' \tfree_e_c \tconv_param_z \tconv_param_sigma'
+        if add_Pi_values:
+            header += ' \tPi1 \tPi2 \tPi3 \tPi4'
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                          'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
             header += ' \tQirrQvis \tT_irr \tC_irr'
-        if add_Pi_values:
-            header += ' \tPi1 \tPi2 \tPi3 \tPi4'
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
-            header += ' \tcost \tconverged \tSigma_ph'
+            header += ' \tcost \tSigma_ph'
         header = header + '\nAll values are in CGS units.' + header_end
         np.savetxt(path_dots, [], header=header)
 
@@ -670,6 +725,9 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
         except AttributeError:
             pass
 
+        if add_Pi_values:
+            output_string.extend(vs.Pi_finder())
+
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                          'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
             QirrQvis = vs.Q_irr / vs.Q0
@@ -677,15 +735,12 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
             output_string.extend([QirrQvis, T_irr_, C_irr_])
             print('T_irr, C_irr = {:g} K, {:g}'.format(T_irr_, C_irr_))
 
-        if add_Pi_values:
-            output_string.extend(vs.Pi_finder())
-
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
             try:
                 cost_func = result.cost * 2
             except AttributeError:
                 cost_func = sum(result.fun ** 2)
-            output_string.extend([cost_func, vs.converged, vs.Sigma_ph])
+            output_string.extend([cost_func, vs.Sigma_ph])
 
         if i == 0:
             sigma_temp = Sigma0
@@ -771,10 +826,10 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
         spectrum_irr is the spectrum of external irradiation flux, i.e.
         the spectral (X-ray) external irradiation flux F_nu_irr = F_irr * spectrum_irr.
         If spectrum_irr is array-like it must be in 1/Hz or in 1/keV depending on 'spectrum_irr_par',
-        must be normalized to unity, and its size must be equal to nu_irr.size.
+        must be normalised to unity, and its size must be equal to nu_irr.size.
         If spectrum_irr is callable, then
         ``F_nu_irr = F_irr * spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr)``.
-        The normalization of the spectrum_irr in that case is performed automatically.
+        The normalisation of the spectrum_irr in that case is performed automatically.
     spectrum_irr_par : str
         Defines the irradiation spectral flux argument.
         Can be 'nu' (frequency in Hz) and 'E_in_keV' (energy in keV).
@@ -823,6 +878,29 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
     path_dots : str
         Where to save data table.
 
+    Returns
+    -------
+    Table with calculated Radial disc profile will save to path_dots. Table contains:
+        1) input parameters of the system -- M in Msun, alpha, structure type,
+           mu (in case of analytical EoS) or abundance (in case of tabular EoS);
+        2) r, r/rg, Sigma0, Teff (Tvis), Mdot, F, z0r -- surface density,
+           effective temperature (viscous temperature in case of irradiation),
+           accretion rate, viscous torque, half-thickness of the disc;
+        3) rho_c, T_c, P_c, PradPgas_c, varkappa_c, free_e_c -- bulk density, temperature, gas pressure,
+           Prad/Pgas, opacity and mean number of free electrons per nucleon in the central plane;
+        4) tau -- full Rosseland optical depth of the disc.
+    In case of convection:
+        5) conv_param_z, conv_param_sigma -- z-fraction and mass-fraction of convective region.
+           Changes from 0 (fully radiative) to 1 (fully convective).
+    If add_Pi_values:
+        6) Pi1, Pi2, Pi3, Pi4 -- Pi-parameters (see Ketsaris & Shakura, 1998).
+    If structure contains Irradiation (either irradiation scheme):
+        7) QirrQvis, T_irr, C_irr -- Qirr/Qvis, irradiation temperature and irradiation parameter.
+    If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
+        8) cost, Sigma_ph -- cost function and column density of the layers above the photosphere.
+           If structure is fitted successfully, cost must be less than 1e-16.
+           Table also contains except fits -- number of unsuccessfully fitted structures.
+
     """
     if path_dots is None:
         raise Exception("ATTENTION: the data wil not be saved, since 'path_dots' is None.")
@@ -848,13 +926,13 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
         else:
             header_end += ', abundance = {}'.format(abundance)
             header += ' \tfree_e_c \tconv_param_z \tconv_param_sigma'
+        if add_Pi_values:
+            header += ' \tPi1 \tPi2 \tPi3 \tPi4'
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                          'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
             header += ' \tQirrQvis \tT_irr \tC_irr'
-        if add_Pi_values:
-            header += ' \tPi1 \tPi2 \tPi3 \tPi4'
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
-            header += ' \tcost \tconverged \tSigma_ph'
+            header += ' \tcost \tSigma_ph'
         header = header + '\nAll values are in CGS units.' + header_end
         np.savetxt(path_dots, [], header=header)
 
@@ -921,6 +999,9 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
         except AttributeError:
             pass
 
+        if add_Pi_values:
+            output_string.extend(vs.Pi_finder())
+
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                          'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
             QirrQvis = vs.Q_irr / vs.Q0
@@ -928,15 +1009,12 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
             output_string.extend([QirrQvis, T_irr_, C_irr_])
             print('T_irr, C_irr = {:g} K, {:g}'.format(T_irr_, C_irr_))
 
-        if add_Pi_values:
-            output_string.extend(vs.Pi_finder())
-
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
             try:
                 cost_func = result.cost * 2
             except AttributeError:
                 cost_func = sum(result.fun ** 2)
-            output_string.extend([cost_func, vs.converged, vs.Sigma_ph])
+            output_string.extend([cost_func, vs.Sigma_ph])
 
         output_string = np.array(output_string)
         with open(path_dots, 'a') as file:

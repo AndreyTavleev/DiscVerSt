@@ -204,7 +204,7 @@ class BaseVerticalStructure:
     def integrate(self, t):
         """
         Integrates ODEs and return list that contains array with values of
-        four dimentsionless functions and a message from the solver.
+        four dimensionless functions and a message from the solver.
 
         Parameters
         ----------
@@ -215,7 +215,7 @@ class BaseVerticalStructure:
         Returns
         -------
         list
-            List containing the array with values of dimentionless functions
+            List containing the array with values of dimensionless functions
             calculating at points of `t` array. Also list contains the
             message from the integrator.
 
@@ -308,7 +308,7 @@ class BaseVerticalStructure:
         Returns
         -------
         double and result
-            The value of normalized unknown free parameter z_0 / r and result of optimization.
+            The value of normalised unknown free parameter z_0 / r and result of optimization.
 
         """
 
