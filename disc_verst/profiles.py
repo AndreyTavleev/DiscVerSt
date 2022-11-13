@@ -131,8 +131,8 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
     rg = 2 * G * M / c ** 2
     r_in = 3 * rg
     if r <= r_in:
-        raise Exception('Radius r should be greater than inner radius r_in = 3*rg. '
-                        'Actual radius r = {:g} rg.'.format(r / rg))
+        raise Exception(f'Radius r should be greater than inner radius r_in = 3*rg. '
+                        f'Actual radius r = {r / rg:g} rg.')
     func = 1 - np.sqrt(r_in / r)
     if input == 'Teff':
         Teff = Par
@@ -469,33 +469,31 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
         dots_arr = np.c_[dots_arr, eos.grad_ad, np.exp(eos.lnfree_e)]
         header = 't\t S\t P\t Q\t T\t rho\t varkappa\t tau\t grad\t grad_ad\t free_e'
         conv_param_z, conv_param_sigma = Convective_parameter(vs)
-        header_conv = '\nconv_param_z = {} \tconv_param_sigma = {}'.format(conv_param_z, conv_param_sigma)
+        header_conv = f'\nconv_param_z = {conv_param_z} \tconv_param_sigma = {conv_param_sigma}'
     except AttributeError:
         header = 't\t S\t P\t Q\t T\t rho\t varkappa\t tau\t grad'
         header_conv = ''
     header_input = '\nS, P, Q, T -- normalised values, rho -- in g/cm^3, ' \
                    'varkappa -- in cm^2/g \nt = 1 - z/z0 ' \
-                   '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, {} = {} K, Mdot = {:e} g/s, ' \
-                   'F = {:e} g*cm^2/s^2, structure = {}'.format(M / M_sun, alpha, r, r / rg, Teff_string,
-                                                                Teff, Mdot, F, structure)
+                   f'\nM = {M / M_sun:e} Msun, alpha = {alpha}, r = {r:e} cm, r = {r / rg} rg, ' \
+                   f'{Teff_string} = {Teff} K, Mdot = {Mdot:e} g/s, F = {F:e} g*cm^2/s^2, structure = {structure}'
     if structure in ['Kramers', 'BellLin', 'MesaIdealGas']:
-        header_input += ', mu = {}'.format(mu)
+        header_input += f', mu = {mu}'
     else:
-        header_input += ', abundance = {}'.format(abundance)
+        header_input += f', abundance = {abundance}'
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                      'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
-        header_input_irr = '\nT_irr = {:g} K, C_irr = {:g}, QirrQvis = {:g}'.format(vs.T_irr, vs.C_irr,
-                                                                                    vs.Q_irr / vs.Q0)
+        header_input_irr = f'\nT_irr = {vs.T_irr:g} K, C_irr = {vs.C_irr:g}, QirrQvis = {vs.Q_irr / vs.Q0:g}'
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
             try:
                 cost_func = result.cost * 2
             except AttributeError:
                 cost_func = sum(result.fun ** 2)
-            header_input_irr += ', cost = {:g}, Sigma_ph = {:g} g/cm^2'.format(cost_func, vs.Sigma_ph)
-    header_C = '\nvarkappa_c = {:e} cm^2/g, rho_c = {:e} g/cm^3, T_c = {:e} K, P_c = {:e} dyn, Sigma0 = {:e} g/cm^2, ' \
-               'PradPgas_c = {:e}, z0r = {:e}, tau = {:e}'.format(varkappa_C, rho_C, T_C, P_C, Sigma0, delta, z0r, tau)
-    header_norm = '\nSigma_norm = {:e}, P_norm = {:e}, T_norm = {:e}, Q_norm = {:e}'.format(
-        vs.sigma_norm, vs.P_norm, vs.T_norm, vs.Q_norm)
+            header_input_irr += f', cost = {cost_func:g}, Sigma_ph = {vs.Sigma_ph:g} g/cm^2'
+    header_C = f'\nvarkappa_c = {varkappa_C:e} cm^2/g, rho_c = {rho_C:e} g/cm^3, T_c = {T_C:e} K, P_c = {P_C:e} dyn, ' \
+               f'Sigma0 = {Sigma0:e} g/cm^2, PradPgas_c = {delta:e}, z0r = {z0r:e}, tau = {tau:e}'
+    header_norm = f'\nSigma_norm = {vs.sigma_norm:e}, P_norm = {vs.P_norm:e}, ' \
+                  f'T_norm = {vs.T_norm:e}, Q_norm = {vs.Q_norm:e}'
     if add_Pi_values:
         header_Pi = '\nPi1 = {:f}, Pi2 = {:f}, Pi3 = {:f}, Pi4 = {:f}'.format(*vs.Pi_finder())
     header = header + header_input + header_C + header_norm + header_conv + header_Pi + header_input_irr
@@ -652,13 +650,13 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
 
     if path_dots is not None:
         rg = 2 * G * M / c ** 2
-        header = 'Sigma0 \t{} \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas_c \tvarkappa_c'.format(Teff_string)
-        header_end = '\nM = {:e} Msun, alpha = {}, r = {:e} cm, r = {} rg, structure = {}'.format(
-            M / M_sun, alpha, r, r / rg, structure)
+        header = f'Sigma0 \t{Teff_string} \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas_c \tvarkappa_c'
+        header_end = f'\nM = {M / M_sun:e} Msun, alpha = {alpha}, ' \
+                     f'r = {r:e} cm, r = {r / rg} rg, structure = {structure}'
         if structure in ['Kramers', 'BellLin', 'MesaIdealGas']:
-            header_end += ', mu = {}'.format(mu)
+            header_end += f', mu = {mu}'
         else:
-            header_end += ', abundance = {}'.format(abundance)
+            header_end += f', abundance = {abundance}'
             header += ' \tfree_e_c \tconv_param_z \tconv_param_sigma'
         if add_Pi_values:
             header += ' \tPi1 \tPi2 \tPi3 \tPi4'
@@ -703,7 +701,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
             z0r_estimation = z0r
 
         tau = vs.tau()
-        print('Mdot = {:1.3e} g/s, {} = {:g} K, tau = {:g}, z0r = {:g}'.format(Mdot, Teff_string, Teff, tau, z0r))
+        print(f'Mdot = {Mdot:1.3e} g/s, {Teff_string} = {Teff:g} K, tau = {tau:g}, z0r = {z0r:g}')
 
         if tau < 1 and tau_break:
             print('Note: tau<1, tau_break=True. Cycle ends, when tau<1.')
@@ -714,7 +712,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
 
         output_string = [Sigma0, Teff, Mdot, F, z0r, rho_C, T_C, P_C, tau, PradPgas_C, varkappa_C]
 
-        print('Sigma0 = {:g} g/cm^2'.format(Sigma0))
+        print(f'Sigma0 = {Sigma0:g} g/cm^2')
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
@@ -733,7 +731,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
             QirrQvis = vs.Q_irr / vs.Q0
             T_irr_, C_irr_ = vs.T_irr, vs.C_irr
             output_string.extend([QirrQvis, T_irr_, C_irr_])
-            print('T_irr, C_irr = {:g} K, {:g}'.format(T_irr_, C_irr_))
+            print(f'T_irr, C_irr = {T_irr_:g} K, {C_irr_:g}')
 
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
             try:
@@ -760,10 +758,10 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
             np.savetxt(file, output_string, newline=' ')
             file.write('\n')
     with open(path_dots, 'a') as file:
-        file.write('# Sigma_plus_index = {:d}  Sigma_minus_index = {:d}'.format(Sigma_plus_index, Sigma_minus_index))
+        file.write(f'# Sigma_plus_index = {Sigma_plus_index:d}  Sigma_minus_index = {Sigma_minus_index:d}')
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                          'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
-            file.write('\n# Except_fits = {}'.format(except_fits))
+            file.write(f'\n# Except_fits = {except_fits}')
     return
 
 
@@ -918,13 +916,13 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
         Teff_string = 'Teff'
 
     if path_dots is not None:
-        header = 'r \tr/rg \tSigma0 \tMdot \t{} \tF \tz0r \trho_c \tT_c \tP_c ' \
-                 '\ttau \tPradPgas_c \tvarkappa_c'.format(Teff_string)
-        header_end = '\nM = {:e} Msun, alpha = {}, structure = {}'.format(M / M_sun, alpha, structure)
+        header = f'r \tr/rg \tSigma0 \tMdot \t{Teff_string} \tF \tz0r \trho_c \tT_c \tP_c ' \
+                 f'\ttau \tPradPgas_c \tvarkappa_c'
+        header_end = f'\nM = {M / M_sun:e} Msun, alpha = {alpha}, structure = {structure}'
         if structure in ['Kramers', 'BellLin', 'MesaIdealGas']:
-            header_end += ', mu = {}'.format(mu)
+            header_end += f', mu = {mu}'
         else:
-            header_end += ', abundance = {}'.format(abundance)
+            header_end += f', abundance = {abundance}'
             header += ' \tfree_e_c \tconv_param_z \tconv_param_sigma'
         if add_Pi_values:
             header += ' \tPi1 \tPi2 \tPi3 \tPi4'
@@ -939,7 +937,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
     try:
         input_broadcast = np.broadcast(r_arr, Par, cos_theta_irr, cos_theta_irr_exp, C_irr, T_irr)
     except ValueError as e:
-        raise ValueError("Array-like input parameters must have the same size n = {}.".format(n)) from e
+        raise ValueError(f'Array-like input parameters must have the same size n = {n}.') from e
 
     for i, input_pars in enumerate(input_broadcast):
         print(i)
@@ -977,8 +975,8 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
 
         tau = vs.tau()
         rg = 2 * G * M / c ** 2
-        print('r = {:1.3e} cm = {:g} rg, Mdot = {:1.3e} g/s, {} = {:g} K, tau = {:g}, z0r = {:g}'.format(
-            r, r / rg, Mdot, Teff_string, Teff, tau, z0r))
+        print(f'r = {r:1.3e} cm = {r / rg:g} rg, Mdot = {Mdot:1.3e} g/s, '
+              f'{Teff_string} = {Teff:g} K, tau = {tau:g}, z0r = {z0r:g}')
 
         if tau < 1 and tau_break:
             print('Note: tau<1, tau_break=True. Cycle ends, when tau<1.')
@@ -988,7 +986,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
         PradPgas_C = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
 
         output_string = [r, r / rg, Sigma0, Mdot, Teff, F, z0r, rho_C, T_C, P_C, tau, PradPgas_C, varkappa_C]
-        print('Sigma0 = {:g} g/cm^2'.format(Sigma0))
+        print(f'Sigma0 = {Sigma0:g} g/cm^2')
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
@@ -1007,7 +1005,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
             QirrQvis = vs.Q_irr / vs.Q0
             T_irr_, C_irr_ = vs.T_irr, vs.C_irr
             output_string.extend([QirrQvis, T_irr_, C_irr_])
-            print('T_irr, C_irr = {:g} K, {:g}'.format(T_irr_, C_irr_))
+            print(f'T_irr, C_irr = {T_irr_:g} K, {C_irr_:g}')
 
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
             try:
@@ -1023,7 +1021,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                      'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
         with open(path_dots, 'a') as file:
-            file.write('# Except_fits = {}'.format(except_fits))
+            file.write(f'# Except_fits = {except_fits}')
     return 0
 
 
@@ -1038,7 +1036,7 @@ def main():
     os.makedirs('fig/', exist_ok=True)
 
     print('Calculation of vertical structure. Return structure table.')
-    print('M = {:g} M_sun \nr = {:g} cm \nalpha = {:g} \nTeff = {:g} K\n'.format(M / M_sun, r, alpha, Teff))
+    print(f'M = {M / M_sun:g} M_sun \nr = {r:g} cm \nalpha = {alpha:g} \nTeff = {Teff:g} K\n')
 
     Vertical_Profile(M, alpha, r, Teff, input='Teff', structure='BellLin', mu=0.62,
                      n=100, add_Pi_values=True, path_dots='fig/vs.dat')
@@ -1052,8 +1050,8 @@ def main():
     plt.grid()
     plt.legend()
     plt.xlabel('$z / z_0$')
-    plt.title(r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, \alpha = {:g}, '
-              r'T_{{\rm eff}} = {:g} \, {{\rm K}}$'.format(M / M_sun, r, alpha, Teff))
+    plt.title(rf'$M = {M / M_sun:g} \, M_{{\odot}}, r = {r:g} \, {{\rm cm}}, '
+              rf'\alpha = {alpha:g}, T_{{\rm eff}} = {Teff:g} \, {{\rm K}}$')
     plt.tight_layout()
     plt.savefig('fig/vs.pdf')
     plt.close()
@@ -1072,8 +1070,7 @@ def main():
     plt.ylabel(r'$T_{\rm eff}, \, \rm K$')
     plt.xlabel(r'$\Sigma_0, \, \rm g/cm^2$')
     plt.grid(True, which='both', ls='-')
-    plt.title(r'$M = {:g} \, M_{{\odot}}, r = {:g} \, {{\rm cm}}, '
-              r'\alpha = {:g}$'.format(M / M_sun, r, alpha))
+    plt.title(rf'$M = {M / M_sun:g} \, M_{{\odot}}, r = {r:g} \, {{\rm cm}}, \alpha = {alpha:g}$')
     plt.tight_layout()
     plt.savefig('fig/S-curve.pdf')
     plt.close()
@@ -1091,8 +1088,7 @@ def main():
     plt.ylabel(r'$z_0 / r$')
     plt.xlabel(r'$r, \,\rm cm$')
     plt.grid(True, which='both', ls='-')
-    plt.title(r'$M = {:g} \, M_{{\odot}}, \dot{{M}} = 1\,\dot{{M}}_{{\rm edd}}, '
-              r'\alpha = {:g}$'.format(M / M_sun, alpha))
+    plt.title(rf'$M = {M / M_sun:g} \, M_{{\odot}}, \dot{{M}} = 1\,\dot{{M}}_{{\rm edd}}, \alpha = {alpha:g}$')
     plt.tight_layout()
     plt.savefig('fig/radial_struct.pdf')
     plt.close()

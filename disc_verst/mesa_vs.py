@@ -484,12 +484,12 @@ class ExternalIrradiation:
 
     def fit(self, start_estimation_z0r=None, start_estimation_Sigma0=None):
         """
-        Solve optimization problem and calculate the vertical structure.
+        Solve optimisation problem and calculate the vertical structure.
 
         Returns
         -------
         double and result
-            The value of normalized unknown free parameter z_0 / r and result of optimization.
+            The value of normalised unknown free parameter z_0 / r and result of optimisation.
 
         """
 
@@ -514,8 +514,8 @@ class ExternalIrradiation:
                 if result.cost <= 1e-16:
                     self.converged = True
             except NotConvergeError as err:
-                print('Not converged, try larger Sigma0_par or smaller z0r approximations. '
-                      'Current approximations are Sigma0_par = {:g}, z0r = {:g}.'.format(err.Sigma0_par, err.z0r))
+                print(f'Not converged, try larger Sigma0_par or smaller z0r approximations. '
+                      f'Current approximations are Sigma0_par = {err.Sigma0_par:g}, z0r = {err.z0r:g}.')
                 raise err
             except PphNotConvergeError as err:
                 print('Not converged')
@@ -716,8 +716,8 @@ def main():
     print('Calculating structure and making a structure plot. '
           '\nStructure with tabular MESA opacity and EOS.'
           '\nChemical composition is solar.')
-    print('M = {:g} grams \nr = {:g} cm = {:g} rg '
-          '\nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, r / rg, alpha, Mdot))
+    print(f'M = {M:g} grams \nr = {r:g} cm = {r / rg:g} rg '
+          f'\nalpha = {alpha:g} \nMdot = {Mdot:g} g/s')
     h = np.sqrt(G * M * r)
     r_in = 3 * rg
     F = Mdot * h * (1 - np.sqrt(r_in / r))
@@ -734,8 +734,8 @@ def main():
     plt.plot(1 - t, Q, label=r'$\hat{Q}$')
     plt.plot(1 - t, T, label=r'$\hat{T}$')
     plt.xlabel('$z / z_0$')
-    plt.title(r'$M = {:g}\, M_{{\odot}},\, \dot{{M}} = {:g}\, {{\rm g/s}},\, '
-              r'\alpha = {:g}, r = {:g} \,\rm cm$'.format(M / M_sun, Mdot, alpha, r))
+    plt.title(rf'$M = {M / M_sun:g}\, M_{{\odot}},\, \dot{{M}} = {Mdot:g}\, {{\rm g/s}},\, '
+              rf'\alpha = {alpha:g}, r = {r:g} \,\rm cm$')
     plt.grid()
     plt.legend()
     os.makedirs('fig/', exist_ok=True)

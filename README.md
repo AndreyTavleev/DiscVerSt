@@ -191,9 +191,9 @@ Irradiation can be taken into account in two ways:
       `spectrum_irr_par` in `['nu', 'E_in_keV']`.
    2. Spectrum `spectrum_irr` can be either an array-like or a Python function. 
       1. If `spectrum_irr` is array-like, it must be in 1/Hz or in 1/keV depending on 'spectrum_irr_par',
-         must be normalized to unity, and its size must be equal to `nu_irr.size`.
+         must be normalised to unity, and its size must be equal to `nu_irr.size`.
       2. If `spectrum_irr` is a Python function, the spectrum is calculated 
-         for the frequency range `nu_irr` and automatically normalized to unity over `nu_irr`. 
+         for the frequency range `nu_irr` and automatically normalised to unity over `nu_irr`. 
          Note, that units of `nu_irr` and units of `spectrum_irr` arguments must be consistent. 
          There are two optional parameters `args_spectrum_irr` and `kwargs_spectrum_irr` 
          for arguments (keyword arguments) of spectrum function.

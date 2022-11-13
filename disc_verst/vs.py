@@ -73,7 +73,7 @@ class BaseVerticalStructure:
     Methods
     -------
     fit()
-        Solves optimization problem and calculate the vertical structure.
+        Solves optimisation problem and calculate the vertical structure.
     integrate()
         Integrates the system and return values of four dimensionless functions.
     Pi_finder()
@@ -297,7 +297,7 @@ class BaseVerticalStructure:
 
     def fit(self, start_estimation_z0r=None):
         """
-        Solves optimization problem and calculates the vertical structure.
+        Solves optimisation problem and calculates the vertical structure.
 
         Parameters
         ----------
@@ -308,7 +308,7 @@ class BaseVerticalStructure:
         Returns
         -------
         double and result
-            The value of normalised unknown free parameter z_0 / r and result of optimization.
+            The value of normalised unknown free parameter z_0 / r and result of optimisation.
 
         """
 
@@ -436,8 +436,8 @@ def main():
     r = 400 * rg
     print('Finding Pi parameters of structure and making a structure plot. '
           '\nStructure with Kramers opacity and ideal gas EOS.')
-    print('M = {:g} grams \nr = {:g} cm = {:g} rg '
-          '\nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, r / rg, alpha, Mdot))
+    print(f'M = {M:g} grams \nr = {r:g} cm = {r / rg:g} rg '
+          f'\nalpha = {alpha:g} \nMdot = {Mdot:g} g/s')
     h = np.sqrt(G * M * r)
     r_in = 3 * rg
     F = Mdot * h * (1 - np.sqrt(r_in / r))
@@ -456,8 +456,8 @@ def main():
     plt.plot(1 - t, Q, label=r'$\hat{Q}$')
     plt.plot(1 - t, T, label=r'$\hat{T}$')
     plt.xlabel('$z / z_0$')
-    plt.title(r'$M = {:g}\, M_{{\odot}},\, \dot{{M}} = {:g}\, {{\rm g/s}},\, '
-              r'\alpha = {:g}, r = {:g} \,\rm cm$'.format(M / M_sun, Mdot, alpha, r))
+    plt.title(rf'$M = {M / M_sun:g}\, M_{{\odot}},\, \dot{{M}} = {Mdot:g}\, {{\rm g/s}},\, '
+              rf'\alpha = {alpha:g}, r = {r:g} \,\rm cm$')
     plt.grid()
     plt.legend()
     os.makedirs('fig/', exist_ok=True)
