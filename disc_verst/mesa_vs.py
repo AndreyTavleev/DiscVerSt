@@ -121,7 +121,6 @@ class BaseExternalIrradiation(BaseMesaVerticalStructure):
         self.P_ph_0 = P_ph_0
         self.P_ph_key = False
         self.P_ph_parameter = None
-        self.converged = False
 
     @property
     def cos_theta_irr(self):
@@ -511,8 +510,7 @@ class ExternalIrradiation:
             try:
                 result = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
                                        verbose=0, loss='linear')
-                if result.cost <= 1e-16:
-                    self.converged = True
+                result.cost *= 2
             except NotConvergeError as err:
                 print(f'Not converged, try larger Sigma0_par or smaller z0r approximations. '
                       f'Current approximations are Sigma0_par = {err.Sigma0_par:g}, z0r = {err.z0r:g}.')
@@ -525,14 +523,11 @@ class ExternalIrradiation:
             try:
                 result_least_squares = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
                                                      verbose=0, loss='linear')
-                if result_least_squares.cost * 2 < cost_root:
+                result_least_squares.cost *= 2
+                if result_least_squares.cost < cost_root:
                     result = result_least_squares
-                    if result_least_squares.cost <= 1e-16:
-                        self.converged = True
             except (NotConvergeError, PphNotConvergeError):
                 pass
-        else:
-            self.converged = True
 
         result.x = abs(result.x) * np.array([1, norm])
         self.Sigma0_par = result.x[1]

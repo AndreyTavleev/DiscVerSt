@@ -486,7 +486,7 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
         header_input_irr = f'\nT_irr = {vs.T_irr:g} K, C_irr = {vs.C_irr:g}, QirrQvis = {vs.Q_irr / vs.Q0:g}'
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
             try:
-                cost_func = result.cost * 2
+                cost_func = result.cost
             except AttributeError:
                 cost_func = sum(result.fun ** 2)
             header_input_irr += f', cost = {cost_func:g}, Sigma_ph = {vs.Sigma_ph:g} g/cm^2'
@@ -735,7 +735,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
 
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
             try:
-                cost_func = result.cost * 2
+                cost_func = result.cost
             except AttributeError:
                 cost_func = sum(result.fun ** 2)
             output_string.extend([cost_func, vs.Sigma_ph])
@@ -1009,7 +1009,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
 
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
             try:
-                cost_func = result.cost * 2
+                cost_func = result.cost
             except AttributeError:
                 cost_func = sum(result.fun ** 2)
             output_string.extend([cost_func, vs.Sigma_ph])
