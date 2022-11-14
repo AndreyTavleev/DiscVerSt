@@ -441,10 +441,10 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
                                         cos_theta_irr=cos_theta_irr, cos_theta_irr_exp=cos_theta_irr_exp,
                                         C_irr=C_irr, T_irr=T_irr, P_ph_0=P_ph_0)
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
-        result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=Sigma0_estimation)
+        result = vs.fit(z0r_estimation=z0r_estimation, Sigma0_estimation=Sigma0_estimation)
         z0r, sigma_par = result.x
     else:
-        z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+        z0r, result = vs.fit(z0r_estimation=z0r_estimation)
     rg = 2 * G * M / c ** 2
     t = np.linspace(0, 1, n)
     S, P, Q, T = vs.integrate(t)[0]
@@ -485,11 +485,7 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
                      'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
         header_input_irr = f'\nT_irr = {vs.T_irr:g} K, C_irr = {vs.C_irr:g}, QirrQvis = {vs.Q_irr / vs.Q0:g}'
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
-            try:
-                cost_func = result.cost
-            except AttributeError:
-                cost_func = sum(result.fun ** 2)
-            header_input_irr += f', cost = {cost_func:g}, Sigma_ph = {vs.Sigma_ph:g} g/cm^2'
+            header_input_irr += f', cost = {result.cost:g}, Sigma_ph = {vs.Sigma_ph:g} g/cm^2'
     header_C = f'\nvarkappa_c = {varkappa_C:e} cm^2/g, rho_c = {rho_C:e} g/cm^3, T_c = {T_C:e} K, P_c = {P_C:e} dyn, ' \
                f'Sigma0 = {Sigma0:e} g/cm^2, PradPgas_c = {delta:e}, z0r = {z0r:e}, tau = {tau:e}'
     header_norm = f'\nSigma_norm = {vs.sigma_norm:e}, P_norm = {vs.P_norm:e}, ' \
@@ -679,7 +675,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
                                             C_irr=C_irr, T_irr=T_irr, P_ph_0=P_ph_0)
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
             try:
-                result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=sigma_par_estimation)
+                result = vs.fit(z0r_estimation=z0r_estimation, Sigma0_estimation=sigma_par_estimation)
             except (mesa_vs.NotConvergeError, mesa_vs.PphNotConvergeError):
                 print('Except fit')
                 except_fits += 1
@@ -689,7 +685,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
             P_ph_0 = vs.P_ph_0
         elif structure in ['MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
             try:
-                z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+                z0r, result = vs.fit(z0r_estimation=z0r_estimation)
             except mesa_vs.PphNotConvergeError:
                 print('Except fit')
                 except_fits += 1
@@ -697,7 +693,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
             z0r_estimation = z0r
             P_ph_0 = vs.P_ph_0
         else:
-            z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+            z0r, result = vs.fit(z0r_estimation=z0r_estimation)
             z0r_estimation = z0r
 
         tau = vs.tau()
@@ -734,11 +730,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
             print(f'T_irr, C_irr = {T_irr_:g} K, {C_irr_:g}')
 
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
-            try:
-                cost_func = result.cost
-            except AttributeError:
-                cost_func = sum(result.fun ** 2)
-            output_string.extend([cost_func, vs.Sigma_ph])
+            output_string.extend([result.cost, vs.Sigma_ph])
 
         if i == 0:
             sigma_temp = Sigma0
@@ -952,7 +944,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
                                             C_irr=input_pars[4], T_irr=input_pars[5], P_ph_0=P_ph_0)
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
             try:
-                result = vs.fit(start_estimation_z0r=z0r_estimation, start_estimation_Sigma0=sigma_par_estimation)
+                result = vs.fit(z0r_estimation=z0r_estimation, Sigma0_estimation=sigma_par_estimation)
             except (mesa_vs.NotConvergeError, mesa_vs.PphNotConvergeError):
                 print('Except fit')
                 except_fits += 1
@@ -962,7 +954,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
             P_ph_0 = vs.P_ph_0
         elif structure in ['MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
             try:
-                z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+                z0r, result = vs.fit(z0r_estimation=z0r_estimation)
             except mesa_vs.PphNotConvergeError:
                 print('Except fit')
                 except_fits += 1
@@ -970,7 +962,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
             z0r_estimation = z0r
             P_ph_0 = vs.P_ph_0
         else:
-            z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+            z0r, result = vs.fit(z0r_estimation=z0r_estimation)
             z0r_estimation = z0r
 
         tau = vs.tau()
@@ -1008,11 +1000,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
             print(f'T_irr, C_irr = {T_irr_:g} K, {C_irr_:g}')
 
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
-            try:
-                cost_func = result.cost
-            except AttributeError:
-                cost_func = sum(result.fun ** 2)
-            output_string.extend([cost_func, vs.Sigma_ph])
+            output_string.extend([result.cost, vs.Sigma_ph])
 
         output_string = np.array(output_string)
         with open(path_dots, 'a') as file:

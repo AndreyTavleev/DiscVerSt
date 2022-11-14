@@ -481,9 +481,18 @@ class ExternalIrradiation:
         q_c = np.array([self.y_c()[Vars.Q], self.Sigma0_par / self.parameters_C()[4] - 1])
         return q_c
 
-    def fit(self, start_estimation_z0r=None, start_estimation_Sigma0=None):
+    def fit(self, z0r_estimation=None, Sigma0_estimation=None):
         """
         Solve optimisation problem and calculate the vertical structure.
+
+        Parameters
+        ----------
+        z0r_estimation : double
+            Start estimation of z0r free parameter to fit the structure.
+            Default is None, the estimation is calculated automatically.
+        Sigma0_estimation : double
+            Start estimation of Sigma0 free parameter to fit the structure.
+            Default is None, the estimation is calculated automatically.
 
         Returns
         -------
@@ -492,20 +501,21 @@ class ExternalIrradiation:
 
         """
 
-        if start_estimation_z0r is None:
+        if z0r_estimation is None:
             x0_z0r = self.z0_init() / self.r
         else:
-            x0_z0r = start_estimation_z0r
+            x0_z0r = z0r_estimation
 
-        if start_estimation_Sigma0 is None:
+        if Sigma0_estimation is None:
             norm = self.Sigma0_init()
         else:
-            norm = start_estimation_Sigma0
+            norm = Sigma0_estimation
 
         cost_root = -1
         try:
             result = root(self.dq, x0=np.array([x0_z0r, 1]), args=norm, method='hybr')
             cost_root = result.fun[0] ** 2 + result.fun[1] ** 2
+            result.update({'cost': cost_root})
         except (NotConvergeError, PphNotConvergeError):
             try:
                 result = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
@@ -636,7 +646,7 @@ class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGr
     pass
 
 
-# Classes with MESA opacity and with advanced Irradiation
+# Classes with MESA opacity and with advanced Irradiation (Mescheryakov et al. 2011)
 class MesaVerticalStructureExternalIrradiation(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradient,
                                                ExternalIrradiation, BaseExternalIrradiation):
     """
