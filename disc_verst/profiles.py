@@ -1015,7 +1015,6 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
 
 def main():
     from matplotlib import pyplot as plt
-    from astropy.io import ascii
     import os
     M = 1.5 * M_sun
     alpha = 0.2
@@ -1029,7 +1028,7 @@ def main():
     Vertical_Profile(M, alpha, r, Teff, input='Teff', structure='BellLin', mu=0.62,
                      n=100, add_Pi_values=True, path_dots='fig/vs.dat')
     print('Structure is calculated successfully. Table is saved to fig/vs.dat.')
-    vs_data = ascii.read('fig/vs.dat')
+    vs_data = np.genfromtxt('fig/vs.dat', names=True)
     print('Making the structure plot.')
     plt.plot(1 - vs_data['t'], vs_data['S'], label=r'$\hat{\Sigma}$')
     plt.plot(1 - vs_data['t'], vs_data['P'], label=r'$\hat{P}$')
@@ -1049,7 +1048,7 @@ def main():
     S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False,
             path_dots='fig/S-curve.dat', add_Pi_values=True)
     print('S-curve is calculated successfully. Table is saved to fig/S-curve.dat.')
-    s_curve_data = ascii.read('fig/S-curve.dat')
+    s_curve_data = np.genfromtxt('fig/S-curve.dat', names=True)
     tau = s_curve_data['tau']
     print('Making the S-curve plot.')
     plt.plot(s_curve_data['Sigma0'][tau > 1], s_curve_data['Teff'][tau > 1])
@@ -1069,7 +1068,7 @@ def main():
     Radial_Profile(M, alpha, 1e9, 1e12, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, n=200,
                    tau_break=True, path_dots='fig/radial_struct.dat', add_Pi_values=True)
     print('Radial structure is calculated successfully. Table is saved to fig/radial_struct.dat.')
-    rad_struct_data = ascii.read('fig/radial_struct.dat')
+    rad_struct_data = np.genfromtxt('fig/radial_struct.dat', names=True)
     print('Making the radial structure plot.')
     plt.plot(rad_struct_data['r'], rad_struct_data['z0r'])
     plt.xscale('log')
