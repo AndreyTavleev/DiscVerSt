@@ -11,6 +11,7 @@ This code calculates vertical structure of accretion discs around neutron stars 
    * [Irradiated discs](#Irradiated-discs)
    * [Structure Choice](#Structure-Choice)
    * [Vertical and radial profile calculation, S-curves](#Vertical-and-radial-profile-calculation-S-curves)
+   * [Physical background](#Physical-background)
 
 ## Installation
 
@@ -360,3 +361,58 @@ help(profiles.Vertical_Profile)
 help(profiles.S_curve)
 help(profiles.Radial_Profile)
 ```
+
+## Physical background
+The vertical structure of accretion disc is described by system of four ordinary differentional equations with four boundary conditions plus one additional boundary condition for flux:
+```math
+\begin{split}
+\frac{{\rm d}P}{{\rm d}z} &= -\rho\,\omega^2_{K} z \qquad\quad\,\, P(z_0) = P'; \\
+\frac{{\rm d}\Sigma}{{\rm d}z} &= -2\rho \qquad\qquad\quad \Sigma(z_0) = 0; \\
+\frac{{\rm d} T}{{\rm d} z} &= \nabla \frac{T}{P} \frac{{\rm d} P}{{\rm d} z} \qquad\quad T(z_0) = T_{\rm eff}; \\
+\frac{{\rm d}Q}{{\rm d}z} &= \frac32\omega_K \alpha P \qquad\quad Q(z_0) = \frac{3}{8\pi}\dot{M}\omega_K^2 \left(1 - \sqrt{\frac{r_{\rm in}}{r}}\right) = \frac{3}{8\pi} \frac{F\omega_K}{r^2} = Q_0, \quad Q(0) = 0, \\
+&z \in [z_0, 0].
+\end{split}
+```
+Here $P = P_{\rm gas} + P_{\rm rad}, \Sigma, T$ and $Q$ are total pressure, column density, temperature and energy flux in the disc. After the normalizing $P, Q, T, \Sigma$ on their characteristic values $P_0, Q_0, T_0, \Sigma_{00}$, and replacing $z$ on $\hat{z} = 1 - z/z_0$, one has:
+```math
+\begin{split}
+\frac{{\rm d}\hat{P}}{{\rm d}\hat{z}} &= \frac{z_0^2}{P_0}\,\omega^2_{\rm K} \,\rho (1-\hat{z}) \qquad\qquad \hat{P}(0) = P'/P_0, \\ 
+\frac{{\rm d}\hat{\Sigma}}{{\rm d}\hat{z}} &= 2\,\frac{z_0}{\Sigma_{00}}\,\rho, \qquad\qquad\qquad\quad  \hat{\Sigma}(0) = 0, \\
+\frac{{\rm d}\hat{T}}{{\rm d}\hat{z}} &= \nabla \frac{\hat{T}}{\hat{P}} \frac{{\rm d}\hat{P}}{{\rm d}\hat{z}}, \quad\qquad\qquad\qquad \hat{T}(0) = T_{\rm eff}/T_0, \\
+\frac{{\rm d}\hat{Q}}{{\rm d}\hat{z}} &= -\frac32\,\frac{z_0 P_0}{Q_0}\,\omega_{\rm K} \alpha \hat{P} \qquad\qquad \hat{Q}(0) = 1, \quad \hat{Q}(1) = 0, \\
+&\hat{z} \in [0, 1].
+\end{split}
+```
+
+Characteristic values of pressure, temperature and mass coordinate are as follows:
+```math
+T_0 = \frac{\mu}{\mathcal{R}} \omega_{\rm K}^2 z_0^2, \quad
+P_0 = \frac{4}{3}  \frac{Q_0}{\alpha z_0 \omega_{\rm K}}, \quad
+\Sigma_{00} = \frac{28}{3} \frac{Q_0}{\alpha z_0^2 \omega_{\rm K}^3}.
+```
+
+### External irradiation
+
+1. If external irradiation is present, the boundary condition for temperature $\hat{T}$ changes:
+```math
+\hat{T}(0) = \frac1{T_0} \left(T_{\rm vis}^4 + T_{\rm irr}^4 \right)^{1/4}.
+```
+
+2. If external irradiation is dealt with using ['the advanced scheme'](#Irradiated-discs), following equations and boundary conditions change their view:
+```math
+\begin{split}
+\frac{{\rm d}\hat{Q}}{{\rm d}\hat{z}} = -\frac32\,\frac{z_0 P_0}{Q_0}\,\omega_{\rm K} \alpha \hat{P} - \varepsilon\frac{z_0}{Q_0} \qquad\qquad \hat{Q}(0) = 1 + \frac{Q_{\rm irr}}{Q_0}, \\
+\hat{\Sigma}(1) = \frac{\Sigma_0}{\Sigma_{00}},
+\end{split}
+```
+   where $\varepsilon, Q_{\rm irr}$ are addiational heating rate and surface flux. 
+
+
+System has one free parameter $z_0$ - the semi-thickness of the disc, which is found using so-called shooting method. Code integrates system with initial approximation of free parameter $z_0$, then changes its value and integrates the system in order to fulfill the additional condition for flux $\hat{Q}(1)$ at the symmetry plane of the disc. In the presence of external irradiation in simple scheme, the only change is the boundary condition for temperature. If irradiation is calculated through the advanced scheme, the second free parameter is $\Sigma_0$ - the surface density of the disc. In this case code integrates system with all changes above and solve two-parameter $(z_0, \Sigma_0)$ optimization problem in order to fulfill both $\hat{Q}(1)$ and $\hat{\Sigma}(1)$ additional boundary conditions. Namely, code minimises function:
+```math
+\begin{cases}
+    f(z_0)= \hat{Q}(1) &\text{without irradiation;} \\
+    f(z_0, \Sigma_0)= \hat{Q}(1)^2 + \left( \frac{\hat{\Sigma}(1) \Sigma_{00}}{\Sigma_0} - 1\right)^2 &\text{with irradiation.}
+\end{cases}
+```
+
