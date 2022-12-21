@@ -446,10 +446,16 @@ An analytic opacity coefficient is approximated by a power-law function:
 Here $\varkappa_0$ is the dimension constant, which we give below is CGS units. 
 
 There are following analytic opacity options: 
-1. Kramers law for solar composition: $(\zeta = 1, \gamma = -7/2, \varkappa_0 = 5\cdot10^{24})$ and Thomson electron scattering $(\varkappa_{\rm R} = 0.34)$.
-2. Analytic approximations by [Bell & Lin (1994)](http://adsabs.harvard.edu/abs/1994ApJ...427..987B) to opacity: approximation obtained by the OPAL project $(\varkappa_0 = 1.5\cdot10^{20}, \zeta = 1, \gamma = -5/2)$ and opacity from scattering off hydrogen atoms $(\varkappa_0 = 1\cdot10^{-36}, \zeta = 1/3, \gamma = 10)$.
+1. Kramers law for solar composition: $(\zeta = 1, \gamma = -7/2, \varkappa_0 = 5\cdot10^{24})$ and Thomson electron 
+   scattering $(\varkappa_{\rm R} = 0.34)$.
+2. Analytic approximations by [Bell & Lin (1994)](http://adsabs.harvard.edu/abs/1994ApJ...427..987B) to opacity: 
+   approximation obtained by the OPAL project $(\varkappa_0 = 1.5\cdot10^{20}, \zeta = 1, \gamma = -5/2)$ and opacity 
+   from scattering off hydrogen atoms $(\varkappa_0 = 1\cdot10^{-36}, \zeta = 1/3, \gamma = 10)$.
 
-Tabular values of opacity and EoS are obtained by interpolation using `eos` and `kappa` modules from the [MESA code](http://mesa.sourceforge.net). In this case the input parameter is the chemical composition of the disc matter. It should be a dictionary with format {'isotope_name': abundance}, e.g. `{'h1': 0.7, 'he4': 0.3}`, look for full list of available isotopes in the MESA source code. Also you can use `'solar'` string to set the solar composition.
+Tabular values of opacity and EoS are obtained by interpolation using `eos` and `kappa` modules from 
+the [MESA code](http://mesa.sourceforge.net). In this case the input parameter is the chemical composition of the disc 
+matter. It should be a dictionary with format {'isotope_name': abundance}, e.g. `{'h1': 0.7, 'he4': 0.3}`, look for full
+list of available isotopes in the MESA source code. Also, you can use `'solar'` string to set the solar composition.
 
 
 ### Calculation
