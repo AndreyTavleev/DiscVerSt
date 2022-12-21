@@ -76,7 +76,7 @@ $ cd DiscVerSt
 $ docker build -t discverst .
 ```
 
-Then run 'discverst' image as a container and try mesa_vs.main()
+Then run 'discverst' image as a container and try `mesa_vs.main()`
 
 ``` shell
 $ docker run -v$(pwd)/fig:/app/fig --rm -ti discverst python3 -m disc_verst.mesa_vs
@@ -178,16 +178,23 @@ the vertical structure of self-irradiated discs.
 
 Irradiation can be taken into account in two ways:
 
-1. Via either `T_irr` or `C_irr` parameters, that is, the irradiation temperature and irradiation parameter. 
-   It is a simple approach for irradiation, when the external flux doesn't penetrate into the disc and only heats the 
-   disc surface.
+1. Via either `T_irr` or `C_irr` parameters, that is, the irradiation temperature $T_{\rm irr}$ and irradiation 
+   parameter $C_{\rm irr}$. It is a simple approach for irradiation, when the external flux doesn't penetrate 
+   into the disc and only heats the disc surface. Relation between $T_{\rm irr}$ and $C_{\rm irr}$:
+```math
+\sigma_{\rm SB} T^4_{\rm irr} = C_{\rm irr} \frac{\eta \dot{M}c^2}{4\pi r^2},
+```
+   where $\eta=0.1$ is accretion efficiency.  
 
 2. In the second approximation the external flux is penetrated into the disc and affect the energy flux
    and disc temperature. In this case there are more additional parameters are required, that describe
-   the incident spectral flux. Such parameters are: frequency range `nu_irr`, units of frequency range 
+   the incident spectral flux:
+```math
+F^{\nu}_{\rm irr} = \frac{L_{\rm X}}{4\pi r^2} \, S(\nu).
+```
+   Such parameters are: frequency range `nu_irr`, units of frequency range 
    `spectrum_irr_par` (see below), spectrum `spectrum_irr`, luminosity of irradiation source `L_X_irr` 
-   and the cosine of incident angle `cos_theta_irr`. The spectral incident flux then will be 
-   `F_nu_irr = L_X_irr / (4 * pi * r ** 2) * spectrum_irr`.
+   and the cosine of incident angle `cos_theta_irr`.
 
    1. Frequency range `nu_irr` is array-like and can be either in Hz or in energy units (keV), this is determined by 
       `spectrum_irr_par` in `['nu', 'E_in_keV']`.
@@ -201,7 +208,7 @@ Irradiation can be taken into account in two ways:
          for arguments (keyword arguments) of spectrum function.
    3. Cosine of incident angle `cos_theta_irr` can be either exact value or `None`. In the latter case
       cosine is calculated self-consistently as `cos_theta_irr_exp * z0 / r`, where `cos_theta_irr_exp` is
-      additional parameter, namely the `dln(z0)/dln(r) - 1` derivative.
+      additional parameter, namely the $({\rm d}\ln z_0/{\rm d}\ln r - 1)$ derivative.
 
 ### Usage of simple irradiation scheme:
 
@@ -235,6 +242,9 @@ print(vertstr.C_irr)  # corresponding irradiation parameter
 ### Usage of advanced irradiation scheme:
 
 Define the incident X-ray spectrum as a function of energy in keV:
+```math
+S_\nu \sim (E/E_0)^n \, \exp(-E/E_0)
+```
 
 ``` python3
 def power_law_exp_spectrum(E, n, scale):
@@ -288,7 +298,7 @@ print(vertstr.C_irr, vertstr.T_irr)  # irradiation parameter and temperature
 ## Structure Choice
 Module `profiles` contains `StructureChoice()` function, serves as interface for creating 
 the right structure object in a simpler way. One can use other input parameters instead viscous torque `F`
-(such as effective temperature and accretion rate) using `input` parameter,
+(such as effective temperature $T_{\rm eff}$ and accretion rate $\dot{M}$) using `input` parameter,
 and choose the structure type using `structure` parameter.
 ``` python3
 from disc_verst.profiles import StructureChoice
@@ -318,7 +328,7 @@ help(profiles.StructureChoice)
 ## Vertical and radial profile calculation, S-curves
 
 Module `profiles` contains functions, that calculate vertical and radial disc profiles and S-curves, and return tables 
-with disc parameters. With profiles.main() the vertical structure, S-curve and radial structure 
+with disc parameters. With `profiles.main()` the vertical structure, S-curve and radial structure 
 can be calculated for default parameters, stored as tables and plots:
 ``` shell
 $ python3 -m disc_verst.profiles
@@ -367,45 +377,27 @@ The vertical structure of accretion disc is described by system of four ordinary
 boundary conditions plus one additional boundary condition for flux:
 ```math
 \begin{split}
-\frac{{\rm d}P}{{\rm d}z} &= -\rho\,\omega^2_{K} z \qquad\quad\,\, P(z_0) = P'; \\
+\frac{{\rm d}P}{{\rm d}z} &= -\rho\,\omega^2_{K} z \qquad\quad\,\, P_{\rm gas}(z_0) = P'; \\
 \frac{{\rm d}\Sigma}{{\rm d}z} &= -2\rho \qquad\qquad\quad \Sigma(z_0) = 0; \\
-\frac{{\rm d} T}{{\rm d} z} &= \nabla \frac{T}{P} \frac{{\rm d} P}{{\rm d} z} \qquad\quad T(z_0) = T_{\rm eff}; \\
-\frac{{\rm d}Q}{{\rm d}z} &= \frac32\omega_K \alpha P \qquad\quad Q(z_0) = \frac{3}{8\pi}\dot{M}\omega_K^2 \left(1 - \sqrt{\frac{r_{\rm in}}{r}}\right) = \frac{3}{8\pi} \frac{F\omega_K}{r^2} = Q_0, \quad Q(0) = 0, \\
+\frac{{\rm d} T}{{\rm d} z} &= \nabla \frac{T}{P} \frac{{\rm d} P}{{\rm d} z} \qquad\quad T(z_0) = T_{\rm eff} = (Q_0/\sigma_{\rm SB})^{1/4}; \\
+\frac{{\rm d}Q}{{\rm d}z} &= \frac32\omega_K \alpha P \qquad\quad Q(z_0) = \frac{3}{8\pi}\dot{M}\omega_K^2 \left(1 - \sqrt{\frac{r_{\rm in}}{r}}\right) = \frac{3}{8\pi} \frac{F\omega_K}{r^2} = Q_0, \quad Q(0) = 0; \\
 &z \in [z_0, 0].
 \end{split}
 ```
-Here $P = P_{\rm tot} = P_{\rm gas} + P_{\rm rad} = P_{\rm gas} + aT^/3, \Sigma, T$ and $Q$ are total pressure, column density, temperature and energy flux 
-in the disc, $\nabla=\frac{{\rm d}\ln T}{{\rm d}\ln P}$ is the temperature gradient (radiative or convective, 
-according to Schwarzschild criterion), and $\alpha$ is Shakura-Sunyaev turbulent parameter. After the normalizing 
-$P_{\rm gas}, Q, T, \Sigma$ on their characteristic values $P_0, Q_0, T_0, \Sigma_{00}$, and replacing $z$ on 
-$\hat{z} = 1 - z/z_0$, one has:
+Here $P = P_{\rm tot} = P_{\rm gas} + P_{\rm rad} = P_{\rm gas} + aT^4/3, \Sigma, T$ and $Q$ are total pressure, 
+column density, temperature and energy flux in the disc, $\nabla\equiv\frac{{\rm d}\ln T}{{\rm d}\ln P}$ is the temperature 
+gradient (radiative or convective, according to Schwarzschild criterion), and $\alpha$ is Shakura-Sunyaev turbulent 
+parameter. After the normalizing $P_{\rm gas}, Q, T, \Sigma$ on their characteristic values $P_0, Q_0, T_0, \Sigma_{00}$, 
+and replacing $z$ on $\hat{z} = 1 - z/z_0$, one has:
 ```math
 \begin{split}
-\frac{{\rm d}\hat{P}}{{\rm d}\hat{z}} &= \frac{z_0^2}{P_0}\,\omega^2_{\rm K} \,\rho (1-\hat{z}) - \frac1{P_0} \frac{\rm d}{{\rm d}\hat{z}}\left(\frac{aT^4}3 \right)  \qquad\qquad \hat{P}(0) = P'/P_0, \\ 
-\frac{{\rm d}\hat{\Sigma}}{{\rm d}\hat{z}} &= 2\,\frac{z_0}{\Sigma_{00}}\,\rho, \qquad\qquad\qquad\quad  \hat{\Sigma}(0) = 0, \\
-\frac{{\rm d}\hat{T}}{{\rm d}\hat{z}} &= \nabla \frac{\hat{T}}{P_{\rm tot}} z_0^2\,\omega^2_{\rm K} \,\rho (1-\hat{z}), \quad\qquad\qquad\qquad \hat{T}(0) = T_{\rm eff}/T_0, \\
-\frac{{\rm d}\hat{Q}}{{\rm d}\hat{z}} &= -\frac32\,\frac{z_0}{Q_0}\,\omega_{\rm K} \alpha P_{\rm tot} \qquad\qquad \hat{Q}(0) = 1, \quad \hat{Q}(1) = 0, \\
-&\hat{z} \in [0, 1].
+\frac{{\rm d}\hat{P}}{{\rm d}\hat{z}} &= \frac{z_0^2}{P_0}\,\omega^2_{\rm K} \,\rho (1-\hat{z}) - \frac{4aT_0^3}{3 P_0} \frac{{\rm d}\hat{T}}{{\rm d}\hat{z}} \qquad\qquad \hat{P}(0) = P'/P_0; \\ 
+\frac{{\rm d}\hat{\Sigma}}{{\rm d}\hat{z}} &= 2\,\frac{z_0}{\Sigma_{00}}\,\rho \qquad\qquad\qquad\qquad\qquad\qquad\qquad  \hat{\Sigma}(0) = 0; \\
+\frac{{\rm d}\hat{T}}{{\rm d}\hat{z}} &= \nabla \frac{\hat{T}}{P_{\rm tot}} z_0^2\,\omega^2_{\rm K} \,\rho (1-\hat{z}) \quad\qquad\qquad\qquad \hat{T}(0) = T_{\rm eff}/T_0; \\
+\frac{{\rm d}\hat{Q}}{{\rm d}\hat{z}} &= -\frac32\,\frac{z_0}{Q_0}\,\omega_{\rm K} \alpha P_{\rm tot} \qquad\qquad\qquad \hat{Q}(0) = 1, \quad \hat{Q}(1) = 0; \\
+P_{\rm tot} &= P_0\hat{P} + aT_0^4\hat{T}^4/3 \qquad\qquad\qquad\qquad\qquad \hat{z} \in [0, 1].
 \end{split}
 ```
-
-[//]: # (```math)
-
-[//]: # (\begin{split})
-
-[//]: # (\frac{{\rm d}\hat{P}}{{\rm d}\hat{z}} &= \frac{z_0^2}{P_0}\,\omega^2_{\rm K} \,\rho &#40;1-\hat{z}&#41; \qquad\qquad \hat{P}&#40;0&#41; = P'/P_0, \\ )
-
-[//]: # (\frac{{\rm d}\hat{\Sigma}}{{\rm d}\hat{z}} &= 2\,\frac{z_0}{\Sigma_{00}}\,\rho, \qquad\qquad\qquad\quad  \hat{\Sigma}&#40;0&#41; = 0, \\)
-
-[//]: # (\frac{{\rm d}\hat{T}}{{\rm d}\hat{z}} &= \nabla \frac{\hat{T}}{\hat{P}} \frac{{\rm d}\hat{P}}{{\rm d}\hat{z}}, \quad\qquad\qquad\qquad \hat{T}&#40;0&#41; = T_{\rm eff}/T_0, \\)
-
-[//]: # (\frac{{\rm d}\hat{Q}}{{\rm d}\hat{z}} &= -\frac32\,\frac{z_0 P_0}{Q_0}\,\omega_{\rm K} \alpha \hat{P} \qquad\qquad \hat{Q}&#40;0&#41; = 1, \quad \hat{Q}&#40;1&#41; = 0, \\)
-
-[//]: # (&\hat{z} \in [0, 1].)
-
-[//]: # (\end{split})
-
-[//]: # (```)
 
 Characteristic values of pressure, temperature and mass coordinate are as follows:
 ```math
@@ -415,34 +407,36 @@ P_0 = \frac{4}{3}  \frac{Q_0}{\alpha z_0 \omega_{\rm K}}, \quad
 ```
 
 ### External irradiation
+In case of external irradiation $T_{\rm vis}\equiv T_{\rm eff}$. Irradiation can be taken into account in two ways:
 
-1. If external irradiation is present, the boundary condition for temperature $\hat{T}$ changes:
+1. Via either irradiation temperature $T_{\rm irr}$ or irradiation parameter $C_{\rm irr}$: It is a simple 
+   approach for irradiation, when the external flux doesn't penetrate into the disc and only heats the 
+   disc surface. In this case only the boundary condition for temperature $\hat{T}$ changes:
 ```math
 \hat{T}(0) = \frac1{T_0} \left(T_{\rm vis}^4 + T_{\rm irr}^4 \right)^{1/4}.
 ```
 
-2. If external irradiation is dealt with using [the advanced scheme](#Irradiated-discs), following equations and 
-   boundary conditions change their view:
+2. In the second approximation the external flux is penetrated into the disc and affect the energy flux
+   and disc temperature. In this case following equations and boundary conditions change their view:
 ```math
 \begin{split}
-\frac{{\rm d}\hat{Q}}{{\rm d}\hat{z}} = -\frac32\,\frac{z_0 P_0}{Q_0}\,\omega_{\rm K} \alpha \hat{P} - \varepsilon\frac{z_0}{Q_0} \qquad\qquad \hat{Q}(0) = 1 + \frac{Q_{\rm irr}}{Q_0}, \\
-\hat{\Sigma}(1) = \frac{\Sigma_0}{\Sigma_{00}},
+\frac{{\rm d}\hat{Q}}{{\rm d}\hat{z}} &= -\frac32\,\frac{z_0}{Q_0}\,\omega_{\rm K} \alpha P_{\rm tot} - \varepsilon\frac{z_0}{Q_0} \qquad\qquad \hat{Q}(0) = 1 + \frac{Q_{\rm irr}}{Q_0}; \\
+\hat{T}(0) &= \frac1{T_0} \left(T_{\rm vis}^4 + Q_{\rm irr}/\sigma_{\rm SB} \right)^{1/4} \qquad\qquad\qquad\;\; \hat{\Sigma}(1) = \frac{\Sigma_0}{\Sigma_{00}}; \\
 \end{split}
 ```
    where $\varepsilon, Q_{\rm irr}$ are additional heating rate and surface flux. 
 
 System has one free parameter $z_0$ - the semi-thickness of the disc, which is found using so-called shooting method. 
-Code integrates system with initial approximation of free parameter $z_0$, then changes its value and integrates 
-the system in order to fulfill the additional condition for flux $\hat{Q}(1)$ at the symmetry plane of the disc. 
-In the presence of external irradiation in simple scheme, the only change is the boundary condition for temperature. 
-If irradiation is calculated through the advanced scheme, the second free parameter is $\Sigma_0$ - the surface density 
-of the disc. In this case code integrates system with all changes above and solve two-parameter $(z_0, \Sigma_0)$ 
-optimization problem in order to fulfill both $\hat{Q}(1)$ and $\hat{\Sigma}(1)$ additional boundary conditions. 
-Namely, code minimises function:
+Code integrates system over $\hat{z}$ from 0 to 1 with initial approximation of free parameter $z_0$, then changes 
+its value and integrates the system in order to fulfill the additional condition for flux $\hat{Q}(1)$ at the symmetry 
+plane of the disc. In the presence of external irradiation in simple scheme, the only change is the boundary condition 
+for temperature. If irradiation is calculated through the advanced scheme, the second free parameter is $\Sigma_0$ - the 
+surface density of the disc. In this case code integrates system with all changes above and solve two-parameter 
+$(z_0, \Sigma_0)$ optimization problem in order to fulfill both $\hat{Q}(1)$ and $\hat{\Sigma}(1)$ additional boundary 
+conditions. Namely, code minimises function:
 ```math
 \begin{cases}
     f(z_0)= \hat{Q}(1) &\text{without irradiation;} \\
     f(z_0, \Sigma_0)= \hat{Q}(1)^2 + \left( \frac{\hat{\Sigma}(1) \Sigma_{00}}{\Sigma_0} - 1\right)^2 &\text{with irradiation.}
 \end{cases}
 ```
-
