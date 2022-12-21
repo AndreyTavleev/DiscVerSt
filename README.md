@@ -363,7 +363,8 @@ help(profiles.Radial_Profile)
 ```
 
 ## Physical background
-The vertical structure of accretion disc is described by system of four ordinary differentional equations with four boundary conditions plus one additional boundary condition for flux:
+The vertical structure of accretion disc is described by system of four ordinary differential equations with four 
+boundary conditions plus one additional boundary condition for flux:
 ```math
 \begin{split}
 \frac{{\rm d}P}{{\rm d}z} &= -\rho\,\omega^2_{K} z \qquad\quad\,\, P(z_0) = P'; \\
@@ -373,16 +374,38 @@ The vertical structure of accretion disc is described by system of four ordinary
 &z \in [z_0, 0].
 \end{split}
 ```
-Here $P = P_{\rm gas} + P_{\rm rad}, \Sigma, T$ and $Q$ are total pressure, column density, temperature and energy flux in the disc. After the normalizing $P, Q, T, \Sigma$ on their characteristic values $P_0, Q_0, T_0, \Sigma_{00}$, and replacing $z$ on $\hat{z} = 1 - z/z_0$, one has:
+Here $P = P_{\rm tot} = P_{\rm gas} + P_{\rm rad} = P_{\rm gas} + aT^/3, \Sigma, T$ and $Q$ are total pressure, column density, temperature and energy flux 
+in the disc, $\nabla=\frac{{\rm d}\ln T}{{\rm d}\ln P}$ is the temperature gradient (radiative or convective, 
+according to Schwarzschild criterion), and $\alpha$ is Shakura-Sunyaev turbulent parameter. After the normalizing 
+$P_{\rm gas}, Q, T, \Sigma$ on their characteristic values $P_0, Q_0, T_0, \Sigma_{00}$, and replacing $z$ on 
+$\hat{z} = 1 - z/z_0$, one has:
 ```math
 \begin{split}
-\frac{{\rm d}\hat{P}}{{\rm d}\hat{z}} &= \frac{z_0^2}{P_0}\,\omega^2_{\rm K} \,\rho (1-\hat{z}) \qquad\qquad \hat{P}(0) = P'/P_0, \\ 
+\frac{{\rm d}\hat{P}}{{\rm d}\hat{z}} &= \frac{z_0^2}{P_0}\,\omega^2_{\rm K} \,\rho (1-\hat{z}) - \frac1{P_0} \frac{\rm d}{{\rm d}\hat{z}}\left(\frac{aT^4}3 \right)  \qquad\qquad \hat{P}(0) = P'/P_0, \\ 
 \frac{{\rm d}\hat{\Sigma}}{{\rm d}\hat{z}} &= 2\,\frac{z_0}{\Sigma_{00}}\,\rho, \qquad\qquad\qquad\quad  \hat{\Sigma}(0) = 0, \\
-\frac{{\rm d}\hat{T}}{{\rm d}\hat{z}} &= \nabla \frac{\hat{T}}{\hat{P}} \frac{{\rm d}\hat{P}}{{\rm d}\hat{z}}, \quad\qquad\qquad\qquad \hat{T}(0) = T_{\rm eff}/T_0, \\
-\frac{{\rm d}\hat{Q}}{{\rm d}\hat{z}} &= -\frac32\,\frac{z_0 P_0}{Q_0}\,\omega_{\rm K} \alpha \hat{P} \qquad\qquad \hat{Q}(0) = 1, \quad \hat{Q}(1) = 0, \\
+\frac{{\rm d}\hat{T}}{{\rm d}\hat{z}} &= \nabla \frac{\hat{T}}{P_{\rm tot}} z_0^2\,\omega^2_{\rm K} \,\rho (1-\hat{z}), \quad\qquad\qquad\qquad \hat{T}(0) = T_{\rm eff}/T_0, \\
+\frac{{\rm d}\hat{Q}}{{\rm d}\hat{z}} &= -\frac32\,\frac{z_0}{Q_0}\,\omega_{\rm K} \alpha P_{\rm tot} \qquad\qquad \hat{Q}(0) = 1, \quad \hat{Q}(1) = 0, \\
 &\hat{z} \in [0, 1].
 \end{split}
 ```
+
+[//]: # (```math)
+
+[//]: # (\begin{split})
+
+[//]: # (\frac{{\rm d}\hat{P}}{{\rm d}\hat{z}} &= \frac{z_0^2}{P_0}\,\omega^2_{\rm K} \,\rho &#40;1-\hat{z}&#41; \qquad\qquad \hat{P}&#40;0&#41; = P'/P_0, \\ )
+
+[//]: # (\frac{{\rm d}\hat{\Sigma}}{{\rm d}\hat{z}} &= 2\,\frac{z_0}{\Sigma_{00}}\,\rho, \qquad\qquad\qquad\quad  \hat{\Sigma}&#40;0&#41; = 0, \\)
+
+[//]: # (\frac{{\rm d}\hat{T}}{{\rm d}\hat{z}} &= \nabla \frac{\hat{T}}{\hat{P}} \frac{{\rm d}\hat{P}}{{\rm d}\hat{z}}, \quad\qquad\qquad\qquad \hat{T}&#40;0&#41; = T_{\rm eff}/T_0, \\)
+
+[//]: # (\frac{{\rm d}\hat{Q}}{{\rm d}\hat{z}} &= -\frac32\,\frac{z_0 P_0}{Q_0}\,\omega_{\rm K} \alpha \hat{P} \qquad\qquad \hat{Q}&#40;0&#41; = 1, \quad \hat{Q}&#40;1&#41; = 0, \\)
+
+[//]: # (&\hat{z} \in [0, 1].)
+
+[//]: # (\end{split})
+
+[//]: # (```)
 
 Characteristic values of pressure, temperature and mass coordinate are as follows:
 ```math
@@ -398,17 +421,24 @@ P_0 = \frac{4}{3}  \frac{Q_0}{\alpha z_0 \omega_{\rm K}}, \quad
 \hat{T}(0) = \frac1{T_0} \left(T_{\rm vis}^4 + T_{\rm irr}^4 \right)^{1/4}.
 ```
 
-2. If external irradiation is dealt with using ['the advanced scheme'](#Irradiated-discs), following equations and boundary conditions change their view:
+2. If external irradiation is dealt with using [the advanced scheme](#Irradiated-discs), following equations and 
+   boundary conditions change their view:
 ```math
 \begin{split}
 \frac{{\rm d}\hat{Q}}{{\rm d}\hat{z}} = -\frac32\,\frac{z_0 P_0}{Q_0}\,\omega_{\rm K} \alpha \hat{P} - \varepsilon\frac{z_0}{Q_0} \qquad\qquad \hat{Q}(0) = 1 + \frac{Q_{\rm irr}}{Q_0}, \\
 \hat{\Sigma}(1) = \frac{\Sigma_0}{\Sigma_{00}},
 \end{split}
 ```
-   where $\varepsilon, Q_{\rm irr}$ are addiational heating rate and surface flux. 
+   where $\varepsilon, Q_{\rm irr}$ are additional heating rate and surface flux. 
 
-
-System has one free parameter $z_0$ - the semi-thickness of the disc, which is found using so-called shooting method. Code integrates system with initial approximation of free parameter $z_0$, then changes its value and integrates the system in order to fulfill the additional condition for flux $\hat{Q}(1)$ at the symmetry plane of the disc. In the presence of external irradiation in simple scheme, the only change is the boundary condition for temperature. If irradiation is calculated through the advanced scheme, the second free parameter is $\Sigma_0$ - the surface density of the disc. In this case code integrates system with all changes above and solve two-parameter $(z_0, \Sigma_0)$ optimization problem in order to fulfill both $\hat{Q}(1)$ and $\hat{\Sigma}(1)$ additional boundary conditions. Namely, code minimises function:
+System has one free parameter $z_0$ - the semi-thickness of the disc, which is found using so-called shooting method. 
+Code integrates system with initial approximation of free parameter $z_0$, then changes its value and integrates 
+the system in order to fulfill the additional condition for flux $\hat{Q}(1)$ at the symmetry plane of the disc. 
+In the presence of external irradiation in simple scheme, the only change is the boundary condition for temperature. 
+If irradiation is calculated through the advanced scheme, the second free parameter is $\Sigma_0$ - the surface density 
+of the disc. In this case code integrates system with all changes above and solve two-parameter $(z_0, \Sigma_0)$ 
+optimization problem in order to fulfill both $\hat{Q}(1)$ and $\hat{\Sigma}(1)$ additional boundary conditions. 
+Namely, code minimises function:
 ```math
 \begin{cases}
     f(z_0)= \hat{Q}(1) &\text{without irradiation;} \\
