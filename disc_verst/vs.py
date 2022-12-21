@@ -381,16 +381,12 @@ class KramersOpacityMixin:
 
     def law_of_opacity(self, rho, T, lnfree_e, return_grad):
         varkappa_kram = self.varkappa0 * (rho ** self.zeta) * (T ** self.gamma)
-        if varkappa_kram > self.varkappa_sc:
-            varkappa = varkappa_kram
-            dlnkap_dlnRho, dlnkap_dlnT = self.zeta, self.gamma
-        else:
-            varkappa = self.varkappa_sc
-            dlnkap_dlnRho, dlnkap_dlnT = 0, 0
-
         if not return_grad:
-            return varkappa
+            return np.where(varkappa_kram > self.varkappa_sc, varkappa_kram, self.varkappa_sc)
         else:
+            varkappa = np.where(varkappa_kram > self.varkappa_sc, varkappa_kram, self.varkappa_sc)
+            dlnkap_dlnRho = np.where(varkappa_kram > self.varkappa_sc, self.zeta, 0)
+            dlnkap_dlnT = np.where(varkappa_kram > self.varkappa_sc, self.gamma, 0)
             return varkappa, dlnkap_dlnRho, dlnkap_dlnT
 
 
@@ -407,20 +403,14 @@ class BellLin1994TwoComponentOpacityMixin:
         opacity_h = self.varkappa0_h * (rho ** self.zeta_h) * (T ** self.gamma_h)
         opacity_ff = self.varkappa0_ff * (rho ** self.zeta_ff) * (T ** self.gamma_ff)
         if not return_grad:
-            if opacity_h < opacity_ff:
-                return opacity_h
-            else:
-                return np.maximum(opacity_ff, self.varkappa_sc)
+            return np.where(opacity_h < opacity_ff, opacity_h, np.maximum(opacity_ff, self.varkappa_sc))
         else:
-            if opacity_h < opacity_ff:
-                dlnkap_dlnRho, dlnkap_dlnT = self.zeta_h, self.gamma_h
-                return opacity_h, dlnkap_dlnRho, dlnkap_dlnT
-            elif opacity_ff > self.varkappa_sc:
-                dlnkap_dlnRho, dlnkap_dlnT = self.zeta_ff, self.gamma_ff
-                return opacity_ff, dlnkap_dlnRho, dlnkap_dlnT
-            elif opacity_ff < self.varkappa_sc:
-                dlnkap_dlnRho, dlnkap_dlnT = 0, 0
-                return self.varkappa_sc, dlnkap_dlnRho, dlnkap_dlnT
+            varkappa = np.where(opacity_h < opacity_ff, opacity_h, np.maximum(opacity_ff, self.varkappa_sc))
+            dlnkap_dlnRho = np.where(opacity_h < opacity_ff, self.zeta_h,
+                                     np.array([0, self.zeta_ff])[np.int8([opacity_ff > self.varkappa_sc])])
+            dlnkap_dlnT = np.where(opacity_h < opacity_ff, self.gamma_h,
+                                   np.array([0, self.gamma_ff])[np.int8([opacity_ff > self.varkappa_sc])])
+            return varkappa, dlnkap_dlnRho, dlnkap_dlnT
 
 
 class IdealKramersVerticalStructure(IdealGasMixin, KramersOpacityMixin, RadiativeTempGradient, BaseVerticalStructure):
