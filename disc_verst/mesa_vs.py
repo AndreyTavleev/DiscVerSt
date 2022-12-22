@@ -174,12 +174,8 @@ class MesaGasMixin:
 
 
 class MesaOpacityMixin:
-    def law_of_opacity(self, rho, T, lnfree_e, return_grad):
-        if return_grad:
-            kappa, dlnkap_dlnRho, dlnkap_dlnT = self.mesaop.kappa(rho, T, lnfree_e=lnfree_e, return_grad=return_grad)
-            return kappa, dlnkap_dlnRho, dlnkap_dlnT
-        else:
-            return self.mesaop.kappa(rho, T, lnfree_e=lnfree_e, return_grad=return_grad)
+    def law_of_opacity(self, rho, T, lnfree_e):
+        return self.mesaop.kappa(rho, T, lnfree_e=lnfree_e)
 
 
 class AdiabaticTempGradient:
@@ -202,7 +198,7 @@ class RadiativeAdiabaticGradient:
 
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
 
         if t == 1:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
@@ -228,7 +224,7 @@ class RadConvTempGradient:
 
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
 
         if t == 1:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
@@ -407,7 +403,7 @@ class ExternalIrradiation:
     def photospheric_pressure_equation_irr(self, tau, P, Pph):
         T = (self.Teff ** 4 * (1 / 2 + 3 * tau / 4) + self.Q_irr_ph(Pph) / sigmaSB) ** (1 / 4)
         rho, eos = self.law_of_rho(P, T, True)
-        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e, return_grad=False)
+        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
         return self.z0 * self.omegaK ** 2 / varkappa
 
     def P_ph_irr(self, Pph):
@@ -550,7 +546,7 @@ class ExternalIrradiationZeroAssumption:
     def photospheric_pressure_equation(self, tau, P):
         T = (self.Teff ** 4 * (1 / 2 + 3 * tau / 4) + self.T_irr) ** (1 / 4)
         rho, eos = self.law_of_rho(P, T, True)
-        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e, return_grad=False)
+        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
         return self.z0 * self.omegaK ** 2 / varkappa
 
     def P_ph_irr(self, Pph):
