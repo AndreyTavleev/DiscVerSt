@@ -166,11 +166,7 @@ class BaseExternalIrradiationZeroAssumption(BaseMesaVerticalStructure):
 
 class MesaGasMixin:
     def law_of_rho(self, P, T, full_output):
-        if full_output:
-            rho, eos = self.mesaop.rho(P, T, full_output=full_output)
-            return rho, eos
-        else:
-            return self.mesaop.rho(P, T, full_output=full_output)
+        return self.mesaop.rho(P, T, full_output=full_output)
 
 
 class MesaOpacityMixin:
