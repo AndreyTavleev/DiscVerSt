@@ -15,7 +15,7 @@ import os
 import numpy as np
 from astropy import constants as const
 
-from disc_verst.vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient
+from disc_verst.vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient, RadiativeTempGradientPrad
 from disc_verst.vs import BellLin1994TwoComponentOpacityMixin
 from disc_verst.vs import Prad
 
@@ -41,25 +41,17 @@ class BaseMesaVerticalStructure(BaseVerticalStructure):
 
 class MesaGasMixin:
     def law_of_rho(self, P, T, full_output):
-        if full_output:
-            rho, eos = self.mesaop.rho(P, T, full_output=full_output)
-            return rho, eos
-        else:
-            return self.mesaop.rho(P, T, full_output=full_output)
+        return self.mesaop.rho(P, T, full_output=full_output)  # input P=Pgas
 
 
 class MesaOpacityMixin:
-    def law_of_opacity(self, rho, T, lnfree_e, return_grad):
-        if return_grad:
-            kappa, dlnkap_dlnRho, dlnkap_dlnT = self.mesaop.kappa(rho, T, lnfree_e=lnfree_e, return_grad=return_grad)
-            return kappa, dlnkap_dlnRho, dlnkap_dlnT
-        else:
-            return self.mesaop.kappa(rho, T, lnfree_e=lnfree_e, return_grad=return_grad)
+    def law_of_opacity(self, rho, T, lnfree_e):
+        return self.mesaop.kappa(rho, T, lnfree_e=lnfree_e)
 
 
 class AdiabaticTempGradient:
     """
-    Temperature gradient class. Returns adiabatic d(lnT)/d(lnP) from Mesa.
+    Temperature gradient class. Returns adiabatic d(lnT)/d(lnPtotal) from MESA.
 
     """
 
@@ -77,7 +69,7 @@ class RadiativeAdiabaticGradient:
 
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
 
         if t == 1:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
@@ -103,7 +95,7 @@ class RadConvTempGradient:
 
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
 
         if t == 1:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
@@ -140,14 +132,16 @@ class RadConvTempGradient:
         # print(coeff)
         try:
             x = np.roots(coeff)
-        except np.linalg.LinAlgError:
+        except np.linalg.LinAlgError as ex:
             print('LinAlgError')
-            breakpoint()
+            raise ex
+            # breakpoint()
 
         x = [a.real for a in x if a.imag == 0 and 0.0 < a.real < 1.0]
         if len(x) != 1:
             print('not one x of there is no right x')
-            breakpoint()
+            raise ValueError
+            # breakpoint()
         x = x[0]
 
         # print(x)
@@ -158,29 +152,60 @@ class RadConvTempGradient:
         return dlnTdlnP_conv
 
 
-class RadConvTempGradientPrad:
+class RadiativeAdiabaticGradientPrad:
+    """
+    Temperature gradient class.
+    If gradient is over-adiabatic, then returns adiabatic d(lnT)/d(lnPtotal),
+    else calculates radiative d(lnT)/d(lnPtotal).
+
+    """
+
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
+        P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
 
         if t == 1:
             dTdz_der = (self.dQdz(y, t) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
                     16 * sigmaSB * self.T_norm ** 4)
-            P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
             dP_full_der = - rho * self.omegaK ** 2 * self.z0 ** 2
             dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz_der / dP_full_der)
-            # # if dlnTdlnP_rad < 0.0:
-            # #     print('t = 1, ', dlnTdlnP_rad)
         else:
             dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
                     16 * sigmaSB * self.T_norm ** 4)
 
-            P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
             dP_full = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2
             dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz / dP_full)
 
-            # if dlnTdlnP_rad < 0.0:
-            #     print('t = {}, '.format(t), dlnTdlnP_rad)
+        if dlnTdlnP_rad < eos.grad_ad:
+            return dlnTdlnP_rad
+        else:
+            return eos.grad_ad
+
+
+class RadConvTempGradientPrad:
+    """
+    Temperature gradient class. Calculates d(lnT)/d(lnPtotal) in presence of convection
+    according to mixing length theory.
+
+    """
+    def dlnTdlnP(self, y, t):
+        rho, eos = self.rho(y, True)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
+        P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
+
+        if t == 1:
+            dTdz_der = (self.dQdz(y, t) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
+                    16 * sigmaSB * self.T_norm ** 4)
+            dP_full_der = - rho * self.omegaK ** 2 * self.z0 ** 2
+            dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz_der / dP_full_der)
+        else:
+            dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
+                    16 * sigmaSB * self.T_norm ** 4)
+
+            dP_full = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2
+            dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz / dP_full)
+
 
         if dlnTdlnP_rad < eos.grad_ad:
             return dlnTdlnP_rad
@@ -188,8 +213,7 @@ class RadConvTempGradientPrad:
             return dlnTdlnP_rad
 
         alpha_ml = 1.5
-        H_p = y[Vars.P] * self.P_norm / (
-                rho * self.omegaK ** 2 * self.z0 * (1 - t) + self.omegaK * np.sqrt(y[Vars.P] * self.P_norm * rho))
+        H_p = P_full / (rho * self.omegaK ** 2 * self.z0 * (1 - t) + self.omegaK * np.sqrt(P_full * rho))
         H_ml = alpha_ml * H_p
         omega = varkappa * rho * H_ml
         A = 9 / 8 * omega ** 2 / (3 + omega ** 2)
@@ -204,17 +228,18 @@ class RadConvTempGradientPrad:
         V = 1 / np.sqrt(VV)
 
         coeff = [2 * A, V, V ** 2, - V]
-        # print(coeff)
         try:
             x = np.roots(coeff)
-        except np.linalg.LinAlgError:
+        except np.linalg.LinAlgError as ex:
             print('LinAlgError, coeff[2A, V, V ** 2, -V] = ', coeff)
-            breakpoint()
+            raise ex
+            # breakpoint()
 
         x = [a.real for a in x if a.imag == 0 and 0.0 < a.real < 1.0]
         if len(x) != 1:
             print('not one x of there is no right x')
-            breakpoint()
+            # breakpoint()
+            raise ValueError
         x = x[0]
 
         # print(x)
@@ -268,6 +293,11 @@ class MesaVerticalStructureRadConv(MesaGasMixin, MesaOpacityMixin, RadConvTempGr
 
 class MesaVerticalStructureRadConvPrad(MesaGasMixin, MesaOpacityMixin, RadConvTempGradientPrad, Prad,
                                        BaseMesaVerticalStructure):
+    pass
+
+
+class MesaVerticalStructurePrad(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradientPrad, Prad,
+                                BaseMesaVerticalStructure):
     pass
 
 

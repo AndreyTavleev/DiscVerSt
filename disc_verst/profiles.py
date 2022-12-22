@@ -151,17 +151,23 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
             if np.isnan(mesa_vs):
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
-            vs = mesa_vs.MesaVerticalStructureRadConvPrad(M, alpha, r, F, abundance=abundance, mu=mu)
+            vs = mesa_vs.MesaVerticalStructureRadConvPrad(M, alpha, r, F, abundance=abundance)
     elif structure == 'Prad_BellLin':
         try:
             if np.isnan(mesa_vs):
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
             vs = vert.IdealBellLin1994VerticalStructurePrad(M, alpha, r, F, mu=mu)
+    elif structure == 'Prad_rad':
+        try:
+            if np.isnan(mesa_vs):
+                raise ModuleNotFoundError('Mesa2py is not installed')
+        except TypeError:
+            vs = mesa_vs.MesaVerticalStructurePrad(M, alpha, r, F, abundance=abundance)
     else:
         raise Exception("Incorrect structure. Possible options are: 'Kramers', 'BellLin',\n"
                         "'Mesa', 'MesaAd', 'MesaRadAd', 'MesaRadConv', 'MesaIdealGas',\n"
-                        "'Prad or Prad_BellLin'")  # Change docstring!!!
+                        "'Prad', 'Prad_BellLin' or 'Prad_rad'")  # Change docstring!!!
     return vs, F, Teff, Mdot
 
 
@@ -186,16 +192,17 @@ def Convective_parameter(vs):
     t = np.linspace(0, 1, n)
     y = vs.integrate(t)[0]
     S, P, Q, T = y
-    grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
+    P_full = P * vs.P_norm + 4 * sigmaSB / (3 * c) * T ** 4 * vs.T_norm ** 4
+    grad_plot = InterpolatedUnivariateSpline(np.log(P_full), np.log(T)).derivative()
     rho, eos = vs.law_of_rho(P * vs.P_norm, T * vs.T_norm, True)
     try:
         _ = eos.c_p
     except AttributeError:
         raise Exception('Incorrect vertical structure for convective parameter calculation. '
                         'Use vertical structure with MESA EoS.') from None
-    conv_param_sigma = simps(2 * rho * (grad_plot(np.log(P)) > eos.grad_ad), t * vs.z0) / (
+    conv_param_sigma = simps(2 * rho * (grad_plot(np.log(P_full)) > eos.grad_ad), t * vs.z0) / (
             S[-1] * vs.sigma_norm)
-    conv_param_z = simps(grad_plot(np.log(P)) > eos.grad_ad, t * vs.z0) / vs.z0
+    conv_param_z = simps(grad_plot(np.log(P_full)) > eos.grad_ad, t * vs.z0) / vs.z0
     return conv_param_z, conv_param_sigma
 
 
@@ -255,12 +262,13 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
     varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
     tau = vs.tau()
     delta = (4 * sigmaSB) / (3 * c) * T_C ** 4 / P_C
-    grad_plot = InterpolatedUnivariateSpline(np.log(P), np.log(T)).derivative()
+    P_full = P * vs.P_norm + 4 * sigmaSB / (3 * c) * T ** 4 * vs.T_norm ** 4
+    grad_plot = InterpolatedUnivariateSpline(np.log(P_full), np.log(T)).derivative()
     rho, eos = vs.law_of_rho(P * vs.P_norm, T * vs.T_norm, True)
-    varkappa = vs.law_of_opacity(rho, T * vs.T_norm, lnfree_e=eos.lnfree_e, return_grad=False)
+    varkappa = vs.law_of_opacity(rho, T * vs.T_norm, lnfree_e=eos.lnfree_e)
     tau_arr = np.array([simps(rho[:i] * varkappa[:i], t[:i] * z0r * r) for i in range(2, n + 1)]) + 2 / 3
     tau_arr = np.r_[2 / 3, tau_arr]
-    dots_arr = np.c_[t, S, P, abs(Q), T, rho, varkappa, tau_arr, grad_plot(np.log(P))]
+    dots_arr = np.c_[t, S, P, abs(Q), T, rho, varkappa, tau_arr, grad_plot(np.log(P_full))]
     try:
         _ = eos.c_p
         dots_arr = np.c_[dots_arr, eos.grad_ad, np.exp(eos.lnfree_e)]
@@ -373,7 +381,11 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
     for i, Par in enumerate(np.geomspace(Par_max, Par_min, n)):
         print(i)
         vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance)
-        z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+        try:
+            z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+        except ValueError as e:
+            print(e, 'STOP')
+            return
         z0r_estimation = z0r
         tau = vs.tau()
         print('Mdot = {:1.3e} g/s, Teff = {:g} K, tau = {:g}, z0r = {:g}'.format(Mdot, Teff, tau, z0r))
@@ -511,7 +523,13 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
         r = input_pars[0]
         vs, F, Teff, Mdot = StructureChoice(M=M, alpha=alpha, r=r, Par=input_pars[1], input=input,
                                             structure=structure, mu=mu, abundance=abundance)
-        z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+        try:
+            z0r, result = vs.fit(start_estimation_z0r=z0r_estimation)
+        except (ValueError, np.linalg.LinAlgError) as e:
+            print(e, 'STOP')
+            rg = 2 * G * M / c ** 2
+            print('STOP, r = {:1.3e} cm = {:g} rg, Mdot = {:1.3e} g/s, Teff = {:g} K'.format(r, r / rg, Mdot, Teff))
+            return
         z0r_estimation = z0r
         tau = vs.tau()
         rg = 2 * G * M / c ** 2

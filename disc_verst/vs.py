@@ -33,7 +33,7 @@ class Vars(IntEnum):
     S
         Mass coordinate.
     P
-        Pressure.
+        Gas pressure.
     Q
         Flux of energy.
     T
@@ -117,7 +117,7 @@ class BaseVerticalStructure:
     def law_of_rho(self, P, T, full_output):
         raise NotImplementedError
 
-    def law_of_opacity(self, rho, T, lnfree_e, return_grad):
+    def law_of_opacity(self, rho, T, lnfree_e):
         raise NotImplementedError
 
     def viscosity(self, y):
@@ -126,26 +126,25 @@ class BaseVerticalStructure:
     def rho(self, y, full_output):
         return self.law_of_rho(y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, full_output=full_output)
 
-    def opacity(self, y, lnfree_e, return_grad):
+    def opacity(self, y, lnfree_e):
         rho = self.rho(y, full_output=False)
-        return self.law_of_opacity(rho, y[Vars.T] * self.T_norm, lnfree_e=lnfree_e, return_grad=return_grad)
+        return self.law_of_opacity(rho, y[Vars.T] * self.T_norm, lnfree_e=lnfree_e)
 
     def photospheric_pressure_equation(self, tau, P):
         T = self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)
         rho, eos = self.law_of_rho(P, T, True)
-        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e, return_grad=False)
+        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
         return self.z0 * self.omegaK ** 2 / varkappa
 
     def P_ph(self):
-        # print(1e-7 * self.P_norm, self.Teff)
         solution = solve_ivp(
             self.photospheric_pressure_equation,
             [0, 2 / 3],
             [1e-7 * self.P_norm], rtol=self.eps
             # [self.P_norm], rtol=self.eps
         )
-        # print(solution.y[0][-1])
-        # print(1e-7 * self.P_norm)
+        print('P_ph = ', solution.y[0][-1])
+        print('1e-7 * P_norm = ', 1e-7 * self.P_norm)
         return solution.y[0][-1]
 
     def Q_initial(self):
@@ -199,6 +198,8 @@ class BaseVerticalStructure:
         if y[Vars.T] < 0 or y[Vars.S] < 0:
             print('S or T < 0')
             breakpoint()
+        if y[Vars.P] < 0:
+            raise ValueError('P<0')
         rho, eos = self.rho(y, full_output=True)
         dy[Vars.S] = 2 * rho * self.z0 / self.sigma_norm
         dy[Vars.P] = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
@@ -247,7 +248,7 @@ class BaseVerticalStructure:
         t = np.linspace(0, 1, 100)
         y = self.integrate(t)[0]
         rho, eos = self.rho(y, full_output=True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
         tau_norm = simps(varkappa * rho, t)
         return self.z0 * tau_norm + 2 / 3
 
@@ -270,7 +271,7 @@ class BaseVerticalStructure:
         T_C = y_c[Vars.T] * self.T_norm
         P_C = y_c[Vars.P] * self.P_norm
         rho_C, eos = self.rho(y_c, full_output=True)
-        varkappa_C = self.opacity(y_c, lnfree_e=eos.lnfree_e, return_grad=False)
+        varkappa_C = self.opacity(y_c, lnfree_e=eos.lnfree_e)
         return np.array([varkappa_C, rho_C, T_C, P_C, Sigma0])
 
     def tau0(self):
@@ -355,7 +356,7 @@ class RadiativeTempGradient:
 
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, full_output=True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
 
         if t == 1:
             dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
@@ -369,9 +370,13 @@ class RadiativeTempGradient:
 
 
 class RadiativeTempGradientPrad:
+    """
+    Temperature gradient class. Calculates radiative d(lnT)/d(lnPtotal) in the Eddington approximation.
+
+    """
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, full_output=True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e, return_grad=False)
+        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
 
         if t == 1:
             dTdz_der = (self.dQdz(y, t) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
@@ -379,18 +384,12 @@ class RadiativeTempGradientPrad:
             P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
             dP_full_der = - rho * self.omegaK ** 2 * self.z0 ** 2
             dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz_der / dP_full_der)
-            # # if dlnTdlnP_rad < 0.0:
-            # #     print('t = 1, ', dlnTdlnP_rad)
         else:
             dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
                     16 * sigmaSB * self.T_norm ** 4)
-
             P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
             dP_full = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2
             dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz / dP_full)
-
-            # if dlnTdlnP_rad < 0.0:
-            #     print('t = {}, '.format(t), dlnTdlnP_rad)
         return dlnTdlnP_rad
 
 
@@ -409,16 +408,14 @@ class IdealGasMixin:
 
 
 class KramersOpacityMixin:
-    varkappa0 = 5e24
+    varkappa0 = 5e24  # Kramers law
     zeta = 1
     gamma = -7 / 2
+    varkappa_sc = 0.34  # Thomson scattering
 
-    def law_of_opacity(self, rho, T, lnfree_e, return_grad):
-        if not return_grad:
-            return self.varkappa0 * (rho ** self.zeta) * (T ** self.gamma)
-        else:
-            dlnkap_dlnRho, dlnkap_dlnT = self.zeta, self.gamma
-            return self.varkappa0 * (rho ** self.zeta) * (T ** self.gamma), dlnkap_dlnRho, dlnkap_dlnT
+    def law_of_opacity(self, rho, T, lnfree_e):
+        varkappa_kram = self.varkappa0 * (rho ** self.zeta) * (T ** self.gamma)
+        return varkappa_kram + self.varkappa_sc
 
 
 class BellLin1994TwoComponentOpacityMixin:
@@ -428,22 +425,12 @@ class BellLin1994TwoComponentOpacityMixin:
     varkappa0_h = 1.0e-36  # H-scattering
     zeta_h = 1 / 3
     gamma_h = 10
+    varkappa_sc = 0.34  # Thomson scattering
 
-    def opacity_h(self, rho, T):
-        return self.varkappa0_h * (rho ** self.zeta_h) * (T ** self.gamma_h)
-
-    def opacity_ff(self, rho, T):
-        return self.varkappa0_ff * (rho ** self.zeta_ff) * (T ** self.gamma_ff)
-
-    def law_of_opacity(self, rho, T, lnfree_e, return_grad):
-        if not return_grad:
-            return np.minimum(self.opacity_h(rho, T), self.opacity_ff(rho, T))
-        else:
-            if self.opacity_h(rho, T) < self.opacity_ff(rho, T):
-                dlnkap_dlnRho, dlnkap_dlnT = self.zeta_h, self.gamma_h
-            else:
-                dlnkap_dlnRho, dlnkap_dlnT = self.zeta_ff, self.gamma_ff
-            return np.minimum(self.opacity_h(rho, T), self.opacity_ff(rho, T)), dlnkap_dlnRho, dlnkap_dlnT
+    def law_of_opacity(self, rho, T, lnfree_e):
+        opacity_h = self.varkappa0_h * (rho ** self.zeta_h) * (T ** self.gamma_h)
+        opacity_ff = self.varkappa0_ff * (rho ** self.zeta_ff) * (T ** self.gamma_ff)
+        return np.where(opacity_h < opacity_ff, opacity_h, opacity_ff + self.varkappa_sc)
 
 
 class Prad:
@@ -453,11 +440,8 @@ class Prad:
 
     def photospheric_pressure_equation(self, tau, P):
         T = self.Teff * (1 / 2 + 3 * tau / 4) ** (1 / 4)
-        # P = abs(P)
-        # print(np.log10(P), np.log10(T))
-
         rho, eos = self.law_of_rho(P, T, True)
-        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e, return_grad=False)
+        varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
 
         # if self.z0 * self.omegaK ** 2 / varkappa - (sigmaSB / c) * self.Teff ** 4 < 0:
         #     print(self.z0 * self.omegaK ** 2 / varkappa - (sigmaSB / c) * self.Teff ** 4)
@@ -471,9 +455,6 @@ class Prad:
 
     def dydt(self, t, y):
         dy = np.empty(4)
-        if y[Vars.T] < 0 or y[Vars.S] < 0:
-            print('S or T < 0')
-            breakpoint()
         rho, eos = self.rho(y, full_output=True)
 
         A = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
@@ -559,22 +540,18 @@ def main():
     h = np.sqrt(G * M * r)
     r_in = 3 * rg
     F = Mdot * h * (1 - np.sqrt(r_in / r))
-    vs = IdealKramersVerticalStructure(M, alpha, r, F)
-    # z0r, result = vs.fit()
-    result = vs.fit()
-    # if result.converged:
-    if result.success:
+    # vs = IdealKramersVerticalStructurePrad(M, alpha, r, F)
+    vs = IdealBellLin1994VerticalStructurePrad(M, alpha, r, F)
+    z0r, result = vs.fit()
+    if result.converged:
         print('The vertical structure has been calculated successfully.')
-    z0r, sigma_par = result.x
     Pi = vs.Pi_finder()
     print('Pi parameters =', Pi)
     print('z0/r = ', z0r)
-    print(result)
 
     varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
-    print(Sigma0 - sigma_par)
-    print(sigma_par)
-    print(vs.Sigma0_par)
+
+    print('Prad/Pgas_c = ', 4 * sigmaSB / (3 * c) * T_C ** 4 / P_C)
 
     t = np.linspace(0, 1, 100)
     S, P, Q, T = vs.integrate(t)[0]
