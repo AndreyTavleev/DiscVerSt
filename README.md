@@ -99,12 +99,12 @@ in the container and to the `$(pwd)/fig/` in the host machine.
 ## Calculate structure
 
 Module `vs` contains several classes that represent the vertical 
-structure of accretion discs in X-ray binaries for different assumptions 
+structure of accretion discs in X-ray binaries for different analytical assumptions 
 of opacity law. For given parameters the vertical structure of 
 disc is calculated and can be used for research of disc stability.
 
 Module `mesa_vs` contains some additional classes, that represent 
-the vertical structure for tabular opacities and convective energy transport.
+the vertical structure for tabular opacities and EoS and convective energy transport.
 
 Both `vs` and `mesa_vs` modules have help
 ``` python3
@@ -193,7 +193,7 @@ Irradiation can be taken into account in two ways:
 F^{\nu}_{\rm irr} = \frac{L_{\rm X}}{4\pi r^2} \, S(\nu).
 ```
    Such parameters are: frequency range `nu_irr`, units of frequency range 
-   `spectrum_irr_par` (see below), spectrum `spectrum_irr`, luminosity of irradiation source `L_X_irr` 
+   `spectrum_irr_par`, spectrum `spectrum_irr`, luminosity of irradiation source `L_X_irr` 
    and the cosine of incident angle `cos_theta_irr`.
 
    1. Frequency range `nu_irr` is array-like and can be either in Hz or in energy units (keV), this is determined by 
@@ -449,8 +449,9 @@ There are following analytic opacity options:
 1. Kramers law for solar composition: $(\zeta = 1, \gamma = -7/2, \varkappa_0 = 5\cdot10^{24})$ and Thomson electron 
    scattering $(\varkappa_{\rm R} = 0.34)$.
 2. Analytic approximations by [Bell & Lin (1994)](http://adsabs.harvard.edu/abs/1994ApJ...427..987B) to opacity: 
-   approximation obtained by the OPAL project $(\varkappa_0 = 1.5\cdot10^{20}, \zeta = 1, \gamma = -5/2)$ and opacity 
-   from scattering off hydrogen atoms $(\varkappa_0 = 1\cdot10^{-36}, \zeta = 1/3, \gamma = 10)$.
+   approximation obtained by the OPAL project $(\varkappa_0 = 1.5\cdot10^{20}, \zeta = 1, \gamma = -5/2)$, opacity 
+   from scattering off hydrogen atoms $(\varkappa_0 = 1\cdot10^{-36}, \zeta = 1/3, \gamma = 10)$ and Thomson electron
+   scattering $(\varkappa_{\rm R} = 0.34)$.
 
 Tabular values of opacity and EoS are obtained by interpolation using `eos` and `kappa` modules from 
 the [MESA code](http://mesa.sourceforge.net). In this case the input parameter is the chemical composition of the disc 
