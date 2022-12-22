@@ -127,7 +127,8 @@ mu = 0.6  # molecular weight
 # with molecular weight mu and radiative temperature gradient.
 
 vertstr = vs.IdealBellLin1994VerticalStructure(Mx=M, alpha=alpha, r=r, F=F, mu=mu)  # create the structure object
-z0r, result = vertstr.fit()  # calculate structure
+# the estimation of z0r free parameter is calculated automatically (default)
+z0r, result = vertstr.fit(z0r_estimation=None)  # calculate structure
 varkappa_C, rho_C, T_C, P_C, Sigma0 = vertstr.parameters_C()
 print(z0r)  # semi-thickness z0/r of disc
 print(varkappa_C, rho_C, T_C, P_C)  # Opacity, bulk density, temperature and gas pressure in the symmetry plane of disc
@@ -176,7 +177,7 @@ the vertical structure of self-irradiated discs.
 
 Irradiation can be taken into account in two ways:
 
-1. Via either `T_irr` or `C_irr` parameters, that is, the irradiation temperature and irradiation constant. 
+1. Via either `T_irr` or `C_irr` parameters, that is, the irradiation temperature and irradiation parameter. 
    It is a simple approach for irradiation, when the external flux doesn't penetrate into the disc and only heats the 
    disc surface.
 
@@ -191,9 +192,9 @@ Irradiation can be taken into account in two ways:
       `spectrum_irr_par` in `['nu', 'E_in_keV']`.
    2. Spectrum `spectrum_irr` can be either an array-like or a Python function. 
       1. If `spectrum_irr` is array-like, it must be in 1/Hz or in 1/keV depending on 'spectrum_irr_par',
-         must be normalized to unity, and its size must be equal to `nu_irr.size`.
+         must be normalised to unity, and its size must be equal to `nu_irr.size`.
       2. If `spectrum_irr` is a Python function, the spectrum is calculated 
-         for the frequency range `nu_irr` and automatically normalized to unity over `nu_irr`. 
+         for the frequency range `nu_irr` and automatically normalised to unity over `nu_irr`. 
          Note, that units of `nu_irr` and units of `spectrum_irr` arguments must be consistent. 
          There are two optional parameters `args_spectrum_irr` and `kwargs_spectrum_irr` 
          for arguments (keyword arguments) of spectrum function.
@@ -227,7 +228,7 @@ print(z0r)  # semi-thickness z0/r of disc
 print(varkappa_C, rho_C, T_C, P_C)  # Opacity, bulk density, temperature and gas pressure in the symmetry plane of disc
 print(Sigma0)  # Surface density of disc
 print(vertstr.tau())  # optical thickness of disc
-print(vertstr.C_irr)  # corresponding irradiation constant
+print(vertstr.C_irr)  # corresponding irradiation parameter
 ```
 
 ### Usage of advanced irradiation scheme:
@@ -270,14 +271,17 @@ vertstr = mesa_vs.MesaVerticalStructureRadConvExternalIrradiation(
                      kwargs_spectrum_irr=kwargs,
                      cos_theta_irr=cos_theta_irr, 
                      cos_theta_irr_exp=cos_theta_irr_exp)  # create the structure object
-result = vertstr.fit()  # calculate structure
+# let us set the free parameters estimation
+result = vertstr.fit(z0r_estimation=0.068, Sigma0_estimation=1032)  # calculate structure
+# if structure is fitted successfully, cost function must be less than 1e-16
+print(result.cost)  # cost function
 z0r, Sigma0 = result.x  # Sigma0 is additional free parameter to find
 varkappa_C, rho_C, T_C, P_C, Sigma0 = vertstr.parameters_C()
 print(z0r)  # semi-thickness z0/r of disc
 print(varkappa_C, rho_C, T_C, P_C)  # Opacity, bulk density, temperature and gas pressure in the symmetry plane of disc
 print(Sigma0)  # Surface density of disc
 print(vertstr.tau())  # optical thickness of disc
-print(vertstr.C_irr, vertstr.T_irr)  # irradiation constant and temperature
+print(vertstr.C_irr, vertstr.T_irr)  # irradiation parameter and temperature
 ```
 
 ## Structure Choice

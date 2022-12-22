@@ -73,7 +73,7 @@ class BaseVerticalStructure:
     Methods
     -------
     fit()
-        Solves optimization problem and calculate the vertical structure.
+        Solves optimisation problem and calculate the vertical structure.
     integrate()
         Integrates the system and return values of four dimensionless functions.
     Pi_finder()
@@ -99,6 +99,7 @@ class BaseVerticalStructure:
 
         self.z0 = self.z0_init()
         self.Teff = (self.Q0 / sigmaSB) ** (1 / 4)
+        self.fitted = False
 
     @property
     def z0(self):
@@ -214,7 +215,7 @@ class BaseVerticalStructure:
     def integrate(self, t):
         """
         Integrates ODEs and return list that contains array with values of
-        four dimentsionless functions and a message from the solver.
+        four dimensionless functions and a message from the solver.
 
         Parameters
         ----------
@@ -225,7 +226,7 @@ class BaseVerticalStructure:
         Returns
         -------
         list
-            List containing the array with values of dimentionless functions
+            List containing the array with values of dimensionless functions
             calculating at points of `t` array. Also list contains the
             message from the integrator.
 
@@ -305,33 +306,32 @@ class BaseVerticalStructure:
         return (self.r * 2.86e-7 * self.F ** (3 / 20) * (self.Mx / M_sun) ** (-9 / 20)
                 * self.alpha ** (-1 / 10) * (self.r / 1e10) ** (1 / 20))
 
-    def fit(self, start_estimation_z0r=None):
+    def fit(self, z0r_estimation=None):
         """
-        Solves optimization problem and calculates the vertical structure.
+        Solves optimisation problem and calculates the vertical structure.
 
         Parameters
         ----------
-        start_estimation_z0r : double
-            Start estimation of z0r free parameter to fit the structure. Default is None,
-            the estimation is calculated automatically.
+        z0r_estimation : double
+            Start estimation of z0r free parameter to fit the structure.
+            Default is None, the estimation is calculated automatically.
 
         Returns
         -------
         double and result
-            The value of normalized unknown free parameter z_0 / r and result of optimization.
+            The value of normalised unknown free parameter z_0 / r and result of optimisation.
 
         """
 
         def dq(z0r):
-            # print('z0r = ', z0r)
             self.z0 = z0r * self.r
             q_c = self.y_c()[Vars.Q]
             return q_c
 
-        if start_estimation_z0r is None:
+        if z0r_estimation is None:
             z0r = self.z0 / self.r
         else:
-            z0r = start_estimation_z0r
+            z0r = z0r_estimation
         sign_dq = dq(z0r)
         if sign_dq > 0:
             factor = 2.0
@@ -345,6 +345,7 @@ class BaseVerticalStructure:
 
         z0r, result = brentq(dq, z0r, z0r / factor, full_output=True)
         self.z0 = z0r * self.r
+        self.fitted = True
         return z0r, result
 
 
@@ -535,8 +536,8 @@ def main():
     r = 400 * rg
     print('Finding Pi parameters of structure and making a structure plot. '
           '\nStructure with Kramers opacity and ideal gas EOS.')
-    print('M = {:g} grams \nr = {:g} cm = {:g} rg '
-          '\nalpha = {:g} \nMdot = {:g} g/s'.format(M, r, r / rg, alpha, Mdot))
+    print(f'M = {M:g} grams \nr = {r:g} cm = {r / rg:g} rg '
+          f'\nalpha = {alpha:g} \nMdot = {Mdot:g} g/s')
     h = np.sqrt(G * M * r)
     r_in = 3 * rg
     F = Mdot * h * (1 - np.sqrt(r_in / r))
@@ -561,8 +562,8 @@ def main():
     plt.plot(1 - t, Q, label=r'$\hat{Q}$')
     plt.plot(1 - t, T, label=r'$\hat{T}$')
     plt.xlabel('$z / z_0$')
-    plt.title(r'$M = {:g}\, M_{{\odot}},\, \dot{{M}} = {:g}\, {{\rm g/s}},\, '
-              r'\alpha = {:g}, r = {:g} \,\rm cm$'.format(M / M_sun, Mdot, alpha, r))
+    plt.title(rf'$M = {M / M_sun:g}\, M_{{\odot}},\, \dot{{M}} = {Mdot:g}\, {{\rm g/s}},\, '
+              rf'\alpha = {alpha:g}, r = {r:g} \,\rm cm$')
     plt.grid()
     plt.legend()
     os.makedirs('fig/', exist_ok=True)
