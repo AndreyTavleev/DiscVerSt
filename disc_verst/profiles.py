@@ -263,30 +263,11 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                                                                          cos_theta_irr=cos_theta_irr,
                                                                          cos_theta_irr_exp=cos_theta_irr_exp,
                                                                          abundance=abundance, P_ph_0=P_ph_0)
-    elif structure == 'Prad':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = mesa_vs.MesaVerticalStructureRadConvPrad(M, alpha, r, F, abundance=abundance)
-    elif structure == 'Prad_BellLin':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = vert.IdealBellLin1994VerticalStructurePrad(M, alpha, r, F, mu=mu)
-    elif structure == 'Prad_rad':
-        try:
-            if np.isnan(mesa_vs):
-                raise ModuleNotFoundError('Mesa2py is not installed')
-        except TypeError:
-            vs = mesa_vs.MesaVerticalStructurePrad(M, alpha, r, F, abundance=abundance)
     else:
         raise Exception("Incorrect structure. Possible options are: 'Kramers', 'BellLin',\n"
                         "'Mesa', 'MesaAd', 'MesaRadAd', 'MesaRadConv', 'MesaIdealGas',\n"
                         "'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero',\n"
-                        "'MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',\n"
-                        "'Prad', 'Prad_BellLin' or 'Prad_rad'")  # Change docstring!!!
+                        "'MesaIrr', 'MesaRadAdIrr' or 'MesaRadConvIrr'")
 
     return vs, F, Teff, Mdot
 
@@ -330,7 +311,7 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
                      L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None,
                      args_spectrum_irr=(), kwargs_spectrum_irr={},
                      cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
-                     z0r_estimation=None, Sigma0_estimation=None, P_ph_0=None,
+                     z0r_estimation=None, Sigma0_estimation=None, P_ph_0=None, verbose=False,
                      n=100, add_Pi_values=True, path_dots=None):
     """
     Calculates vertical structure and makes table with disc parameters as functions of vertical coordinate.
@@ -417,6 +398,9 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
         If structure contains Irradiation (either irradiation scheme),
         it's the start estimation for pressure at the photosphere (pressure boundary condition).
         Default is None, the estimation is calculated automatically.
+    verbose : bool
+        Whether to print values of free parameters at each iteration during fitting.
+        Default is False, the fitting process performs silently.
     add_Pi_values : bool
         Whether to write Pi-parameters (see Ketsaris & Shakura, 1998) to the output file header.
     path_dots : str
@@ -461,10 +445,10 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
                                         cos_theta_irr=cos_theta_irr, cos_theta_irr_exp=cos_theta_irr_exp,
                                         C_irr=C_irr, T_irr=T_irr, P_ph_0=P_ph_0)
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
-        result = vs.fit(z0r_estimation=z0r_estimation, Sigma0_estimation=Sigma0_estimation)
+        result = vs.fit(z0r_estimation=z0r_estimation, Sigma0_estimation=Sigma0_estimation, verbose=verbose)
         z0r, sigma_par = result.x
     else:
-        z0r, result = vs.fit(z0r_estimation=z0r_estimation)
+        z0r, result = vs.fit(z0r_estimation=z0r_estimation, verbose=verbose)
     rg = 2 * G * M / c ** 2
     t = np.linspace(0, 1, n)
     S, P, Q, T = vs.integrate(t)[0]
@@ -498,7 +482,7 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
                    'varkappa -- in cm^2/g \nt = 1 - z/z0 ' \
                    f'\nM = {M / M_sun:e} Msun, alpha = {alpha}, r = {r:e} cm, r = {r / rg} rg, ' \
                    f'{Teff_string} = {Teff} K, Mdot = {Mdot:e} g/s, F = {F:e} g*cm^2/s^2, structure = {structure}'
-    if structure in ['Kramers', 'BellLin', 'MesaIdealGas', 'Prad_BellLin']:
+    if structure in ['Kramers', 'BellLin', 'MesaIdealGas']:
         header_input += f', mu = {mu}'
     else:
         header_input += f', abundance = {abundance}'
@@ -522,7 +506,7 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
 def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='solar', nu_irr=None,
             L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
             cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
-            z0r_start_estimation=None, Sigma0_start_estimation=None,
+            z0r_start_estimation=None, Sigma0_start_estimation=None, P_ph_0=None, verbose=False,
             n=100, tau_break=True, add_Pi_values=True, path_dots=None):
     """
     Calculates S-curve and makes table with disc parameters on the S-curve.
@@ -602,13 +586,22 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
         T_irr is the irradiation temperature.
     z0r_start_estimation : double
         Start estimation of z0r free parameter to fit the first point of S-curve.
-        Further, z0r estimation of the next point is the z0r value of the previous point.
+        Further, z0r estimation at the next point is the z0r value at the previous point.
         Default is None, the start estimation is calculated automatically.
     Sigma0_start_estimation : double
         If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'],
-        it's the start estimation of Sigma0 free parameter to fit the first point of S-curve.
-        Further, Sigma0 estimation of the next point is the 2*Sigma0 value of the previous point.
+        it's the start estimation at Sigma0 free parameter to fit the first point of S-curve.
+        Further, Sigma0 estimation at the next point is the 2*Sigma0 value at the previous point.
         Default is None, the start estimation is calculated automatically.
+    P_ph_0 : double
+        If structure contains Irradiation (either irradiation scheme),
+        it's the start estimation for pressure at the photosphere (pressure boundary condition)
+        to fit the first point of S-curve. Further, P_ph estimation at the next point
+        is the P_ph value at the previous point.
+        Default is None, the estimation is calculated automatically.
+    verbose : bool
+        Whether to print values of free parameters at each iteration during fitting.
+        Default is False, the fitting process performs silently.
     n : int
         Number of dots to calculate.
     tau_break : bool
@@ -658,7 +651,6 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
 
     sigma_temp = np.infty
     except_fits = 0
-    P_ph_0 = None
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                      'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
         Teff_string = 'Tvis'
@@ -670,7 +662,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
         header = f'Sigma0 \t{Teff_string} \tMdot \tF \tz0r \trho_c \tT_c \tP_c \ttau \tPradPgas_c \tvarkappa_c'
         header_end = f'\nM = {M / M_sun:e} Msun, alpha = {alpha}, ' \
                      f'r = {r:e} cm, r = {r / rg} rg, structure = {structure}'
-        if structure in ['Kramers', 'BellLin', 'MesaIdealGas', 'Prad_BellLin']:
+        if structure in ['Kramers', 'BellLin', 'MesaIdealGas']:
             header_end += f', mu = {mu}'
         else:
             header_end += f', abundance = {abundance}'
@@ -696,30 +688,28 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
                                             C_irr=C_irr, T_irr=T_irr, P_ph_0=P_ph_0)
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
             try:
-                result = vs.fit(z0r_estimation=z0r_estimation, Sigma0_estimation=sigma_par_estimation)
-            except (mesa_vs.NotConvergeError, mesa_vs.PphNotConvergeError):
-                print('Except fit')
+                result = vs.fit(z0r_estimation=z0r_estimation, Sigma0_estimation=sigma_par_estimation, verbose=verbose)
+            except Exception as e:
+                print(e)
+                print('Non-converged fit')
                 except_fits += 1
                 continue
             z0r, sigma_par = result.x
             z0r_estimation, sigma_par_estimation = z0r, 2 * sigma_par
             P_ph_0 = vs.P_ph_0
-        elif structure in ['MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
+        else:
             try:
-                z0r, result = vs.fit(z0r_estimation=z0r_estimation)
-            except mesa_vs.PphNotConvergeError:
-                print('Except fit')
+                z0r, result = vs.fit(z0r_estimation=z0r_estimation, verbose=verbose)
+            except Exception as e:
+                print(e)
+                print('Non-converged fit')
                 except_fits += 1
                 continue
             z0r_estimation = z0r
-            P_ph_0 = vs.P_ph_0
-        else:
             try:
-                z0r, result = vs.fit(z0r_estimation=z0r_estimation)
-            except ValueError as e:
-                print(e, 'STOP')
-                return
-            z0r_estimation = z0r
+                P_ph_0 = vs.P_ph_0
+            except AttributeError:
+                pass
 
         tau = vs.tau()
         print(f'Mdot = {Mdot:1.3e} g/s, {Teff_string} = {Teff:g} K, tau = {tau:g}, z0r = {z0r:g}')
@@ -734,6 +724,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
         output_string = [Sigma0, Teff, Mdot, F, z0r, rho_C, T_C, P_C, tau, PradPgas_C, varkappa_C]
 
         print(f'Sigma0 = {Sigma0:g} g/cm^2')
+        print('Prad/Pgas_C = ', PradPgas_C)
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
@@ -763,8 +754,6 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
             delta_Sigma_plus = Sigma0 - sigma_temp
             sigma_temp = Sigma0
 
-        print('Prad/Pgas = ', PradPgas_C)
-
         if delta_Sigma_plus > 0.0 and Sigma_plus_key:
             Sigma_plus_index = i - 1 - except_fits
             Sigma_plus_key = False
@@ -780,14 +769,14 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
         file.write(f'# Sigma_plus_index = {Sigma_plus_index:d}  Sigma_minus_index = {Sigma_minus_index:d}')
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                          'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
-            file.write(f'\n# Except_fits = {except_fits}')
+            file.write(f'\n# Non-converged_fits = {except_fits}')
     return
 
 
 def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abundance='solar',
                    nu_irr=None, L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(),
                    kwargs_spectrum_irr={}, cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
-                   z0r_start_estimation=None, Sigma0_start_estimation=None,
+                   z0r_start_estimation=None, Sigma0_start_estimation=None, P_ph_0=None, verbose=False,
                    n=100, tau_break=True, add_Pi_values=True, path_dots=None):
     """
     Calculates radial structure of disc. Return table, which contains input parameters of the system,
@@ -879,13 +868,22 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
         In that case its size must be equal to n (number of dots to calculate).
     z0r_start_estimation : double
         Start estimation of z0r free parameter to fit the first point of radial structure.
-        Further, z0r estimation of the next point is the z0r value of the previous point.
+        Further, z0r estimation at the next point is the z0r value at the previous point.
         Default is None, the start estimation is calculated automatically.
     Sigma0_start_estimation : double
         If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'],
         it's the start estimation of Sigma0 free parameter to fit the first point of radial structure.
-        Further, Sigma0 estimation of the next point is the 2*Sigma0 value of the previous point.
+        Further, Sigma0 estimation at the next point is the 2*Sigma0 value at the previous point.
         Default is None, the start estimation is calculated automatically.
+    P_ph_0 : double
+        If structure contains Irradiation (either irradiation scheme),
+        it's the start estimation for pressure at the photosphere (pressure boundary condition)
+        to fit the first point of S-curve. Further, P_ph estimation at the next point
+        is the P_ph value at the previous point.
+        Default is None, the estimation is calculated automatically.
+    verbose : bool
+        Whether to print values of free parameters at each iteration during fitting.
+        Default is False, the fitting process performs silently.
     n : int
         Number of dots to calculate.
     tau_break : bool
@@ -924,7 +922,6 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
 
     z0r_estimation = z0r_start_estimation
     sigma_par_estimation = Sigma0_start_estimation
-    P_ph_0 = None
     except_fits = 0
     r_arr = np.geomspace(r_start, r_end, n)
 
@@ -938,7 +935,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
         header = f'r \tr/rg \tSigma0 \tMdot \t{Teff_string} \tF \tz0r \trho_c \tT_c \tP_c ' \
                  f'\ttau \tPradPgas_c \tvarkappa_c'
         header_end = f'\nM = {M / M_sun:e} Msun, alpha = {alpha}, structure = {structure}'
-        if structure in ['Kramers', 'BellLin', 'MesaIdealGas', 'Prad_BellLin']:
+        if structure in ['Kramers', 'BellLin', 'MesaIdealGas']:
             header_end += f', mu = {mu}'
         else:
             header_end += f', abundance = {abundance}'
@@ -971,32 +968,28 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
                                             C_irr=input_pars[4], T_irr=input_pars[5], P_ph_0=P_ph_0)
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
             try:
-                result = vs.fit(z0r_estimation=z0r_estimation, Sigma0_estimation=sigma_par_estimation)
-            except (mesa_vs.NotConvergeError, mesa_vs.PphNotConvergeError):
-                print('Except fit')
+                result = vs.fit(z0r_estimation=z0r_estimation, Sigma0_estimation=sigma_par_estimation, verbose=verbose)
+            except Exception as e:
+                print(e)
+                print('Non-converged fit')
                 except_fits += 1
                 continue
             z0r, sigma_par = result.x
             z0r_estimation, sigma_par_estimation = z0r, 2 * sigma_par
             P_ph_0 = vs.P_ph_0
-        elif structure in ['MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
+        else:
             try:
-                z0r, result = vs.fit(z0r_estimation=z0r_estimation)
-            except mesa_vs.PphNotConvergeError:
-                print('Except fit')
+                z0r, result = vs.fit(z0r_estimation=z0r_estimation, verbose=verbose)
+            except Exception as e:
+                print(e)
+                print('Non-converged fit')
                 except_fits += 1
                 continue
             z0r_estimation = z0r
-            P_ph_0 = vs.P_ph_0
-        else:
             try:
-                z0r, result = vs.fit(z0r_estimation=z0r_estimation)
-            except (ValueError, np.linalg.LinAlgError) as e:
-                print(e, 'STOP')
-                rg = 2 * G * M / c ** 2
-                print('STOP, r = {:1.3e} cm = {:g} rg, Mdot = {:1.3e} g/s, Teff = {:g} K'.format(r, r / rg, Mdot, Teff))
-                return
-            z0r_estimation = z0r
+                P_ph_0 = vs.P_ph_0
+            except AttributeError:
+                pass
 
         tau = vs.tau()
         rg = 2 * G * M / c ** 2
@@ -1012,7 +1005,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
 
         output_string = [r, r / rg, Sigma0, Mdot, Teff, F, z0r, rho_C, T_C, P_C, tau, PradPgas_C, varkappa_C]
         print(f'Sigma0 = {Sigma0:g} g/cm^2')
-        print('Prad/Pgas = ', PradPgas_C)
+        print('Prad/Pgas_C = ', PradPgas_C)
 
         rho, eos = vs.law_of_rho(P_C, T_C, full_output=True)
         try:
@@ -1043,13 +1036,12 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                      'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
         with open(path_dots, 'a') as file:
-            file.write(f'# Except_fits = {except_fits}')
-    return 0
+            file.write(f'# Non-converged_fits = {except_fits}')
+    return
 
 
 def main():
     from matplotlib import pyplot as plt
-    from astropy.io import ascii
     import os
     M = 1.5 * M_sun
     alpha = 0.2

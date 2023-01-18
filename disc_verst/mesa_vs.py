@@ -35,9 +35,7 @@ from astropy import units
 from scipy.integrate import simps
 from scipy.optimize import root, least_squares, brentq
 
-from disc_verst.vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient, RadiativeTempGradientPrad
-from disc_verst.vs import BellLin1994TwoComponentOpacityMixin
-from disc_verst.vs import Prad
+from disc_verst.vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient, PgasPradNotConvergeError
 
 sigmaSB = const.sigma_sb.cgs.value
 sigmaT = const.sigma_T.cgs.value
@@ -54,15 +52,37 @@ except ModuleNotFoundError as e:
     raise ModuleNotFoundError('Mesa2py is not installed') from e
 
 
-class NotConvergeError(Exception):
+class IrrNotConvergeError(Exception):
     def __init__(self, Sigma0_par, z0r):
         self.Sigma0_par = Sigma0_par
         self.z0r = z0r
+        self.message = f'Not converged, try larger Sigma0_par or smaller z0r estimations. ' \
+                       f'Current estimations are Sigma0_par = {self.Sigma0_par:g}, z0r = {self.z0r:g}.'
+
+    def __str__(self):
+        return self.message
 
 
 class PphNotConvergeError(Exception):
-    def __init__(self, func_Pph):
+    def __init__(self, func_Pph, P_ph=None, z0r=None, Sigma0_par=None):
         self.func_Pph = abs(func_Pph)
+        self.P_ph = P_ph
+        self.z0r = z0r
+        self.Sigma0_par = Sigma0_par
+        if self.P_ph is None:
+            self.message = f'P_ph = P(z=z0) not converged. fun = {self.func_Pph}'
+        elif Sigma0_par is None:
+            self.message = f'P_ph = P(z=z0) not converged. Try larger start estimation for P_ph. ' \
+                           f'Current P_ph_0 = {self.P_ph:g}.\n' \
+                           f'Also you can try another z0r estimation. Current estimations is z0r = {self.z0r:g}.'
+        else:
+            self.message = f'P_ph = P(z=z0) not converged. Try larger start estimation for P_ph. ' \
+                           f'Current P_ph_0 = {self.P_ph:g}.\n' \
+                           f'Also you can try another z0r and Sigma0_par estimations. ' \
+                           f'Current estimations are Sigma0_par = {self.Sigma0_par:g}, z0r = {self.z0r:g}.'
+
+    def __str__(self):
+        return self.message
 
 
 class BaseMesaVerticalStructure(BaseVerticalStructure):
@@ -191,23 +211,27 @@ class AdiabaticTempGradient:
 class RadiativeAdiabaticGradient:
     """
     Temperature gradient class.
-    If gradient is over-adiabatic, then returns adiabatic d(lnT)/d(lnP), else calculates radiative d(lnT)/d(lnP).
+    If gradient is over-adiabatic, then returns adiabatic d(lnT)/d(lnPtotal),
+    else calculates radiative d(lnT)/d(lnPtotal).
 
     """
 
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, True)
         varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
+        P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
 
         if t == 1:
-            dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
-                    self.Q_norm * self.P_norm / self.T_norm ** 4) / (16 * sigmaSB * self.z0 * self.omegaK ** 2)
+            dTdz_der = (self.dQdz(y, t) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
+                    16 * sigmaSB * self.T_norm ** 4)
+            dP_full_der = - rho * self.omegaK ** 2 * self.z0 ** 2
+            dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz_der / dP_full_der)
         else:
-            dTdz = ((abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
-                    16 * sigmaSB * self.T_norm ** 4))
-            dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
+            dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
+                    16 * sigmaSB * self.T_norm ** 4)
 
-            dlnTdlnP_rad = (y[Vars.P] / y[Vars.T]) * (dTdz / dPdz)
+            dP_full = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2
+            dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz / dP_full)
 
         if dlnTdlnP_rad < eos.grad_ad:
             return dlnTdlnP_rad
@@ -217,22 +241,27 @@ class RadiativeAdiabaticGradient:
 
 class RadConvTempGradient:
     """
-    Temperature gradient class. Calculates d(lnT)/d(lnP) in presence of convection according to mixing length theory.
+    Temperature gradient class. Calculates d(lnT)/d(lnPtotal) in presence of convection
+    according to mixing length theory.
 
     """
 
     def dlnTdlnP(self, y, t):
         rho, eos = self.rho(y, True)
         varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
+        P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
 
         if t == 1:
-            dlnTdlnP_rad = - self.dQdz(y, t) * (y[Vars.P] / y[Vars.T] ** 4) * 3 * varkappa * (
-                    self.Q_norm * self.P_norm / self.T_norm ** 4) / (16 * sigmaSB * self.z0 * self.omegaK ** 2)
+            dTdz_der = (self.dQdz(y, t) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
+                    16 * sigmaSB * self.T_norm ** 4)
+            dP_full_der = - rho * self.omegaK ** 2 * self.z0 ** 2
+            dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz_der / dP_full_der)
         else:
             dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
                     16 * sigmaSB * self.T_norm ** 4)
-            dPdz = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm
-            dlnTdlnP_rad = (y[Vars.P] / y[Vars.T]) * (dTdz / dPdz)
+
+            dP_full = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2
+            dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz / dP_full)
 
         if dlnTdlnP_rad < eos.grad_ad:
             return dlnTdlnP_rad
@@ -240,15 +269,13 @@ class RadConvTempGradient:
             return dlnTdlnP_rad
 
         alpha_ml = 1.5
-        H_p = y[Vars.P] * self.P_norm / (
-                rho * self.omegaK ** 2 * self.z0 * (1 - t) + self.omegaK * np.sqrt(y[Vars.P] * self.P_norm * rho))
+        H_p = P_full / (rho * self.omegaK ** 2 * self.z0 * (1 - t) + self.omegaK * np.sqrt(P_full * rho))
         H_ml = alpha_ml * H_p
         omega = varkappa * rho * H_ml
         A = 9 / 8 * omega ** 2 / (3 + omega ** 2)
         der = eos.dlnRho_dlnT_const_Pgas
         if der > 0:
             der = -1
-            print('FUUUUUU!!!')
 
         VV = -((3 + omega ** 2) / (
                 3 * omega)) ** 2 * eos.c_p ** 2 * rho ** 2 * H_ml ** 2 * self.omegaK ** 2 * self.z0 * (1 - t) / (
@@ -257,24 +284,17 @@ class RadConvTempGradient:
         V = 1 / np.sqrt(VV)
 
         coeff = [2 * A, V, V ** 2, - V]
-        # print(coeff)
         try:
             x = np.roots(coeff)
         except np.linalg.LinAlgError as ex:
-            print('LinAlgError')
+            print('Error with convective energy transport calculation.')
+            # print('LinAlgError, coeff[2A, V, V ** 2, -V] = ', coeff)
             raise ex
-            # breakpoint()
 
         x = [a.real for a in x if a.imag == 0 and 0.0 < a.real < 1.0]
         if len(x) != 1:
-            print('not one x of there is no right x')
-            raise ValueError
-            # breakpoint()
+            raise ValueError('Error with convective energy transport calculation.')
         x = x[0]
-
-        # print(x)
-        # print(H_p, H_ml, omega, eos.c_p, eos.dlnRho_dlnT_const_Pgas, dlnTdlnP_rad - eos.grad_ad, VV, rho,
-        #       y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, eos.grad_ad, dlnTdlnP_rad, varkappa)
 
         dlnTdlnP_conv = eos.grad_ad + (dlnTdlnP_rad - eos.grad_ad) * x * (x + V)
         return dlnTdlnP_conv
@@ -365,11 +385,12 @@ class ExternalIrradiation:
                 (1 - D_nu) * (np.exp(-tau / zeta_0) + np.exp(-(tau_Xray - tau) / zeta_0))
         )
 
-        if (tau_Xray[0] - tau[0]) < 0:
-            raise NotConvergeError(self.Sigma0_par, self.z0 / self.r)
+        if np.any(tau_Xray - tau < 0):
+            raise IrrNotConvergeError(self.Sigma0_par, self.z0 / self.r)
         return J_tot
 
     def H_tot(self, F_nu, tau_Xray, Pph):  # eddington flux at the photosphere
+        # Pph = P_total_ph
         sigma_sc = 0.34  # not exactly sigma_sc in case of not fully ionized gas
         k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
         tau = (sigma_sc + k_d_nu) * Pph / (self.z0 * self.omegaK ** 2)  # tau at the photosphere
@@ -387,9 +408,8 @@ class ExternalIrradiation:
                 (zeta_0 - D_nu / (3 * zeta_0)) * (np.exp(-tau / zeta_0) - np.exp(-(tau_Xray - tau) / zeta_0))
         )
 
-        i = 0
-        if (tau_Xray[i] - tau[i]) < 0:
-            raise NotConvergeError(self.Sigma0_par, self.z0 / self.r)
+        if np.any(tau_Xray - tau < 0):
+            raise IrrNotConvergeError(self.Sigma0_par, self.z0 / self.r)
         return H_tot
 
     def epsilon(self, y, t):
@@ -401,6 +421,7 @@ class ExternalIrradiation:
         return epsilon
 
     def Q_irr_ph(self, Pph):
+        # Pph = P_total_ph
         sigma_sc = 0.34  # not exactly sigma_sc in case of not fully ionized gas
         k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
         tau_Xray = (sigma_sc + k_d_nu) * (self.Sigma0_par + 2 * Pph / (self.z0 * self.omegaK ** 2))
@@ -408,12 +429,14 @@ class ExternalIrradiation:
         return Qirr
 
     def photospheric_pressure_equation_irr(self, tau, P, Pph):
+        # Pph = P_total_ph, P = P_total
         T = (self.Teff ** 4 * (1 / 2 + 3 * tau / 4) + self.Q_irr_ph(Pph) / sigmaSB) ** (1 / 4)
-        rho, eos = self.law_of_rho(P, T, True)
+        rho, eos = self.law_of_rho(P - 4 * sigmaSB / (3 * c) * T ** 4, T, True)
         varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
         return self.z0 * self.omegaK ** 2 / varkappa
 
     def P_ph_irr(self, Pph):
+        # Pph = P_total_ph, solution is P_total
         solution = self.photospheric_pressure_equation_irr(tau=2 / 3, P=Pph, Pph=Pph) * 2 / 3
         return solution
 
@@ -432,23 +455,35 @@ class ExternalIrradiation:
         """
 
         if self.P_ph_0 is None:
-            self.P_ph_0 = self.P_ph()
+            self.P_ph_0 = self.P_ph() + 4 * sigmaSB / (3 * c) * self.Teff ** 4  # P_ph_0 = P_total
 
         def fun_P_ph(x):
-            return abs(x) - self.P_ph_irr(abs(x))
+            # x = P_total_ph
+            result = abs(x) - self.P_ph_irr(abs(x))
+            return result
 
         if not self.P_ph_key:
             sign_P_ph = fun_P_ph(self.P_ph_0)
+            if np.isnan(sign_P_ph):
+                raise PphNotConvergeError(sign_P_ph, self.P_ph_0, self.z0 / self.r, self.Sigma0_par)
             if sign_P_ph > 0:
                 factor = 0.5
             else:
                 factor = 2.0
+            P_ph_a = self.P_ph_0
 
             while True:
                 self.P_ph_0 *= factor
                 if sign_P_ph * fun_P_ph(self.P_ph_0) < 0:
                     break
-            P_ph, res = brentq(fun_P_ph, self.P_ph_0, self.P_ph_0 / factor, full_output=True)
+                if np.isnan(fun_P_ph(self.P_ph_0)):
+                    factor = 1.05
+                if factor != 1.05:
+                    P_ph_a = self.P_ph_0
+                if self.P_ph_0 > P_ph_a and factor == 1.05:
+                    raise PphNotConvergeError(fun_P_ph(self.P_ph_0), self.P_ph_0, self.z0 / self.r, self.Sigma0_par)
+
+            P_ph, res = brentq(fun_P_ph, self.P_ph_0, P_ph_a, full_output=True)
             if abs(fun_P_ph(P_ph)) > 1e-7:
                 raise PphNotConvergeError(fun_P_ph(P_ph))
             self.P_ph_0 = P_ph + 1
@@ -466,9 +501,14 @@ class ExternalIrradiation:
         self.C_irr = Qirr / simps(self.F_nu_irr, self.nu_irr)
         self.T_irr = (Qirr / sigmaSB) ** (1 / 4)
         self.Q_irr = Qirr
+        P_gas_ph = P_ph - 4 * sigmaSB / (3 * c) * (self.Teff ** 4 + self.T_irr ** 4)
+        if P_gas_ph < 0 or np.isnan(P_gas_ph):
+            raise PgasPradNotConvergeError(P_gas=P_gas_ph,
+                                           P_rad=4 * sigmaSB / (3 * c) * (self.Teff ** 4 + self.T_irr ** 4),
+                                           t=0.0, z0r=self.z0 / self.r, Sigma0_par=self.Sigma0_par)
         y = np.empty(4, dtype=np.float64)
         y[Vars.S] = 0
-        y[Vars.P] = P_ph / self.P_norm
+        y[Vars.P] = P_gas_ph / self.P_norm
         y[Vars.Q] = Q_initial
         y[Vars.T] = (Q_initial * self.Q_norm / sigmaSB) ** (1 / 4) / self.T_norm  # Tph^4 = Teff^4 + Tirr^4
         return y
@@ -478,13 +518,15 @@ class ExternalIrradiation:
         result = -(3 / 2) * self.z0 * self.omegaK * w_r_phi / self.Q_norm - self.epsilon(y, t) * self.z0 / self.Q_norm
         return result
 
-    def dq(self, x, norm):
+    def dq(self, x, norm, verbose):
         self.Sigma0_par = abs(x[1]) * norm
         self.z0 = abs(x[0]) * self.r
         q_c = np.array([self.y_c()[Vars.Q], self.Sigma0_par / self.parameters_C()[4] - 1])
+        if verbose:
+            print(f'z0r, Sigma0_par = {abs(x[0]):g}, {self.Sigma0_par:g}')
         return q_c
 
-    def fit(self, z0r_estimation=None, Sigma0_estimation=None):
+    def fit(self, z0r_estimation=None, Sigma0_estimation=None, verbose=False):
         """
         Solve optimisation problem and calculate the vertical structure.
 
@@ -496,11 +538,14 @@ class ExternalIrradiation:
         Sigma0_estimation : double
             Start estimation of Sigma0 free parameter to fit the structure.
             Default is None, the estimation is calculated automatically.
+        verbose : bool
+            Whether to print values of (z0r, Sigma0_par) at each iteration.
+            Default is False, the fitting process performs silently.
 
         Returns
         -------
-        double and result
-            The value of normalised unknown free parameter z_0 / r and result of optimisation.
+        result : scipy.optimize.OptimizeResult
+            Result of optimisation.
 
         """
 
@@ -516,30 +561,25 @@ class ExternalIrradiation:
 
         cost_root = -1
         try:
-            result = root(self.dq, x0=np.array([x0_z0r, 1]), args=norm, method='hybr')
+            result = root(self.dq, x0=np.array([x0_z0r, 1]), args=(norm, verbose), method='hybr')
             cost_root = result.fun[0] ** 2 + result.fun[1] ** 2
             result.update({'cost': cost_root})
-        except (NotConvergeError, PphNotConvergeError):
+        except Exception:
             try:
-                result = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
-                                       verbose=0, loss='linear')
+                result = least_squares(self.dq, x0=np.array([x0_z0r, 1]), loss='linear',
+                                       kwargs={'norm': norm, 'verbose': verbose})
                 result.cost *= 2
-            except NotConvergeError as err:
-                print(f'Not converged, try larger Sigma0_par or smaller z0r approximations. '
-                      f'Current approximations are Sigma0_par = {err.Sigma0_par:g}, z0r = {err.z0r:g}.')
-                raise err
-            except PphNotConvergeError as err:
-                print('Not converged')
-                raise err
+            except Exception as ex:
+                raise ex from None
 
         if cost_root > 1e-16:
             try:
-                result_least_squares = least_squares(self.dq, x0=np.array([x0_z0r, 1]), args=(norm,),
-                                                     verbose=0, loss='linear')
+                result_least_squares = least_squares(self.dq, x0=np.array([x0_z0r, 1]), loss='linear',
+                                                     kwargs={'norm': norm, 'verbose': verbose})
                 result_least_squares.cost *= 2
                 if result_least_squares.cost < cost_root:
                     result = result_least_squares
-            except (NotConvergeError, PphNotConvergeError):
+            except Exception:
                 pass
 
         result.x = abs(result.x) * np.array([1, norm])
@@ -550,15 +590,19 @@ class ExternalIrradiation:
 
 
 class ExternalIrradiationZeroAssumption:
-    def photospheric_pressure_equation(self, tau, P):
-        T = (self.Teff ** 4 * (1 / 2 + 3 * tau / 4) + self.T_irr) ** (1 / 4)
+    def photospheric_pressure_equation_irr(self, tau, P):  # P = P_gas
+        T = (self.Teff ** 4 * (1 / 2 + 3 * tau / 4) + self.T_irr ** 4) ** (1 / 4)
         rho, eos = self.law_of_rho(P, T, True)
         varkappa = self.law_of_opacity(rho, T, lnfree_e=eos.lnfree_e)
         return self.z0 * self.omegaK ** 2 / varkappa
 
-    def P_ph_irr(self, Pph):
-        solution = self.photospheric_pressure_equation(tau=2 / 3, P=Pph) * 2 / 3
-        return solution
+    def P_ph_irr(self, Pph):  # Pph = P_gas
+        # solution is P_total, result is P_gas
+        solution = self.photospheric_pressure_equation_irr(tau=2 / 3, P=Pph) * 2 / 3
+        result = solution - 4 * sigmaSB / (3 * c) * (self.Teff ** 4 + self.T_irr ** 4)  # P_gas = P_tot - P_rad
+        if result < 0:
+            return np.nan
+        return result
 
     def initial(self):
         """
@@ -574,20 +618,32 @@ class ExternalIrradiationZeroAssumption:
             self.P_ph_0 = self.P_ph()
 
         def fun_P_ph(x):
+            # x = P_gas_ph
             return abs(x) - self.P_ph_irr(abs(x))
 
         if not self.P_ph_key:
             sign_P_ph = fun_P_ph(self.P_ph_0)
+            if np.isnan(sign_P_ph):
+                raise PphNotConvergeError(sign_P_ph, self.P_ph_0, self.z0 / self.r)
+
             if sign_P_ph > 0:
                 factor = 0.5
             else:
                 factor = 2.0
+            P_ph_a = self.P_ph_0
 
             while True:
                 self.P_ph_0 *= factor
                 if sign_P_ph * fun_P_ph(self.P_ph_0) < 0:
                     break
-            P_ph, res = brentq(fun_P_ph, self.P_ph_0, self.P_ph_0 / factor, full_output=True)
+                if np.isnan(fun_P_ph(self.P_ph_0)):
+                    factor = 1.05
+                if factor != 1.05:
+                    P_ph_a = self.P_ph_0
+                if self.P_ph_0 > P_ph_a and factor == 1.05:
+                    raise PphNotConvergeError(fun_P_ph(self.P_ph_0), self.P_ph_0, self.z0 / self.r)
+
+            P_ph, res = brentq(fun_P_ph, self.P_ph_0, P_ph_a, full_output=True)
             if abs(fun_P_ph(P_ph)) > 1e-7:
                 raise PphNotConvergeError(fun_P_ph(P_ph))
             self.P_ph_0 = P_ph + 1
@@ -599,6 +655,10 @@ class ExternalIrradiationZeroAssumption:
         else:
             P_ph = self.P_ph_parameter
 
+        if P_ph < 0 or np.isnan(P_ph):
+            raise PgasPradNotConvergeError(P_gas=P_ph,
+                                           P_rad=4 * sigmaSB / (3 * c) * (self.Teff ** 4 + self.T_irr ** 4),
+                                           t=0.0, z0r=self.z0 / self.r)
         Q_initial = self.Q_initial()
         y = np.empty(4, dtype=np.float64)
         y[Vars.S] = 0
@@ -606,104 +666,6 @@ class ExternalIrradiationZeroAssumption:
         y[Vars.Q] = Q_initial
         y[Vars.T] = (self.Teff ** 4 + self.T_irr ** 4) ** (1 / 4) / self.T_norm
         return y
-
-
-class RadiativeAdiabaticGradientPrad:
-    """
-    Temperature gradient class.
-    If gradient is over-adiabatic, then returns adiabatic d(lnT)/d(lnPtotal),
-    else calculates radiative d(lnT)/d(lnPtotal).
-
-    """
-
-    def dlnTdlnP(self, y, t):
-        rho, eos = self.rho(y, True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
-        P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
-
-        if t == 1:
-            dTdz_der = (self.dQdz(y, t) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
-                    16 * sigmaSB * self.T_norm ** 4)
-            dP_full_der = - rho * self.omegaK ** 2 * self.z0 ** 2
-            dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz_der / dP_full_der)
-        else:
-            dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
-                    16 * sigmaSB * self.T_norm ** 4)
-
-            dP_full = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2
-            dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz / dP_full)
-
-        if dlnTdlnP_rad < eos.grad_ad:
-            return dlnTdlnP_rad
-        else:
-            return eos.grad_ad
-
-
-class RadConvTempGradientPrad:
-    """
-    Temperature gradient class. Calculates d(lnT)/d(lnPtotal) in presence of convection
-    according to mixing length theory.
-
-    """
-    def dlnTdlnP(self, y, t):
-        rho, eos = self.rho(y, True)
-        varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
-        P_full = y[Vars.P] * self.P_norm + 4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4
-
-        if t == 1:
-            dTdz_der = (self.dQdz(y, t) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
-                    16 * sigmaSB * self.T_norm ** 4)
-            dP_full_der = - rho * self.omegaK ** 2 * self.z0 ** 2
-            dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz_der / dP_full_der)
-        else:
-            dTdz = (abs(y[Vars.Q]) / y[Vars.T] ** 3) * 3 * varkappa * rho * self.z0 * self.Q_norm / (
-                    16 * sigmaSB * self.T_norm ** 4)
-
-            dP_full = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2
-            dlnTdlnP_rad = (P_full / y[Vars.T]) * (dTdz / dP_full)
-
-
-        if dlnTdlnP_rad < eos.grad_ad:
-            return dlnTdlnP_rad
-        if t == 1:
-            return dlnTdlnP_rad
-
-        alpha_ml = 1.5
-        H_p = P_full / (rho * self.omegaK ** 2 * self.z0 * (1 - t) + self.omegaK * np.sqrt(P_full * rho))
-        H_ml = alpha_ml * H_p
-        omega = varkappa * rho * H_ml
-        A = 9 / 8 * omega ** 2 / (3 + omega ** 2)
-        der = eos.dlnRho_dlnT_const_Pgas
-        if der > 0:
-            der = -1
-
-        VV = -((3 + omega ** 2) / (
-                3 * omega)) ** 2 * eos.c_p ** 2 * rho ** 2 * H_ml ** 2 * self.omegaK ** 2 * self.z0 * (1 - t) / (
-                     512 * sigmaSB ** 2 * y[Vars.T] ** 6 * self.T_norm ** 6 * H_p) * der * (
-                     dlnTdlnP_rad - eos.grad_ad)
-        V = 1 / np.sqrt(VV)
-
-        coeff = [2 * A, V, V ** 2, - V]
-        try:
-            x = np.roots(coeff)
-        except np.linalg.LinAlgError as ex:
-            print('LinAlgError, coeff[2A, V, V ** 2, -V] = ', coeff)
-            raise ex
-            # breakpoint()
-
-        x = [a.real for a in x if a.imag == 0 and 0.0 < a.real < 1.0]
-        if len(x) != 1:
-            print('not one x of there is no right x')
-            # breakpoint()
-            raise ValueError
-        x = x[0]
-
-        # print(x)
-        # print(H_p, H_ml, omega, eos.c_p, eos.dlnRho_dlnT_const_Pgas, dlnTdlnP_rad - eos.grad_ad, VV, rho,
-        #       y[Vars.P] * self.P_norm, y[Vars.T] * self.T_norm, eos.grad_ad, dlnTdlnP_rad, varkappa)
-
-        dlnTdlnP_conv = eos.grad_ad + (dlnTdlnP_rad - eos.grad_ad) * x * (x + V)
-        return dlnTdlnP_conv
 
 
 # Classes with MESA opacity without Irradiation
@@ -813,26 +775,16 @@ class MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(MesaGasMixin
     pass
 
 
-class MesaVerticalStructureRadConvPrad(MesaGasMixin, MesaOpacityMixin, RadConvTempGradientPrad, Prad,
-                                       BaseMesaVerticalStructure):
-    pass
-
-
-class MesaVerticalStructurePrad(MesaGasMixin, MesaOpacityMixin, RadiativeTempGradientPrad, Prad,
-                                BaseMesaVerticalStructure):
-    pass
-
-
 def main():
     M = 10 * M_sun
     alpha = 0.01
-    Mdot = 1e17
+    Mdot = 1e18
     rg = 2 * G * M / c ** 2
     r = 400 * rg
     print('Calculating structure and making a structure plot. '
           '\nStructure with tabular MESA opacity and EOS.'
           '\nChemical composition is solar.')
-    print(f'M = {M:g} grams \nr = {r:g} cm = {r / rg:g} rg '
+    print(f'M = {M:g} grams = {M / M_sun:g} M_sun \nr = {r:g} cm = {r / rg:g} rg '
           f'\nalpha = {alpha:g} \nMdot = {Mdot:g} g/s')
     h = np.sqrt(G * M * r)
     r_in = 3 * rg
@@ -842,6 +794,9 @@ def main():
     if result.converged:
         print('The vertical structure has been calculated successfully.')
     print('z0/r = ', z0r)
+    varkappa_C, rho_C, T_C, P_C, Sigma0 = vs.parameters_C()
+    print('Prad/Pgas_c = ', 4 * sigmaSB / (3 * c) * T_C ** 4 / P_C)
+
     t = np.linspace(0, 1, 100)
     S, P, Q, T = vs.integrate(t)[0]
     import matplotlib.pyplot as plt
@@ -851,7 +806,7 @@ def main():
     plt.plot(1 - t, T, label=r'$\hat{T}$')
     plt.xlabel('$z / z_0$')
     plt.title(rf'$M = {M / M_sun:g}\, M_{{\odot}},\, \dot{{M}} = {Mdot:g}\, {{\rm g/s}},\, '
-              rf'\alpha = {alpha:g}, r = {r:g} \,\rm cm$')
+              rf'\alpha = {alpha:g}, r = {r:1.3g} \,\rm cm$')
     plt.grid()
     plt.legend()
     os.makedirs('fig/', exist_ok=True)
