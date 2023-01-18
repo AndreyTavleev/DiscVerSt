@@ -767,9 +767,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
             file.write('\n')
     with open(path_dots, 'a') as file:
         file.write(f'# Sigma_plus_index = {Sigma_plus_index:d}  Sigma_minus_index = {Sigma_minus_index:d}')
-        if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
-                         'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
-            file.write(f'\n# Non-converged_fits = {except_fits}')
+        file.write(f'\n# Non-converged_fits = {except_fits}')
     return
 
 
@@ -1033,18 +1031,16 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
         with open(path_dots, 'a') as file:
             np.savetxt(file, output_string, newline=' ')
             file.write('\n')
-    if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
-                     'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
-        with open(path_dots, 'a') as file:
-            file.write(f'# Non-converged_fits = {except_fits}')
+    with open(path_dots, 'a') as file:
+        file.write(f'# Non-converged_fits = {except_fits}')
     return
 
 
 def main():
     from matplotlib import pyplot as plt
     import os
-    M = 1.5 * M_sun
-    alpha = 0.2
+    M = 5 * M_sun
+    alpha = 0.1
     r = 1e10
     Teff = 1e4
     os.makedirs('fig/', exist_ok=True)
@@ -1072,7 +1068,7 @@ def main():
     print('Plot of structure is successfully saved to fig/vs.pdf.\n')
 
     print('Calculation of S-curve for Teff from 4e3 K to 1e4 K. Return S-curve table.')
-    S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=False,
+    S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, n=200, tau_break=True,
             path_dots='fig/S-curve.dat', add_Pi_values=True)
     print('S-curve is calculated successfully. Table is saved to fig/S-curve.dat.')
     s_curve_data = np.genfromtxt('fig/S-curve.dat', names=True)

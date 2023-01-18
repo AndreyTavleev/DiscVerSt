@@ -167,7 +167,7 @@ class BaseVerticalStructure:
         solution = solve_ivp(
             self.photospheric_pressure_equation,
             [0, 2 / 3],
-            [1e-7 * self.P_norm + 4 * sigmaSB / (3 * c) * self.Teff ** 4 / 2], rtol=self.eps
+            [1e-7 * self.P_norm + 4 * sigmaSB / (3 * c) * self.Teff ** 4 / 2], rtol=self.eps, method='RK23'
         )
         P_rad = 4 * sigmaSB / (3 * c) * self.Teff ** 4
         result = solution.y[0][-1] - P_rad  # P_gas = P_tot - P_rad
