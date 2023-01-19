@@ -477,10 +477,10 @@ class ExternalIrradiation:
                 if sign_P_ph * fun_P_ph(self.P_ph_0) < 0:
                     break
                 if np.isnan(fun_P_ph(self.P_ph_0)):
-                    factor = 1.05
-                if factor != 1.05:
+                    factor = 1.02
+                if factor != 1.02:
                     P_ph_a = self.P_ph_0
-                if self.P_ph_0 > P_ph_a and factor == 1.05:
+                if self.P_ph_0 > P_ph_a and factor == 1.02:
                     raise PphNotConvergeError(fun_P_ph(self.P_ph_0), self.P_ph_0, self.z0 / self.r, self.Sigma0_par)
 
             P_ph, res = brentq(fun_P_ph, self.P_ph_0, P_ph_a, full_output=True)
@@ -637,10 +637,10 @@ class ExternalIrradiationZeroAssumption:
                 if sign_P_ph * fun_P_ph(self.P_ph_0) < 0:
                     break
                 if np.isnan(fun_P_ph(self.P_ph_0)):
-                    factor = 1.05
-                if factor != 1.05:
+                    factor = 1.02
+                if factor != 1.02:
                     P_ph_a = self.P_ph_0
-                if self.P_ph_0 > P_ph_a and factor == 1.05:
+                if self.P_ph_0 > P_ph_a and factor == 1.02:
                     raise PphNotConvergeError(fun_P_ph(self.P_ph_0), self.P_ph_0, self.z0 / self.r)
 
             P_ph, res = brentq(fun_P_ph, self.P_ph_0, P_ph_a, full_output=True)

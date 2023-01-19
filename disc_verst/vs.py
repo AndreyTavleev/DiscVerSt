@@ -221,9 +221,14 @@ class BaseVerticalStructure:
         """
         dy = np.empty(4)
         if y[Vars.P] < 0 or np.isnan(y[Vars.P]):
-            raise PgasPradNotConvergeError(P_gas=y[Vars.P] * self.P_norm,
-                                           P_rad=4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4,
-                                           t=t, z0r=self.z0 / self.r)
+            try:
+                raise PgasPradNotConvergeError(P_gas=y[Vars.P] * self.P_norm,
+                                               P_rad=4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4,
+                                               t=t, z0r=self.z0 / self.r, Sigma0_par=self.Sigma0_par)
+            except AttributeError:
+                raise PgasPradNotConvergeError(P_gas=y[Vars.P] * self.P_norm,
+                                               P_rad=4 * sigmaSB / (3 * c) * y[Vars.T] ** 4 * self.T_norm ** 4,
+                                               t=t, z0r=self.z0 / self.r) from None
         rho, eos = self.rho(y, full_output=True)
 
         A = rho * (1 - t) * self.omegaK ** 2 * self.z0 ** 2 / self.P_norm

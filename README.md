@@ -44,14 +44,15 @@ $ python3 -m disc_verst.vs
 ```
 
 	Finding Pi parameters of structure and making a structure plot. 
-	Structure with Kramers opacity and ideal gas EoS.
-	M = 1.98841e+34 grams
+	Structure with opacity laws from (Bell & Lin, 1994) and ideal gas EOS.
+	M = 1.98841e+34 grams = 10 M_sun
 	r = 1.1813e+09 cm = 400 rg
 	alpha = 0.01
-	Mdot = 1e+17 g/s
+	Mdot = 1e+18 g/s
 	The vertical structure has been calculated successfully.
-	Pi parameters = [7.10271534 0.4859551  1.13097882 0.3985615 ]
-	z0/r =  0.028869666211114635
+	Pi parameters = [5.53427755 0.56016427 1.19857844 0.41824962]
+	z0/r =  0.05768581641820652
+    Prad/Pgas_c =  0.9450305089292704
 	Plot of structure is successfully saved to fig/vs.pdf.
 
 ### Tabular opacities and EoS
@@ -84,12 +85,13 @@ $ docker run -v$(pwd)/fig:/app/fig --rm -ti discverst python3 -m disc_verst.mesa
 	Calculating structure and making a structure plot.
 	Structure with tabular MESA opacity and EoS.
     Chemical composition is solar.
-	M = 1.98841e+34 grams
+	M = 1.98841e+34 grams = 10 M_sun
 	r = 1.1813e+09 cm = 400 rg
 	alpha = 0.01
-	Mdot = 1e+17 g/s
+	Mdot = 1e+18 g/s
 	The vertical structure has been calculated successfully.
-	z0/r =  0.029812574021917705
+	z0/r =  0.04482123680748539
+    Prad/Pgas_c =  0.13498412232642973
 	Plot of structure is successfully saved to fig/vs_mesa.pdf.
 
 As the result, the plot `vs_mesa.pdf` is saved to the `/app/fig/` (`/app/` is a Docker WORKDIR) 
@@ -272,7 +274,7 @@ vertstr = mesa_vs.MesaVerticalStructureRadConvExternalIrradiation(
                      cos_theta_irr=cos_theta_irr, 
                      cos_theta_irr_exp=cos_theta_irr_exp)  # create the structure object
 # let us set the free parameters estimation
-result = vertstr.fit(z0r_estimation=0.068, Sigma0_estimation=1032)  # calculate structure
+result = vertstr.fit(z0r_estimation=0.07, Sigma0_estimation=1020)  # calculate structure
 # if structure is fitted successfully, cost function must be less than 1e-16
 print(result.cost)  # cost function
 z0r, Sigma0 = result.x  # Sigma0 is additional free parameter to find
@@ -285,9 +287,9 @@ print(vertstr.C_irr, vertstr.T_irr)  # irradiation parameter and temperature
 ```
 
 ## Structure Choice
-Module `profiles` contains `StructureChoice()` function, serves as interface for creating 
+Module `profiles` contains `StructureChoice` function, serving as interface for creating 
 the right structure object in a simpler way. One can use other input parameters instead viscous torque `F`
-(such as effective temperature and accretion rate) using `input` parameter,
+(such as effective temperature `Teff` and accretion rate `Mdot`) using `input` parameter,
 and choose the structure type using `structure` parameter.
 ``` python3
 from disc_verst.profiles import StructureChoice
@@ -336,8 +338,8 @@ $ python3 -m disc_verst.profiles
 from disc_verst import profiles
 
 # Input parameters:
-M = 1.5 * 2e33  # 1.5 * M_sun
-alpha = 0.2
+M = 5 * 2e33  # 5 * M_sun
+alpha = 0.1
 r = 1e10
 Teff = 1e4
 
@@ -345,10 +347,10 @@ profiles.Vertical_Profile(M, alpha, r, Teff, input='Teff', structure='BellLin', 
                           n=100, add_Pi_values=True, path_dots='vs.dat')
 
 profiles.S_curve(4e3, 1e4, M, alpha, r, input='Teff', structure='BellLin', mu=0.62, 
-                 n=200, tau_break=False, path_dots='S-curve.dat', add_Pi_values=True)
+                 n=200, tau_break=True, path_dots='S-curve.dat', add_Pi_values=True)
 
-rg = 3e5 * (M / 2e33)  # Schwarzschild radius
-profiles.Radial_Profile(M, alpha, 3.1 * rg, 1e3 * rg, 1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, 
+r_start, r_end = 1e9, 1e12
+profiles.Radial_Profile(M, alpha, r_start, r_end, Par=1, input='Mdot_Mdot_edd', structure='BellLin', mu=0.62, 
                         n=200, tau_break=True, path_dots='radial_struct.dat', add_Pi_values=True)
 ```
 Both `profiles` module and functions in it have help
