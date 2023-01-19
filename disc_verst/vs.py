@@ -14,7 +14,7 @@ from enum import IntEnum
 import numpy as np
 from astropy import constants as const
 from scipy.integrate import solve_ivp, simps
-from scipy.optimize import brentq, root
+from scipy.optimize import brentq
 
 sigmaSB = const.sigma_sb.cgs.value
 R_gas = const.R.cgs.value
@@ -506,6 +506,7 @@ def main():
     plt.legend()
     os.makedirs('fig/', exist_ok=True)
     plt.savefig('fig/vs.pdf')
+    plt.close()
     print('Plot of structure is successfully saved to fig/vs.pdf.')
     return
 

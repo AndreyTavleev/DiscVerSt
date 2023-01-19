@@ -42,7 +42,6 @@ sigmaT = const.sigma_T.cgs.value
 atomic_mass = const.u.cgs.value
 c = const.c.cgs.value
 proton_mass = const.m_p.cgs.value
-pl_const = const.h
 G = const.G.cgs.value
 M_sun = const.M_sun.cgs.value
 
@@ -811,6 +810,7 @@ def main():
     plt.legend()
     os.makedirs('fig/', exist_ok=True)
     plt.savefig('fig/vs_mesa.pdf')
+    plt.close()
     print('Plot of structure is successfully saved to fig/vs_mesa.pdf.')
     return
 
