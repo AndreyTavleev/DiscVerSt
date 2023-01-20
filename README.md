@@ -106,7 +106,7 @@ disc is calculated and can be used for research of disc stability.
 Module `mesa_vs` contains some additional classes, that represent 
 the vertical structure for tabular opacities and EoS and convective energy transport.
 
-Both `vs` and `mesa_vs` modules have help
+Both `vs` and `mesa_vs` modules have help with description of available structure classes.
 ``` python3
 help(disc_verst.vs)
 help(disc_verst.mesa_vs)
@@ -174,7 +174,11 @@ $ docker run -v/path_to/your_file/file.py:/app/file.py --rm -ti discverst python
 ## Irradiated discs
 
 Module `mesa_vs` also contains classes that represent 
-the vertical structure of self-irradiated discs.
+the vertical structure of self-irradiated discs. Description of structure classes 
+with irradiation is available in `mesa_vs` help.
+``` python3
+help(disc_verst.mesa_vs)
+```
 
 Irradiation can be taken into account in two ways:
 
@@ -282,7 +286,7 @@ vertstr = mesa_vs.MesaVerticalStructureRadConvExternalIrradiation(
                      kwargs_spectrum_irr=kwargs,
                      cos_theta_irr=cos_theta_irr, 
                      cos_theta_irr_exp=cos_theta_irr_exp)  # create the structure object
-# let us set the free parameters estimation
+# let us set the free parameters estimations
 result = vertstr.fit(z0r_estimation=0.068, Sigma0_estimation=1032)  # calculate structure
 # if structure is fitted successfully, cost function must be less than 1e-16
 print(result.cost)  # cost function
@@ -388,8 +392,9 @@ boundary conditions plus one additional boundary condition for flux:
 Here $P = P_{\rm tot} = P_{\rm gas} + P_{\rm rad} = P_{\rm gas} + aT^4/3, \Sigma, T$ and $Q$ are total pressure, 
 column density, temperature and energy flux in the disc, $\nabla\equiv\frac{{\rm d}\ln T}{{\rm d}\ln P}$ is the temperature 
 gradient (radiative or convective, according to Schwarzschild criterion), and $\alpha$ is Shakura-Sunyaev turbulent 
-parameter. After the normalizing $P_{\rm gas}, Q, T, \Sigma$ on their characteristic values $P_0, Q_0, T_0, \Sigma_{00}$, 
-and replacing $z$ on $\hat{z} = 1 - z/z_0$, one has:
+parameter ([Shakura & Sunyaev
+1973](https://ui.adsabs.harvard.edu/abs/1973A&A....24..337S)). After the normalizing $P_{\rm gas}, Q, T, \Sigma$ on their characteristic values $P_0, Q_0, T_0, \Sigma_{00}$, 
+and replacing $z$ on $\hat{z} = 1 - z/z_0$ (in code it is the `t` variable), one has:
 ```math
 \begin{split}
 \frac{{\rm d}\hat{P}}{{\rm d}\hat{z}} &= \frac{z_0^2}{P_0}\,\omega^2_{\rm K} \,\rho (1-\hat{z}) - \frac{4aT_0^3}{3 P_0} \frac{{\rm d}\hat{T}}{{\rm d}\hat{z}} \qquad\qquad \hat{P}(0) = P'/P_0; \\ 
@@ -398,6 +403,11 @@ and replacing $z$ on $\hat{z} = 1 - z/z_0$, one has:
 \frac{{\rm d}\hat{Q}}{{\rm d}\hat{z}} &= -\frac32\,\frac{z_0}{Q_0}\,\omega_{\rm K} \alpha P_{\rm tot} \qquad\qquad\qquad \hat{Q}(0) = 1, \quad \hat{Q}(1) = 0; \\
 P_{\rm tot} &= P_0\hat{P} + aT_0^4\hat{T}^4/3 \qquad\qquad\qquad\qquad\qquad \hat{z} \in [0, 1].
 \end{split}
+```
+
+The initial boundary condition for gas pressure $P'$ is found through the integral:
+```math
+P_{\rm gas}(z_0) + P_{\rm rad}(z_0) = P' + P_{\rm rad}(z_0) = \int_0^{2/3} \frac{\omega_{\rm K}^2 z_0}{\varkappa_{\rm R}(P_{\rm gas}, T(\tau))}\, {\rm d}\tau.
 ```
 
 Characteristic values of pressure, temperature and mass coordinate are as follows:
@@ -410,14 +420,14 @@ P_0 = \frac{4}{3}  \frac{Q_0}{\alpha z_0 \omega_{\rm K}}, \quad
 ### External irradiation
 In case of external irradiation $T_{\rm vis}\equiv T_{\rm eff}$. Irradiation can be taken into account in two ways:
 
-1. Via either irradiation temperature $T_{\rm irr}$ or irradiation parameter $C_{\rm irr}$: It is a simple 
+(i). Via either irradiation temperature $T_{\rm irr}$ or irradiation parameter $C_{\rm irr}$: It is a simple 
    approach for irradiation, when the external flux doesn't penetrate into the disc and only heats the 
    disc surface. In this case only the boundary condition for temperature $\hat{T}$ changes:
 ```math
 \hat{T}(0) = \frac1{T_0} \left(T_{\rm vis}^4 + T_{\rm irr}^4 \right)^{1/4}.
 ```
 
-2. In the second approximation the external flux is penetrated into the disc and affect the energy flux
+(ii). In the second approximation the external flux is penetrated into the disc and affect the energy flux
    and disc temperature. In this case following equations and boundary conditions change their view:
 ```math
 \begin{split}
@@ -425,7 +435,12 @@ In case of external irradiation $T_{\rm vis}\equiv T_{\rm eff}$. Irradiation can
 \hat{T}(0) &= \frac1{T_0} \left(T_{\rm vis}^4 + Q_{\rm irr}/\sigma_{\rm SB} \right)^{1/4} \qquad\qquad\qquad\;\; \hat{\Sigma}(1) = \frac{\Sigma_0}{\Sigma_{00}}; \\
 \end{split}
 ```
-   where $\varepsilon, Q_{\rm irr}$ are additional heating rate and surface flux. 
+   where $\varepsilon, Q_{\rm irr}$ are additional heating rate and surface flux (see [Mescheryakov et al. 2011](https://ui.adsabs.harvard.edu/abs/2011AstL...37..311M})).
+   
+Due to unknown amtosphere model in case of irradiation the boundary condition $P'$ is found from the algebraic equation:
+```math
+P_{\rm gas}(z_0) + P_{\rm rad}(z_0) = P' + P_{\rm rad}(z_0) = \frac23\,\frac{\omega_{\rm K}^2 z_0}{\varkappa_{\rm R}(P', T(z_0))}.
+```
 
 
 ### Equation of state and opacity law
@@ -443,8 +458,6 @@ An analytic opacity coefficient is approximated by a power-law function:
 ```math
     \varkappa_{\rm R} = \varkappa_0 \rho^{\zeta} T^{\gamma}.
 ```
-Here $\varkappa_0$ is the dimension constant, which we give below is CGS units. 
-
 There are following analytic opacity options: 
 1. Kramers law for solar composition: $(\zeta = 1, \gamma = -7/2, \varkappa_0 = 5\cdot10^{24})$ and Thomson electron 
    scattering $(\varkappa_{\rm R} = 0.34)$.
@@ -454,7 +467,7 @@ There are following analytic opacity options:
    scattering $(\varkappa_{\rm R} = 0.34)$.
 
 Tabular values of opacity and EoS are obtained by interpolation using `eos` and `kappa` modules from 
-the [MESA code](http://mesa.sourceforge.net). In this case the input parameter is the chemical composition of the disc 
+the [MESA code](http://mesa.sourceforge.net). In this case the additional input parameter is `abundance` - the chemical composition of the disc 
 matter. It should be a dictionary with format {'isotope_name': abundance}, e.g. `{'h1': 0.7, 'he4': 0.3}`, look for full
 list of available isotopes in the MESA source code. Also, you can use `'solar'` string to set the solar composition.
 
@@ -463,14 +476,61 @@ list of available isotopes in the MESA source code. Also, you can use `'solar'` 
 System has one free parameter $z_0$ - the semi-thickness of the disc, which is found using so-called shooting method. 
 Code integrates system over $\hat{z}$ from 0 to 1 with initial approximation of free parameter $z_0$, then changes 
 its value and integrates the system in order to fulfill the additional condition for flux $\hat{Q}(1)$ at the symmetry 
-plane of the disc. In the presence of external irradiation in simple scheme, the only change is the boundary condition 
-for temperature. If irradiation is calculated through the advanced scheme, the second free parameter is $\Sigma_0$ - the 
+plane of the disc. 
+
+In the presence of external irradiation in scheme (i), the only change is the boundary condition 
+for temperature. If irradiation is calculated through the advanced scheme (ii), the second free parameter is $\Sigma_0$ - the 
 surface density of the disc. In this case code integrates system with all changes above and solve two-parameter 
 $(z_0, \Sigma_0)$ optimization problem in order to fulfill both $\hat{Q}(1)$ and $\hat{\Sigma}(1)$ additional boundary 
 conditions. Namely, code minimises function:
 ```math
 \begin{cases}
-    f(z_0)= \hat{Q}(1) &\text{without irradiation;} \\
-    f(z_0, \Sigma_0)= \hat{Q}(1)^2 + \left( \frac{\hat{\Sigma}(1) \Sigma_{00}}{\Sigma_0} - 1\right)^2 &\text{with irradiation.}
+    f(z_0)= \hat{Q}(1) &\text{without irradiation / with irradiation scheme (i);} \\
+    f(z_0, \Sigma_0)= \hat{Q}(1)^2 + \left( \frac{\hat{\Sigma}(1) \Sigma_{00}}{\Sigma_0} - 1\right)^2 &\text{with irradiation scheme (ii).}
 \end{cases}
 ```
+
+
+## Calculation tips and tricks
+Code was texted for disc $T_{\rm eff}\sim (10^3-10^6) \rm K$. However, there can be some convergence problems, especially when $P_{\rm rad}/P_{\rm gas}\gg0.1$.
+
+### Without irradiation
+Calculation can be failed, if during the fitting process $P_{\rm gas}$ become less than zero, the corresponding `PgasPradNotConvergeError` is raised. In this case one recommend to set manually the estimation of 'z0r' free parameter (usually smaller estimation). Also you can get additional information about the value of free parameter during the fitting process through `verbose` parameter:
+``` python3
+verstr = ...  # definition the structure class
+# let us set the free parameter estimation
+# and print value of z0r parameter at each fitting iteration
+z0r, result = vertstr.fit(z0r_estimation=0.05, verbose=True)
+```
+Note, that the higher $P_{\rm rad}/P_{\rm gas}$ value the more sensitive calculation convergence to `z0r` estimation.
+
+### With irradiation scheme (i)
+Calculation can be failed, if during the fitting process $P_{\rm gas}$ become less than zero, the corresponding `PgasPradNotConvergeError` is raised. In this case again try to set manually the estimation of 'z0r' free parameter.
+
+Another reason of calculation failure concerns the calculation of $P'$ pressure initial condition. In contrast to the 'no-irradiation' case, value of $P'$ is found as the root of algebraic equation. If the default initial estimation of this root is poor, the root finding can be failed (usually it means that during the root finding the $P_{\rm gas}$ become less than zero), the corresponding `PphNotConvergeError` is raised. Then you can try to set that estimation manually (usually higher) through `P_ph_0` parameter:
+``` python3
+verstr = ...  # definition the structure class
+# let us set the free parameter estimation
+# and set the estimation of pressure boundary condition
+# and print value of z0r parameter at each fitting iteration
+result = vertstr.fit(z0r_estimation=0.05, verbose=True, P_ph_0=1e5)
+```
+
+### With irradiation scheme (ii)
+This case if similar to one for scheme (i), and the ways to solve the convergence problem are almost the same. The main difference is the presence of second free parameter of system - `Sigma0_par`, the surface density $\Sigma_0$ of the disc. The additional convergence problem may occur during the finding for $Q_{\rm irr}$ and $\varepsilon$ irradiation terms. In this case the corresponding `IrrNotConvergeError` is raised. One recommends to change the estimations of free parameters (usually smaller `z0r` and higher `Sigma0_par`) and, perhaps, the `P_ph_0` parameter. 
+
+One specific case is unstable disc region, where code in principle may converge to both hot and cold disc state. Here, even for right `z0r` and `Sigma0_par` values, the wrong $P'$ root can be found due to wrong root estimation, which leads to code non-convergence. Then one recommends to set another `P_ph_0` estimation (much higher or smaller).
+``` python3
+verstr = ...  # definition the structure class
+# let us set the free parameters estimations
+# and set the estimation of pressure boundary condition
+# and print value of free parameters at each fitting iteration
+result = vertstr.fit(z0r_estimation=0.07, Sigma0_estimation=5000, verbose=True, P_ph_0=1e5)
+```
+
+### Radial profile and S-curves
+Radial profile calculates from `r_start` to `r_end`, and `r_start` should be less than `r_end`. Similarly, S-curve calculates from `Par_max` to `Par_min` (obviously, `Par_max` > `Par_min`). The estimations of all necessary parameters at the next point are taken from the previous points. Additionally, estimations of the parameters at the first point can be set manually. Usually this works well, but regions of small radii (big effective temperature, or accretion rate etc. for S-curve) may not converge due to high $P_{\rm rad}/P_{\rm gas}$. These points of corresponding profiles will be missed and marked as 'Non-converged_fits' in the code output (in output tables there wll be only the number of such 'Non-converged_fits'). 
+
+In this case one can to calculate such 'bad' regions again, but vise versa from higher radius (effective temperature etc.), where code has converged, to smaller one. Then the estimations of free parameters may become more suitable for convergence. Such vise versa calculation is easy to do, just swap `r_start` and `r_end` (`Par_max` and `Par_min`) so that `r_start` > `r_end` (`Par_max` < `Par_min`).
+
+In case of calculation the profile and S-curve of disc with irradiation scheme (ii) there can be a discontinuity (gap) in the instability region, i.e. no smooth transition between 'hot' and 'cold' stable disc regions. This manifests itself in the fact that after the 'hot' stable disc region the code stops converging, and all corresponding points will be marked as 'Non-converged_fits'. Then just calculate the 'cold' region with another `z0r` and `Sigma0_par` (and, perhaps, `P_ph_0`) start estimations. 
