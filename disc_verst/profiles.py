@@ -38,7 +38,7 @@ c = const.c.cgs.value
 
 def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar', nu_irr=None, L_X_irr=None,
                     spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
-                    C_irr=None, T_irr=None, cos_theta_irr=None, cos_theta_irr_exp=1 / 12, P_ph_0=None):
+                    C_irr=None, T_irr=None, cos_theta_irr=None, cos_theta_irr_exp=1 / 12):
     """
     Initialise the chosen vertical structure class.
 
@@ -110,10 +110,6 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
     T_irr : double
         If structure in ['MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero'],
         T_irr is the irradiation temperature.
-    P_ph_0 : double
-        If structure contains Irradiation (either irradiation scheme),
-        it's the start estimation for pressure at the photosphere (pressure boundary condition).
-        Default is None, the estimation is calculated automatically.
 
     Returns
     -------
@@ -197,24 +193,21 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
             vs = mesa_vs.MesaVerticalStructureExternalIrradiationZeroAssumption(M, alpha, r, F, C_irr=C_irr,
-                                                                                T_irr=T_irr, abundance=abundance,
-                                                                                P_ph_0=P_ph_0)
+                                                                                T_irr=T_irr, abundance=abundance)
     elif structure == 'MesaRadAdIrrZero':
         try:
             if np.isnan(mesa_vs):
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
             vs = mesa_vs.MesaVerticalStructureRadAdExternalIrradiationZeroAssumption(M, alpha, r, F, C_irr=C_irr,
-                                                                                     T_irr=T_irr, abundance=abundance,
-                                                                                     P_ph_0=P_ph_0)
+                                                                                     T_irr=T_irr, abundance=abundance)
     elif structure == 'MesaRadConvIrrZero':
         try:
             if np.isnan(mesa_vs):
                 raise ModuleNotFoundError('Mesa2py is not installed')
         except TypeError:
             vs = mesa_vs.MesaVerticalStructureRadConvExternalIrradiationZeroAssumption(M, alpha, r, F, C_irr=C_irr,
-                                                                                       T_irr=T_irr, abundance=abundance,
-                                                                                       P_ph_0=P_ph_0)
+                                                                                       T_irr=T_irr, abundance=abundance)
     elif structure == 'MesaIrr':
         try:
             if np.isnan(mesa_vs):
@@ -230,7 +223,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                                                                   kwargs_spectrum_irr=kwargs_spectrum_irr,
                                                                   cos_theta_irr=cos_theta_irr,
                                                                   cos_theta_irr_exp=cos_theta_irr_exp,
-                                                                  abundance=abundance, P_ph_0=P_ph_0)
+                                                                  abundance=abundance)
     elif structure == 'MesaRadAdIrr':
         try:
             if np.isnan(mesa_vs):
@@ -246,7 +239,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                                                                        kwargs_spectrum_irr=kwargs_spectrum_irr,
                                                                        cos_theta_irr=cos_theta_irr,
                                                                        cos_theta_irr_exp=cos_theta_irr_exp,
-                                                                       abundance=abundance, P_ph_0=P_ph_0)
+                                                                       abundance=abundance)
     elif structure == 'MesaRadConvIrr':
         try:
             if np.isnan(mesa_vs):
@@ -262,7 +255,7 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
                                                                          kwargs_spectrum_irr=kwargs_spectrum_irr,
                                                                          cos_theta_irr=cos_theta_irr,
                                                                          cos_theta_irr_exp=cos_theta_irr_exp,
-                                                                         abundance=abundance, P_ph_0=P_ph_0)
+                                                                         abundance=abundance)
     else:
         raise Exception("Incorrect structure. Possible options are: 'Kramers', 'BellLin',\n"
                         "'Mesa', 'MesaAd', 'MesaRadAd', 'MesaRadConv', 'MesaIdealGas',\n"
@@ -443,12 +436,20 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
                                         spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
                                         args_spectrum_irr=args_spectrum_irr, kwargs_spectrum_irr=kwargs_spectrum_irr,
                                         cos_theta_irr=cos_theta_irr, cos_theta_irr_exp=cos_theta_irr_exp,
-                                        C_irr=C_irr, T_irr=T_irr, P_ph_0=P_ph_0)
+                                        C_irr=C_irr, T_irr=T_irr)
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
-        result = vs.fit(z0r_estimation=z0r_estimation, Sigma0_estimation=Sigma0_estimation, verbose=verbose)
-        z0r, sigma_par = result.x
+        kwargs_fit = {'z0r_estimation': z0r_estimation, 'Sigma0_estimation': Sigma0_estimation,
+                      'verbose': verbose, 'P_ph_0': P_ph_0}
+    elif structure in ['MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
+        kwargs_fit = {'z0r_estimation': z0r_estimation, 'verbose': verbose, 'P_ph_0': P_ph_0}
     else:
-        z0r, result = vs.fit(z0r_estimation=z0r_estimation, verbose=verbose)
+        kwargs_fit = {'z0r_estimation': z0r_estimation, 'verbose': verbose}
+    result = vs.fit(**kwargs_fit)
+    try:
+        z0r, sigma_par = result.x
+    except AttributeError:
+        z0r, result = result
+
     rg = 2 * G * M / c ** 2
     t = np.linspace(0, 1, n)
     S, P, Q, T = vs.integrate(t)[0]
@@ -685,31 +686,31 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
                                             args_spectrum_irr=args_spectrum_irr,
                                             kwargs_spectrum_irr=kwargs_spectrum_irr,
                                             cos_theta_irr=cos_theta_irr, cos_theta_irr_exp=cos_theta_irr_exp,
-                                            C_irr=C_irr, T_irr=T_irr, P_ph_0=P_ph_0)
+                                            C_irr=C_irr, T_irr=T_irr)
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
-            try:
-                result = vs.fit(z0r_estimation=z0r_estimation, Sigma0_estimation=sigma_par_estimation, verbose=verbose)
-            except Exception as e:
-                print(e)
-                print('Non-converged fit')
-                except_fits += 1
-                continue
+            kwargs_fit = {'z0r_estimation': z0r_estimation, 'Sigma0_estimation': sigma_par_estimation,
+                          'verbose': verbose, 'P_ph_0': P_ph_0}
+        elif structure in ['MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
+            kwargs_fit = {'z0r_estimation': z0r_estimation, 'verbose': verbose, 'P_ph_0': P_ph_0}
+        else:
+            kwargs_fit = {'z0r_estimation': z0r_estimation, 'verbose': verbose}
+        try:
+            result = vs.fit(**kwargs_fit)
+        except Exception as e:
+            print(e)
+            print('Non-converged fit')
+            except_fits += 1
+            continue
+        try:
             z0r, sigma_par = result.x
             z0r_estimation, sigma_par_estimation = z0r, 2 * sigma_par
-            P_ph_0 = vs.P_ph_0
-        else:
-            try:
-                z0r, result = vs.fit(z0r_estimation=z0r_estimation, verbose=verbose)
-            except Exception as e:
-                print(e)
-                print('Non-converged fit')
-                except_fits += 1
-                continue
+        except AttributeError:
+            z0r, result = result
             z0r_estimation = z0r
-            try:
-                P_ph_0 = vs.P_ph_0
-            except AttributeError:
-                pass
+        try:
+            P_ph_0 = vs.P_ph_0
+        except AttributeError:
+            pass
 
         tau = vs.tau()
         print(f'Mdot = {Mdot:1.3e} g/s, {Teff_string} = {Teff:g} K, tau = {tau:g}, z0r = {z0r:g}')
@@ -963,31 +964,31 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
                                             args_spectrum_irr=args_spectrum_irr,
                                             kwargs_spectrum_irr=kwargs_spectrum_irr,
                                             cos_theta_irr=input_pars[2], cos_theta_irr_exp=input_pars[3],
-                                            C_irr=input_pars[4], T_irr=input_pars[5], P_ph_0=P_ph_0)
+                                            C_irr=input_pars[4], T_irr=input_pars[5])
         if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
-            try:
-                result = vs.fit(z0r_estimation=z0r_estimation, Sigma0_estimation=sigma_par_estimation, verbose=verbose)
-            except Exception as e:
-                print(e)
-                print('Non-converged fit')
-                except_fits += 1
-                continue
+            kwargs_fit = {'z0r_estimation': z0r_estimation, 'Sigma0_estimation': sigma_par_estimation,
+                          'verbose': verbose, 'P_ph_0': P_ph_0}
+        elif structure in ['MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
+            kwargs_fit = {'z0r_estimation': z0r_estimation, 'verbose': verbose, 'P_ph_0': P_ph_0}
+        else:
+            kwargs_fit = {'z0r_estimation': z0r_estimation, 'verbose': verbose}
+        try:
+            result = vs.fit(**kwargs_fit)
+        except Exception as e:
+            print(e)
+            print('Non-converged fit')
+            except_fits += 1
+            continue
+        try:
             z0r, sigma_par = result.x
             z0r_estimation, sigma_par_estimation = z0r, 2 * sigma_par
-            P_ph_0 = vs.P_ph_0
-        else:
-            try:
-                z0r, result = vs.fit(z0r_estimation=z0r_estimation, verbose=verbose)
-            except Exception as e:
-                print(e)
-                print('Non-converged fit')
-                except_fits += 1
-                continue
+        except AttributeError:
+            z0r, result = result
             z0r_estimation = z0r
-            try:
-                P_ph_0 = vs.P_ph_0
-            except AttributeError:
-                pass
+        try:
+            P_ph_0 = vs.P_ph_0
+        except AttributeError:
+            pass
 
         tau = vs.tau()
         rg = 2 * G * M / c ** 2

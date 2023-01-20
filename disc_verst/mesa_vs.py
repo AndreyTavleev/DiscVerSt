@@ -71,11 +71,11 @@ class PphNotConvergeError(Exception):
         if self.P_ph is None:
             self.message = f'P_ph = P(z=z0) not converged. fun = {self.func_Pph}'
         elif Sigma0_par is None:
-            self.message = f'P_ph = P(z=z0) not converged. Try larger start estimation for P_ph. ' \
+            self.message = f'P_ph = P(z=z0) not converged. Try another start estimation for P_ph. ' \
                            f'Current P_ph_0 = {self.P_ph:g}.\n' \
                            f'Also you can try another z0r estimation. Current estimations is z0r = {self.z0r:g}.'
         else:
-            self.message = f'P_ph = P(z=z0) not converged. Try larger start estimation for P_ph. ' \
+            self.message = f'P_ph = P(z=z0) not converged. Try another start estimation for P_ph. ' \
                            f'Current P_ph_0 = {self.P_ph:g}.\n' \
                            f'Also you can try another z0r and Sigma0_par estimations. ' \
                            f'Current estimations are Sigma0_par = {self.Sigma0_par:g}, z0r = {self.z0r:g}.'
@@ -93,7 +93,7 @@ class BaseMesaVerticalStructure(BaseVerticalStructure):
 class BaseExternalIrradiation(BaseMesaVerticalStructure):
     def __init__(self, Mx, alpha, r, F, nu_irr, spectrum_irr, L_X_irr, spectrum_irr_par,
                  args_spectrum_irr=(), kwargs_spectrum_irr={}, cos_theta_irr=None, cos_theta_irr_exp=1 / 12,
-                 eps=1e-5, abundance='solar', P_ph_0=None):
+                 eps=1e-5, abundance='solar'):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
 
         if spectrum_irr is None:
@@ -140,7 +140,7 @@ class BaseExternalIrradiation(BaseMesaVerticalStructure):
         self.C_irr = None
         self.Q_irr = None
         self.Sigma_ph = None
-        self.P_ph_0 = P_ph_0
+        self.P_ph_0 = None
         self.P_ph_key = False
         self.P_ph_parameter = None
 
@@ -156,12 +156,12 @@ class BaseExternalIrradiation(BaseMesaVerticalStructure):
         self.__cos_theta_irr = value
 
     def Sigma0_init(self):
-        return 9.73e-24 * (self.r / 1e10) ** (-11 / 10) * self.F ** (10 / 10) * (self.Mx / M_sun) ** (
-                -1 / 10) * self.alpha ** (-4 / 5) / 1e6
+        return 2 * 9.73e-24 * (self.r / 1e10) ** (-11 / 10) * self.F ** (7 / 10) * (self.Mx / M_sun) ** (
+                -1 / 10) * self.alpha ** (-4 / 5)
 
 
 class BaseExternalIrradiationZeroAssumption(BaseMesaVerticalStructure):
-    def __init__(self, Mx, alpha, r, F, C_irr=None, T_irr=None, eps=1e-5, abundance='solar', P_ph_0=None):
+    def __init__(self, Mx, alpha, r, F, C_irr=None, T_irr=None, eps=1e-5, abundance='solar'):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
         h = np.sqrt(self.GM * self.r)
         eta_accr = 0.1
@@ -181,7 +181,7 @@ class BaseExternalIrradiationZeroAssumption(BaseMesaVerticalStructure):
             self.T_irr = (self.Q_irr / sigmaSB) ** (1 / 4)
         else:
             raise Exception('Only one of (C_irr, T_irr) is required.')
-        self.P_ph_0 = P_ph_0
+        self.P_ph_0 = None
         self.P_ph_key = False
         self.P_ph_parameter = None
 
@@ -453,15 +453,14 @@ class ExternalIrradiation:
 
         """
 
-        if self.P_ph_0 is None:
-            self.P_ph_0 = self.P_ph() + 4 * sigmaSB / (3 * c) * self.Teff ** 4  # P_ph_0 = P_total
-
         def fun_P_ph(x):
             # x = P_total_ph
             result = abs(x) - self.P_ph_irr(abs(x))
             return result
 
         if not self.P_ph_key:
+            if self.P_ph_0 is None:
+                self.P_ph_0 = self.P_ph() + 4 * sigmaSB / (3 * c) * self.Teff ** 4  # P_ph_0 = P_total
             sign_P_ph = fun_P_ph(self.P_ph_0)
             if np.isnan(sign_P_ph):
                 raise PphNotConvergeError(sign_P_ph, self.P_ph_0, self.z0 / self.r, self.Sigma0_par)
@@ -485,7 +484,7 @@ class ExternalIrradiation:
             P_ph, res = brentq(fun_P_ph, self.P_ph_0, P_ph_a, full_output=True)
             if abs(fun_P_ph(P_ph)) > 1e-7:
                 raise PphNotConvergeError(fun_P_ph(P_ph))
-            self.P_ph_0 = P_ph + 1
+            self.P_ph_0 = P_ph * 1.98
             P_ph = abs(res.root)
             if self.fitted:
                 self.P_ph_parameter = abs(res.root)
@@ -525,9 +524,9 @@ class ExternalIrradiation:
             print(f'z0r, Sigma0_par = {abs(x[0]):g}, {self.Sigma0_par:g}')
         return q_c
 
-    def fit(self, z0r_estimation=None, Sigma0_estimation=None, verbose=False):
+    def fit(self, z0r_estimation=None, Sigma0_estimation=None, verbose=False, P_ph_0=None):
         """
-        Solve optimisation problem and calculate the vertical structure.
+        Solves optimisation problem and calculate the vertical structure.
 
         Parameters
         ----------
@@ -540,6 +539,9 @@ class ExternalIrradiation:
         verbose : bool
             Whether to print values of (z0r, Sigma0_par) at each iteration.
             Default is False, the fitting process performs silently.
+        P_ph_0 : double
+            Start estimation of pressure at the photosphere (pressure boundary condition).
+            Default is None, the estimation is calculated automatically.
 
         Returns
         -------
@@ -557,6 +559,9 @@ class ExternalIrradiation:
             norm = self.Sigma0_init()
         else:
             norm = Sigma0_estimation
+        self.P_ph_0 = P_ph_0
+        self.fitted = False
+        self.P_ph_key = False
 
         cost_root = -1
         try:
@@ -613,14 +618,13 @@ class ExternalIrradiationZeroAssumption:
 
         """
 
-        if self.P_ph_0 is None:
-            self.P_ph_0 = self.P_ph()
-
         def fun_P_ph(x):
             # x = P_gas_ph
             return abs(x) - self.P_ph_irr(abs(x))
 
         if not self.P_ph_key:
+            if self.P_ph_0 is None:
+                self.P_ph_0 = self.P_ph()
             sign_P_ph = fun_P_ph(self.P_ph_0)
             if np.isnan(sign_P_ph):
                 raise PphNotConvergeError(sign_P_ph, self.P_ph_0, self.z0 / self.r)
@@ -645,7 +649,7 @@ class ExternalIrradiationZeroAssumption:
             P_ph, res = brentq(fun_P_ph, self.P_ph_0, P_ph_a, full_output=True)
             if abs(fun_P_ph(P_ph)) > 1e-7:
                 raise PphNotConvergeError(fun_P_ph(P_ph))
-            self.P_ph_0 = P_ph + 1
+            self.P_ph_0 = P_ph * 1.98
             P_ph = abs(res.root)
             if self.fitted:
                 self.P_ph_parameter = abs(res.root)
@@ -665,6 +669,34 @@ class ExternalIrradiationZeroAssumption:
         y[Vars.Q] = Q_initial
         y[Vars.T] = (self.Teff ** 4 + self.T_irr ** 4) ** (1 / 4) / self.T_norm
         return y
+
+    def fit(self, z0r_estimation=None, verbose=False, P_ph_0=None):
+        """
+        Solves optimisation problem and calculates the vertical structure.
+
+        Parameters
+        ----------
+        z0r_estimation : double
+            Start estimation of z0r free parameter to fit the structure.
+            Default is None, the estimation is calculated automatically.
+        verbose : bool
+            Whether to print value of z0r at each iteration.
+            Default is False, the fitting process performs silently.
+        P_ph_0 : double
+            Start estimation of pressure at the photosphere (pressure boundary condition).
+            Default is None, the estimation is calculated automatically.
+
+        Returns
+        -------
+        double and scipy.optimize.RootResults
+            The value of normalised unknown free parameter z_0 / r and result of optimisation.
+
+        """
+
+        self.P_ph_0 = P_ph_0
+        self.fitted = False
+        self.P_ph_key = False
+        return super().fit(z0r_estimation=z0r_estimation, verbose=verbose)
 
 
 # Classes with MESA opacity without Irradiation
