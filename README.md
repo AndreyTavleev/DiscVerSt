@@ -498,7 +498,7 @@ Code was texted for disc $T_{\rm eff}\sim (10^3-10^6) \rm K$. However, there can
 ### Without irradiation
 Calculation can be failed, if during the fitting process $P_{\rm gas}$ become less than zero, the corresponding `PgasPradNotConvergeError` is raised. In this case one recommend to set manually the estimation of 'z0r' free parameter (usually smaller estimation). Also you can get additional information about the value of free parameter during the fitting process through `verbose` parameter:
 ``` python3
-verstr = ...  # definition the structure class
+verstr = ...  # definition of the structure class
 # let us set the free parameter estimation
 # and print value of z0r parameter at each fitting iteration
 z0r, result = vertstr.fit(z0r_estimation=0.05, verbose=True)
@@ -510,7 +510,7 @@ Calculation can be failed, if during the fitting process $P_{\rm gas}$ become le
 
 Another reason of calculation failure concerns the calculation of $P'$ pressure initial condition. In contrast to the 'no-irradiation' case, value of $P'$ is found as the root of algebraic equation. If the default initial estimation of this root is poor, the root finding can be failed (usually it means that during the root finding the $P_{\rm gas}$ become less than zero), the corresponding `PphNotConvergeError` is raised. Then you can try to set that estimation manually (usually higher) through `P_ph_0` parameter:
 ``` python3
-verstr = ...  # definition the structure class
+verstr = ...  # definition of the structure class
 # let us set the free parameter estimation
 # and set the estimation of pressure boundary condition
 # and print value of z0r parameter at each fitting iteration
@@ -522,7 +522,7 @@ This case if similar to one for scheme (i), and the ways to solve the convergenc
 
 One specific case is unstable disc region, where code in principle may converge to both hot and cold disc state. Here, even for right `z0r` and `Sigma0_par` values, the wrong $P'$ root can be found due to wrong root estimation, which leads to code non-convergence. Then one recommends to set another `P_ph_0` estimation (much higher or smaller).
 ``` python3
-verstr = ...  # definition the structure class
+verstr = ...  # definition of the structure class
 # let us set the free parameters estimations
 # and set the estimation of pressure boundary condition
 # and print value of free parameters at each fitting iteration
