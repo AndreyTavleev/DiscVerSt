@@ -31,9 +31,9 @@ class Vars(IntEnum):
     Attributes
     ----------
     S
-        Mass coordinate.
+        Mass coordinate (column density).
     P
-        Pressure.
+        Gas pressure.
     Q
         Flux of energy.
     T
@@ -216,6 +216,7 @@ class BaseVerticalStructure:
         -------
         list
             List containing the array with values of dimensionless functions
+            S (column density), P (gas pressure), Q (energy flux), T (temperature)
             calculating at points of `t` array. Also list contains the
             message from the integrator.
 
@@ -227,12 +228,12 @@ class BaseVerticalStructure:
 
     def tau(self):
         """
-        Calculates optical thickness of the disc.
+        Calculates total optical thickness of the disc.
 
         Returns
         -------
         double
-            Optical thickness.
+            Total optical thickness.
 
         """
         t = np.linspace(0, 1, 100)
@@ -253,7 +254,7 @@ class BaseVerticalStructure:
         Returns
         -------
         array
-            Opacity, bulk density, temperature, gas pressure and surface density of disc.
+            Opacity, bulk density, temperature, gas pressure at the symmetry plane and surface density of disc.
 
         """
         y_c = self.y_c()
