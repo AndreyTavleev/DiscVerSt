@@ -302,9 +302,14 @@ print(vertstr.C_irr, vertstr.T_irr)  # irradiation parameter and temperature
 
 ## Structure Choice
 Module `profiles` contains `StructureChoice()` function, serves as interface for creating 
-the right structure object in a simpler way. One can use other input parameters instead viscous torque `F`
-(such as effective temperature $T_{\rm eff}$ and accretion rate $\dot{M}$) using `input` parameter,
-and choose the structure type using `structure` parameter.
+the right structure object in a simpler way. The input parameter of all structure classes is `F` - viscous torque. 
+One can use other input parameters instead viscous torque `F` (such as effective temperature $T_{\rm eff}$ and accretion rate $\dot{M}$) using `input` parameter, and choose the structure type using `structure` parameter. The relation between $T_{\rm eff}, \dot{M}$ and $F$:
+```math
+    \sigma_{\rm SB}T_{\rm eff}^4 = \frac{3}{8\pi} \frac{F\omega_{\rm K}}{r^2}, \quad F = \dot{M}h \left(1 - \sqrt{\frac{r_{\rm in}}{r}}\right) + F_{\rm in}
+```
+The default value of viscous torque at the inner boundary of the disc $F_{\rm in}=0$ (it corresponds to Schwarzschild black hole as central source). If $F_{\rm in}\neq0$ you should set the non-zero value of $F_{\rm in}$ manually (`F_in` parameter) for correct calculation of the relation above.
+
+Usage:
 ``` python3
 from disc_verst.profiles import StructureChoice
 
@@ -329,6 +334,7 @@ from disc_verst import profiles
 
 help(profiles.StructureChoice)
 ```
+
 
 ## Vertical and radial profile calculation, S-curves
 
@@ -386,7 +392,7 @@ boundary conditions plus one additional boundary condition for flux:
 \frac{{\rm d}P}{{\rm d}z} &= -\rho\,\omega^2_{K} z \qquad\quad\,\, P_{\rm gas}(z_0) = P'; \\
 \frac{{\rm d}\Sigma}{{\rm d}z} &= -2\rho \qquad\qquad\quad \Sigma(z_0) = 0; \\
 \frac{{\rm d} T}{{\rm d} z} &= \nabla \frac{T}{P} \frac{{\rm d} P}{{\rm d} z} \qquad\quad T(z_0) = T_{\rm eff} = (Q_0/\sigma_{\rm SB})^{1/4}; \\
-\frac{{\rm d}Q}{{\rm d}z} &= \frac32\omega_K \alpha P \qquad\quad Q(z_0) = \frac{3}{8\pi}\dot{M}\omega_K^2 \left(1 - \sqrt{\frac{r_{\rm in}}{r}}\right) = \frac{3}{8\pi} \frac{F\omega_K}{r^2} = Q_0, \quad Q(0) = 0; \\
+\frac{{\rm d}Q}{{\rm d}z} &= \frac32\omega_K \alpha P \qquad\quad Q(z_0) = \frac{3}{8\pi} \frac{F\omega_K}{r^2} = \frac{3}{8\pi}\dot{M}\omega_K^2 \left(1 - \sqrt{\frac{r_{\rm in}}{r}}\right) + \frac{3}{8\pi} \frac{F_{\rm in}\omega_K}{r^2} = Q_0, \quad Q(0) = 0; \\
 &z \in [z_0, 0].
 \end{split}
 ```
@@ -394,7 +400,9 @@ Here $P = P_{\rm tot} = P_{\rm gas} + P_{\rm rad} = P_{\rm gas} + aT^4/3, \Sigma
 column density, temperature and energy flux in the disc, $\nabla\equiv\frac{{\rm d}\ln T}{{\rm d}\ln P}$ is the temperature 
 gradient (radiative or convective, according to Schwarzschild criterion), and $\alpha$ is Shakura-Sunyaev turbulent 
 parameter ([Shakura & Sunyaev
-1973](https://ui.adsabs.harvard.edu/abs/1973A&A....24..337S)). After the normalizing $P_{\rm gas}, Q, T, \Sigma$ on their characteristic values $P_0, Q_0, T_0, \Sigma_{00}$, 
+1973](https://ui.adsabs.harvard.edu/abs/1973A&A....24..337S)). By default the inner viscous torque $F_{\rm in}=0$ (this case corresponds to Schwarzschild black hole as central source). 
+
+After the normalizing $P_{\rm gas}, Q, T, \Sigma$ on their characteristic values $P_0, Q_0, T_0, \Sigma_{00}$, 
 and replacing $z$ on $\hat{z} = 1 - z/z_0$ (in code it is the `t` variable), one has:
 ```math
 \begin{split}
