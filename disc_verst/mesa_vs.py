@@ -55,7 +55,7 @@ class IrrNotConvergeError(Exception):
     def __init__(self, Sigma0_par, z0r):
         self.Sigma0_par = Sigma0_par
         self.z0r = z0r
-        self.message = f'Not converged, try larger Sigma0_par or smaller z0r estimations. ' \
+        self.message = f'Not converged, try higher Sigma0_par or smaller z0r estimations. ' \
                        f'Current estimations are Sigma0_par = {self.Sigma0_par:g}, z0r = {self.z0r:g}.'
 
     def __str__(self):
@@ -161,14 +161,16 @@ class BaseExternalIrradiation(BaseMesaVerticalStructure):
 
 
 class BaseExternalIrradiationZeroAssumption(BaseMesaVerticalStructure):
-    def __init__(self, Mx, alpha, r, F, C_irr=None, T_irr=None, eps=1e-5, abundance='solar'):
+    def __init__(self, Mx, alpha, r, F, C_irr=None, T_irr=None, eps=1e-5, abundance='solar', F_in=0):
         super().__init__(Mx, alpha, r, F, eps=eps, mu=0.6, abundance=abundance)
         h = np.sqrt(self.GM * self.r)
         eta_accr = 0.1
         rg = 2 * self.GM / c ** 2
         r_in = 3 * rg
         func = 1 - np.sqrt(r_in / r)
-        Mdot = self.F / (h * func)
+        Mdot = (self.F - F_in) / (h * func)
+        if Mdot < 0:
+            raise Exception(f'Mdot = {Mdot:g} g/s < 0, incorrect F_in = {F_in:g} g*cm^2/s^2.')
         if C_irr is None and T_irr is None:
             raise Exception('C_irr or T_irr is required.')
         elif T_irr is not None and C_irr is None:
