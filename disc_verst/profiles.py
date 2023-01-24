@@ -3,7 +3,7 @@
 Module contains functions that calculate vertical and radial structure and S-curve.
 Functions return tables with calculated data of structure or S-curve.
 
-StructureChoice -- Initialise the chosen vertical structure class.
+StructureChoice -- Initialise the chosen vertical structure.
     It serves as interface for initialising the structure object in a simpler way.
 Vertical_Profile -- calculates vertical structure and makes table with disc parameters as functions of vertical
     coordinate. Table also contains input parameters of structure, parameters in the symmetry plane and
@@ -144,10 +144,6 @@ def StructureChoice(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar
         Mdot = Par
         F = Par * h * func + F_in
         Teff = (3 / (8 * np.pi) * (G * M) ** 4 * F / (sigmaSB * h ** 7)) ** (1 / 4)
-    elif input == 'F':
-        F = Par
-        Mdot = Par / (h * func)
-        Teff = (3 / (8 * np.pi) * (G * M) ** 4 * Par / (sigmaSB * h ** 7)) ** (1 / 4)
     elif input == 'Mdot_Mdot_edd':
         Mdot = Par * 1.39e18 * M / M_sun
         F = Mdot * h * func + F_in
@@ -287,7 +283,7 @@ def Convective_parameter(vs):
     Parameters
     ----------
     vs : vertical structure
-        FITTED vertical structure, for which convective parameter is calculated.
+        FITTED vertical structure, for which convective parameter should be calculated.
 
     Returns
     -------
@@ -315,7 +311,7 @@ def Convective_parameter(vs):
     return conv_param_z, conv_param_sigma
 
 
-def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar', nu_irr=None,
+def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='solar', F_in=0, nu_irr=None,
                      L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None,
                      args_spectrum_irr=(), kwargs_spectrum_irr={},
                      cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
@@ -358,6 +354,10 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
         Chemical composition of disc. Use in case of MESA EoS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
+    F_in : double
+        Viscous torque in g*cm^2/s^2 at the inner disc radius.
+        The viscous torque F = Mdot * h * (1-sqrt(r_in/r)) + F_in.
+        Default F_in=0 (when the central source is Schwarzschild black hole).
     nu_irr : array-like
         If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'], nu_irr is the irradiation spectral flux argument.
         Can be (X-ray) frequency (in Hz) or energy (in keV) array for spectral external irradiation flux.
@@ -451,7 +451,7 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
                                         spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
                                         args_spectrum_irr=args_spectrum_irr, kwargs_spectrum_irr=kwargs_spectrum_irr,
                                         cos_theta_irr=cos_theta_irr, cos_theta_irr_exp=cos_theta_irr_exp,
-                                        C_irr=C_irr, T_irr=T_irr)
+                                        C_irr=C_irr, T_irr=T_irr, F_in=F_in)
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
         kwargs_fit = {'z0r_estimation': z0r_estimation, 'Sigma0_estimation': Sigma0_estimation,
                       'verbose': verbose, 'P_ph_0': P_ph_0}
@@ -519,7 +519,7 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
     return
 
 
-def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='solar', nu_irr=None,
+def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='solar', F_in=0, nu_irr=None,
             L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(), kwargs_spectrum_irr={},
             cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
             z0r_start_estimation=None, Sigma0_start_estimation=None, P_ph_0=None, verbose=False,
@@ -527,8 +527,8 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
     """
     Calculates S-curve and makes table with disc parameters on the S-curve.
     Table contains input parameters of system, surface density Sigma0, viscous torque F,
-    accretion rate Mdot, effective temperature Teff, geometrical half-thickness of the disc z0r,
-    parameters in the symmetry plane of disc on the S-curve.
+    accretion rate Mdot, effective temperature Teff (or Tvis in case of external irradiation),
+    geometrical half-thickness of the disc z0r, parameters in the symmetry plane of disc on the S-curve.
 
     Parameters
     ----------
@@ -565,6 +565,10 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
         Chemical composition of disc. Use in case of MESA EoS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
+    F_in : double
+        Viscous torque in g*cm^2/s^2 at the inner disc radius.
+        The viscous torque F = Mdot * h * (1-sqrt(r_in/r)) + F_in.
+        Default F_in=0 (when the central source is Schwarzschild black hole).
     nu_irr : array-like
         If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'], nu_irr is the irradiation spectral flux argument.
         Can be (X-ray) frequency (in Hz) or energy (in keV) array for spectral external irradiation flux.
@@ -650,8 +654,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
            If structure is fitted successfully, cost must be less than 1e-16.
 
     Also table contains Sigma_plus_index, Sigma_minus_index -- turn point indexes of the S-curve.
-    If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'], table contains
-    except fits -- number of unsuccessfully fitted structures.
+    Finally, table contains 'Non-converged_fits' -- number of unsuccessfully fitted structures.
 
     """
     if path_dots is None:
@@ -666,7 +669,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
     sigma_par_estimation = Sigma0_start_estimation
 
     sigma_temp = np.infty
-    except_fits = 0
+    Non_converged_fits = 0
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                      'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:
         Teff_string = 'Tvis'
@@ -695,7 +698,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
 
     for i, Par in enumerate(np.geomspace(Par_max, Par_min, n)):
         print(i)
-        vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance,
+        vs, F, Teff, Mdot = StructureChoice(M, alpha, r, Par, input, structure, mu, abundance, F_in=F_in,
                                             nu_irr=nu_irr, L_X_irr=L_X_irr,
                                             spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
                                             args_spectrum_irr=args_spectrum_irr,
@@ -714,7 +717,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
         except Exception as e:
             print(e)
             print('Non-converged fit')
-            except_fits += 1
+            Non_converged_fits += 1
             continue
         try:
             z0r, sigma_par = result.x
@@ -771,10 +774,10 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
             sigma_temp = Sigma0
 
         if delta_Sigma_plus > 0.0 and Sigma_plus_key:
-            Sigma_plus_index = i - 1 - except_fits
+            Sigma_plus_index = i - 1 - Non_converged_fits
             Sigma_plus_key = False
         if delta_Sigma_plus < 0.0 and not Sigma_plus_key and Sigma_minus_key:
-            Sigma_minus_index = i - 1 - except_fits
+            Sigma_minus_index = i - 1 - Non_converged_fits
             Sigma_minus_key = False
 
         output_string = np.array(output_string)
@@ -783,20 +786,20 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
             file.write('\n')
     with open(path_dots, 'a') as file:
         file.write(f'# Sigma_plus_index = {Sigma_plus_index:d}  Sigma_minus_index = {Sigma_minus_index:d}')
-        file.write(f'\n# Non-converged_fits = {except_fits}')
+        file.write(f'\n# Non-converged_fits = {Non_converged_fits}')
     return
 
 
-def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abundance='solar',
+def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abundance='solar', F_in=0,
                    nu_irr=None, L_X_irr=None, spectrum_irr=None, spectrum_irr_par=None, args_spectrum_irr=(),
                    kwargs_spectrum_irr={}, cos_theta_irr=None, cos_theta_irr_exp=1 / 12, C_irr=None, T_irr=None,
                    z0r_start_estimation=None, Sigma0_start_estimation=None, P_ph_0=None, verbose=False,
                    n=100, tau_break=True, add_Pi_values=True, path_dots=None):
     """
     Calculates radial structure of disc. Return table, which contains input parameters of the system,
-    surface density Sigma0, viscous torque F, accretion rate Mdot, effective temperature Teff,
-    geometrical half-thickness of the disc z0r and parameters in the symmetry plane of disc
-    as functions of radius.
+    surface density Sigma0, viscous torque F, accretion rate Mdot, effective temperature Teff
+    (or Tvis in case of external irradiation), geometrical half-thickness of the disc z0r and
+    parameters in the symmetry plane of disc as functions of radius.
 
     Parameters
     ----------
@@ -837,6 +840,10 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
         Chemical composition of disc. Use in case of MESA EoS.
         Format: {'isotope_name': abundance}. For example: {'h1': 0.7, 'he4': 0.3}.
         Use 'solar' str in case of solar composition.
+    F_in : double
+        Viscous torque in g*cm^2/s^2 at the inner disc radius.
+        The viscous torque F = Mdot * h * (1-sqrt(r_in/r)) + F_in.
+        Default F_in=0 (when the central source is Schwarzschild black hole).
     nu_irr : array-like
         If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr'], nu_irr is the irradiation spectral flux argument.
         Can be (X-ray) frequency (in Hz) or energy (in keV) array for spectral external irradiation flux.
@@ -928,7 +935,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
     If structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr']:
         8) cost, Sigma_ph -- cost function and column density of the layers above the photosphere.
            If structure is fitted successfully, cost must be less than 1e-16.
-           Table also contains except fits -- number of unsuccessfully fitted structures.
+    Table also contains 'Non-converged_fits' -- number of unsuccessfully fitted structures.
 
     """
     if path_dots is None:
@@ -936,7 +943,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
 
     z0r_estimation = z0r_start_estimation
     sigma_par_estimation = Sigma0_start_estimation
-    except_fits = 0
+    Non_converged_fits = 0
     r_arr = np.geomspace(r_start, r_end, n)
 
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
@@ -973,7 +980,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
         print(i)
         r = input_pars[0]
         vs, F, Teff, Mdot = StructureChoice(M=M, alpha=alpha, r=r, Par=input_pars[1], input=input,
-                                            structure=structure, mu=mu, abundance=abundance,
+                                            structure=structure, mu=mu, abundance=abundance, F_in=F_in,
                                             nu_irr=nu_irr, L_X_irr=L_X_irr,
                                             spectrum_irr=spectrum_irr, spectrum_irr_par=spectrum_irr_par,
                                             args_spectrum_irr=args_spectrum_irr,
@@ -992,7 +999,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
         except Exception as e:
             print(e)
             print('Non-converged fit')
-            except_fits += 1
+            Non_converged_fits += 1
             continue
         try:
             z0r, sigma_par = result.x
@@ -1048,7 +1055,7 @@ def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abun
             np.savetxt(file, output_string, newline=' ')
             file.write('\n')
     with open(path_dots, 'a') as file:
-        file.write(f'# Non-converged_fits = {except_fits}')
+        file.write(f'# Non-converged_fits = {Non_converged_fits}')
     return
 
 
