@@ -305,9 +305,9 @@ Module `profiles` contains `StructureChoice()` function, serves as interface for
 the right structure object in a simpler way. The input parameter of all structure classes is `F` - viscous torque. 
 One can use other input parameters instead viscous torque `F` (such as effective temperature $T_{\rm eff}$ and accretion rate $\dot{M}$) using `input` parameter, and choose the structure type using `structure` parameter. The relation between $T_{\rm eff}, \dot{M}$ and $F$:
 ```math
-    \sigma_{\rm SB}T_{\rm eff}^4 = \frac{3}{8\pi} \frac{F\omega_{\rm K}}{r^2}, \quad F = \dot{M}h \left(1 - \sqrt{\frac{r_{\rm in}}{r}}\right) + F_{\rm in}
+    \sigma_{\rm SB}T_{\rm eff}^4 = \frac{3}{8\pi} \frac{F\omega_{\rm K}}{r^2}, \quad F = \dot{M}h \left(1 - \sqrt{\frac{r_{\rm in}}{r}}\right) + F_{\rm in},
 ```
-The default value of viscous torque at the inner boundary of the disc $F_{\rm in}=0$ (it corresponds to Schwarzschild black hole as central source). If $F_{\rm in}\neq0$ you should set the non-zero value of $F_{\rm in}$ manually (`F_in` parameter) for correct calculation of the relation above.
+where $r_{\rm in} = 3r_{\rm g}=6GM/c^2$. The default value of viscous torque at the inner boundary of the disc $F_{\rm in}=0$ (it corresponds to Schwarzschild black hole as central source). If $F_{\rm in}\neq0$ you should set the non-zero value of $F_{\rm in}$ manually (`F_in` parameter) for correct calculation of the relation above.
 
 Usage:
 ``` python3
