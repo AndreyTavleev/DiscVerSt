@@ -5,7 +5,7 @@ This code calculates vertical structure of accretion discs around neutron stars 
 ## Contents
 
    * [Installation](#Installation)
-      * [Only analytical opacities and EoS](#Only-analytical-opacities-and-EoS)
+      * [Analytical opacities and EoS](#Analytical-opacities-and-EoS)
       * [Tabular opacities and EoS](#Tabular-opacities-and-EoS)
    * [Calculate structure](#Calculate-structure)
    * [Irradiated discs](#Irradiated-discs)
@@ -16,9 +16,9 @@ This code calculates vertical structure of accretion discs around neutron stars 
 
 ## Installation
 
-### Only analytical opacities and EoS
+### Analytical opacities and EoS
 
-If you want to use only analytical formulas for opacity and EoS to calculate structures, choose this installation way.
+If you only need analytical approximation for opacity and equation of state, choose this installation way.
 
 1. Create and activate virtual environment
 
@@ -36,10 +36,10 @@ $ pip3 install -U pip setuptools
 3. Install 'disc_verst' package
 
 ``` shell
-$ pip3 install .
+$ pip3 install git+https://github.com/AndreyTavleev/DiscVerSt.git
 ```
 
-4. Run python and try to calculate simple structure
+4. Run Python script to calculate a simple structure:
 
 ``` shell
 $ python3 -m disc_verst.vs
@@ -58,18 +58,19 @@ $ python3 -m disc_verst.vs
 
 ### Tabular opacities and EoS
 
-['mesa2py'](https://github.com/hombit/mesa2py) is used to bind tabular opacities and EoS 
-from [MESA code](http://docs.mesastar.org) with Python3.
-If you want to use tabular values of opacity and EoS to calculate the structure, you should use Docker.
+['mesa2py'](https://github.com/hombit/mesa2py) is used to bind tabular opacities and EoS routines 
+from [MESA code](http://docs.mesastar.org) to Python3.
+If you want to use tabular values of opacity and EoS to calculate the structure, you should use a Docker image we provide.
+The image includes MESA SDK, pre-compiled static C-library binding `eos` and `kappa` MESA modules, and Python binding module.
 
-You can use the latest pre-build Docker image:
+Download and create an alias of the Docker image:
 
 ``` shell
 $ docker pull ghcr.io/andreytavleev/discverst:latest
 $ docker tag ghcr.io/andreytavleev/discverst discverst
 ```
 
-Or build a Docker image by yourself
+Or build the Docker image by yourself:
 
 ``` shell
 $ git clone https://github.com/AndreyTavleev/DiscVerSt.git
@@ -94,26 +95,27 @@ $ docker run -v$(pwd)/fig:/app/fig --rm -ti discverst python3 -m disc_verst.mesa
 	z0/r =  0.029812574021917705
 	Plot of structure is successfully saved to fig/vs_mesa.pdf.
 
-As the result, the plot `vs_mesa.pdf` is saved to the `/app/fig/` (`/app/` is a Docker WORKDIR) 
-in the container and to the `$(pwd)/fig/` in the host machine. 
+As the result, the plot `vs_mesa.pdf` is saved to the `/app/fig/` (`/app/` is the working directory) 
+in the container and to the `./fig/` in the host machine. 
 
 ## Calculate structure
 
 Module `vs` contains several classes that represent the vertical 
-structure of accretion discs in X-ray binaries for different analytical assumptions 
-of opacity law. For given parameters the vertical structure of 
-disc is calculated and can be used for research of disc stability.
+structure of accretion discs in X-ray binaries for different analytical approximations 
+of the opacity law. The classes calculate vertical structure of the disc for given parameters,
+and allow to study its viscous stability.
 
 Module `mesa_vs` contains some additional classes, that represent 
-the vertical structure for tabular opacities and EoS and convective energy transport.
+the vertical structure for tabular opacities, EoS, and convective energy transport.
 
-Both `vs` and `mesa_vs` modules have help with description of available structure classes.
+Both `vs` and `mesa_vs` modules have Python docstrings with description of available structure classes,
+use Python's build-in `help` function to read them:
 ``` python3
 help(disc_verst.vs)
 help(disc_verst.mesa_vs)
 ```
 
-### Usage with analytical opacities and EoS::
+### Example of analytical opacities and EoS calculation:
 
 ``` python3
 from disc_verst import vs
@@ -138,7 +140,7 @@ print(Sigma0)  # Surface density of disc
 print(vertstr.tau())  # optical thickness of disc
 ```
 
-### Usage with tabular opacities and EoS:
+### Example of tabular opacities and EoS calculation:
 
 ``` shell
 $ docker run --rm -ti discverst python3
@@ -166,7 +168,7 @@ print(Sigma0)  # Surface density of disc
 print(vertstr.tau())  # optical thickness of disc
 ```
 
-You can run your own files, that use this code, inside Docker
+You can run your own files inside Docker
 
 ``` shell
 $ docker run -v/path_to/your_file/file.py:/app/file.py --rm -ti discverst python3 file.py
@@ -183,30 +185,27 @@ help(disc_verst.mesa_vs)
 
 Irradiation can be taken into account in two ways:
 
-1. Via either `T_irr` or `C_irr` parameters, that is, the irradiation temperature $T_{\rm irr}$ and irradiation 
-   parameter $C_{\rm irr}$. It is a simple approach for irradiation, when the external flux doesn't penetrate 
-   into the disc and only heats the disc surface. Relation between $T_{\rm irr}$ and $C_{\rm irr}$:
+1. Via either irradiation temperature `T_irr` ($T_{\rm irr}$) or irradiation parameter `C_irr` ($C_{\rm irr}$).
+   This case corresponds to a simple model for the irradiation: the external flux doesn't penetrate 
+   into the disc and only heats the disc surface. $T_{\rm irr}$ and $C_{\rm irr}$ relate as following:
 ```math
 \sigma_{\rm SB} T^4_{\rm irr} = C_{\rm irr} \frac{\eta \dot{M}c^2}{4\pi r^2},
 ```
-   where $\eta=0.1$ is accretion efficiency.  
-
+   where $\eta=0.1$ is the accretion efficiency.  
 2. In the second approximation the external flux is penetrated into the disc and affect the energy flux
-   and disc temperature. In this case there are more additional parameters are required, that describe
+   and disc temperature. In this case there are more additional parameters are required, which describe
    the incident spectral flux:
 ```math
 F^{\nu}_{\rm irr} = \frac{L_{\rm X}}{4\pi r^2} \, S(\nu).
 ```
    Such parameters are: frequency range `nu_irr`, units of frequency range 
    `spectrum_irr_par`, spectrum `spectrum_irr`, luminosity of irradiation source `L_X_irr` 
-   and the cosine of incident angle `cos_theta_irr`.
-
-   1. Frequency range `nu_irr` is array-like and can be either in Hz or in energy units (keV), this is determined by 
-      `spectrum_irr_par` in `['nu', 'E_in_keV']`.
+   and the cosine of incident angle `cos_theta_irr`. 
+   1. Frequency range `nu_irr` is an array-like and can be either in Hz (`spectrum_irr_par='nu'`) or in kEV (`spectrum_irr_par='E_in_keV'`).
    2. Spectrum `spectrum_irr` can be either an array-like or a Python function. 
-      1. If `spectrum_irr` is array-like, it must be in 1/Hz or in 1/keV depending on 'spectrum_irr_par',
+      - If `spectrum_irr` is an array-like, it must be in 1/Hz or in 1/keV depending on 'spectrum_irr_par',
          must be normalised to unity, and its size must be equal to `nu_irr.size`.
-      2. If `spectrum_irr` is a Python function, the spectrum is calculated 
+      - If `spectrum_irr` is a Python function, the spectrum is calculated 
          for the frequency range `nu_irr` and automatically normalised to unity over `nu_irr`. 
          Note, that units of `nu_irr` and units of `spectrum_irr` arguments must be consistent. 
          There are two optional parameters `args_spectrum_irr` and `kwargs_spectrum_irr` 
@@ -215,7 +214,7 @@ F^{\nu}_{\rm irr} = \frac{L_{\rm X}}{4\pi r^2} \, S(\nu).
       cosine is calculated self-consistently as `cos_theta_irr_exp * z0 / r`, where `cos_theta_irr_exp` is
       additional parameter, namely the $({\rm d}\ln z_0/{\rm d}\ln r - 1)$ derivative.
 
-### Usage of simple irradiation scheme:
+### Example of a simple irradiation calculation:
 
 ``` python3
 from disc_verst import mesa_vs
@@ -244,7 +243,7 @@ print(vertstr.tau())  # optical thickness of disc
 print(vertstr.C_irr)  # corresponding irradiation parameter
 ```
 
-### Usage of advanced irradiation scheme:
+### Example of an advanced irradiation scheme:
 
 Define the incident X-ray spectrum as a function of energy in keV:
 ```math
@@ -300,8 +299,8 @@ print(vertstr.tau())  # optical thickness of disc
 print(vertstr.C_irr, vertstr.T_irr)  # irradiation parameter and temperature
 ```
 
-## Structure Choice
-Module `profiles` contains `StructureChoice()` function, serves as interface for creating 
+## Structure choice
+Module `profiles`, containing `StructureChoice()` function, serves as interface for creating 
 the right structure object in a simpler way. The input parameter of all structure classes is `F` - viscous torque. 
 One can use other input parameters instead viscous torque `F` (such as effective temperature $T_{\rm eff}$ and accretion rate $\dot{M}$) using `input` parameter, and choose the structure type using `structure` parameter. The relation between $T_{\rm eff}, \dot{M}$ and $F$:
 ```math
@@ -345,13 +344,11 @@ can be calculated for default parameters, stored as tables and plots:
 $ python3 -m disc_verst.profiles
 ```
 
-`profiles` contains three functions: `Vertical_Profile`, `S_curve` and `Radial_Profile`. 
+`profiles` contains three functions: `Vertical_Profile`, `S_curve` and `Radial_Profile`.
 
-`Vertical_Profile` returns table with parameters of disc as functions of vertical coordinate at specific radius.
-
-`S_curve` calculates S-curve and return table with disc parameters on the curve.
-
-`Radial_Profile` returns table with parameters of disc as functions of radius for a given radius range.
+- `Vertical_Profile` returns table with parameters of disc as functions of vertical coordinate at specific radius.
+- `S_curve` calculates S-curve and return table with disc parameters on the curve.
+- `Radial_Profile` returns table with parameters of disc as functions of radius for a given radius range.
 
 ### Usage:
 ``` python3
@@ -414,7 +411,7 @@ P_{\rm tot} &= P_0\hat{P} + aT_0^4\hat{T}^4/3 \qquad\qquad\qquad\qquad\qquad \ha
 \end{split}
 ```
 
-The initial boundary condition for gas pressure $P'$ is found through the integral:
+The initial boundary condition for gas pressure $P'$ is defined by the integral:
 ```math
 P_{\rm gas}(z_0) + P_{\rm rad}(z_0) = P' + P_{\rm rad}(z_0) = \int_0^{2/3} \frac{\omega_{\rm K}^2 z_0}{\varkappa_{\rm R}(P_{\rm gas}, T(\tau))}\, {\rm d}\tau.
 ```
