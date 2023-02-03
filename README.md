@@ -498,10 +498,10 @@ conditions. Namely, code minimises function:
 
 
 ## Calculation tips and tricks
-Code was tested for disc $T_{\rm eff}\sim (10^3-10^6) \rm K$. However, there can be some convergence problems, especially when $P_{\rm rad}/P_{\rm gas}\gg0.1$.
+Code was tested for disc $T_{\rm eff}\sim (10^3-10^6) \rm K$. However, there can be some convergence problems, especially when $P_{\rm rad}\geq P_{\rm gas}$.
 
 ### Without irradiation
-Calculation can be failed, if during the fitting process $P_{\rm gas}$ become less than zero, the corresponding `PgasPradNotConvergeError` is raised. In this case one recommend to set manually the estimation of 'z0r' free parameter (usually smaller estimation). Also you can get additional information about the value of free parameter during the fitting process through `verbose` parameter:
+Calculation can be failed, if during the fitting process $P_{\rm gas}$ become less than zero, the corresponding `PgasPradNotConvergeError` is raised. In this case one recommend to set manually the estimation of `z0r` free parameter (usually smaller estimation). Also you can get additional information about the value of free parameter during the fitting process through `verbose` parameter:
 ``` python3
 verstr = ...  # definition of the structure class
 # let us set the free parameter estimation
@@ -511,7 +511,7 @@ z0r, result = vertstr.fit(z0r_estimation=0.05, verbose=True)
 Note, that the higher $P_{\rm rad}/P_{\rm gas}$ value the more sensitive calculation convergence to `z0r` estimation.
 
 ### With irradiation scheme (i)
-Calculation can be failed, if during the fitting process $P_{\rm gas}$ become less than zero, the corresponding `PgasPradNotConvergeError` is raised. In this case again try to set manually the estimation of 'z0r' free parameter.
+Calculation can be failed, if during the fitting process $P_{\rm gas}$ become less than zero, the corresponding `PgasPradNotConvergeError` is raised. In this case again try to set manually the estimation of `z0r` free parameter.
 
 Another reason of calculation failure concerns the calculation of $P'$ pressure initial condition. In contrast to the 'no-irradiation' case, value of $P'$ is found as the root of algebraic equation. If the default initial estimation of this root is poor, the root finding can be failed (usually it means that during the root finding the $P_{\rm gas}$ become less than zero), the corresponding `PphNotConvergeError` is raised. Then you can try to set that estimation manually (usually higher) through `P_ph_0` parameter:
 ``` python3
