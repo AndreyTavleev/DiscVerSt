@@ -467,8 +467,8 @@ An analytic opacity coefficient is approximated by a power-law function:
 There are following analytic opacity options: 
 1. Kramers law for solar composition: $(\zeta = 1, \gamma = -7/2, \varkappa_0 = 5\cdot10^{24})$ and Thomson electron 
    scattering $(\varkappa_{\rm R} = 0.34)$.
-2. Analytic approximations by [Bell & Lin (1994)](http://adsabs.harvard.edu/abs/1994ApJ...427..987B) to opacity: 
-   approximation obtained by the OPAL project $(\varkappa_0 = 1.5\cdot10^{20}, \zeta = 1, \gamma = -5/2)$, opacity 
+2. Two analytic approximations by [Bell & Lin (1994)](http://adsabs.harvard.edu/abs/1994ApJ...427..987B) to opacity: 
+   opacity from bound-free and free-free transitions $(\varkappa_0 = 1.5\cdot10^{20}, \zeta = 1, \gamma = -5/2)$, opacity 
    from scattering off hydrogen atoms $(\varkappa_0 = 1\cdot10^{-36}, \zeta = 1/3, \gamma = 10)$ and Thomson electron
    scattering $(\varkappa_{\rm R} = 0.34)$.
 
