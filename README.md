@@ -383,7 +383,7 @@ help(profiles.Radial_Profile)
 ## Physical background
 ### Main equations
 The vertical structure of accretion disc is described by system of four ordinary differential equations with four 
-boundary conditions plus one additional boundary condition for flux:
+boundary conditions at the disc surface and one additional boundary condition at the central plane for flux:
 ```math
 \begin{split}
 \frac{{\rm d}P}{{\rm d}z} &= -\rho\,\omega^2_{K} z \qquad\quad\,\, P_{\rm gas}(z_0) = P'; \\
@@ -397,7 +397,7 @@ Here $P = P_{\rm tot} = P_{\rm gas} + P_{\rm rad} = P_{\rm gas} + aT^4/3, \Sigma
 column density, temperature and energy flux in the disc, $\nabla\equiv\frac{{\rm d}\ln T}{{\rm d}\ln P}$ is the temperature 
 gradient (radiative or convective, according to Schwarzschild criterion), and $\alpha$ is Shakura-Sunyaev turbulent 
 parameter ([Shakura & Sunyaev
-1973](https://ui.adsabs.harvard.edu/abs/1973A&A....24..337S)). By default the inner viscous torque $F_{\rm in}=0$ (this case corresponds to Schwarzschild black hole as central source). 
+1973](https://ui.adsabs.harvard.edu/abs/1973A&A....24..337S)). By default the inner viscous torque $F_{\rm in}=0$ (this case corresponds to a black hole as an accretor). 
 
 After the normalizing $P_{\rm gas}, Q, T, \Sigma$ on their characteristic values $P_0, Q_0, T_0, \Sigma_{00}$, 
 and replacing $z$ on $\hat{z} = 1 - z/z_0$ (in code it is the `t` variable), one has:
@@ -424,9 +424,9 @@ P_0 = \frac{4}{3}  \frac{Q_0}{\alpha z_0 \omega_{\rm K}}, \quad
 ```
 
 ### External irradiation
-In case of external irradiation $T_{\rm vis}\equiv T_{\rm eff}$. Irradiation can be taken into account in two ways:
+$T_{\rm vis}\equiv T_{\rm eff}$ in case of irradiation falling on the disc surface. We model irradiation in one of two ways:
 
-(i). Via either irradiation temperature $T_{\rm irr}$ or irradiation parameter $C_{\rm irr}$: It is a simple 
+(i). Via either irradiation temperature $T_{\rm irr}$ or irradiation parameter $C_{\rm irr}$: it is a simple 
    approach for irradiation, when the external flux doesn't penetrate into the disc and only heats the 
    disc surface. In this case only the boundary condition for temperature $\hat{T}$ changes:
 ```math
@@ -434,7 +434,7 @@ In case of external irradiation $T_{\rm vis}\equiv T_{\rm eff}$. Irradiation can
 ```
 
 (ii). In the second approximation the external flux is penetrated into the disc and affect the energy flux
-   and disc temperature. In this case following equations and boundary conditions change their view:
+   and disc temperature. In this case following equations and boundary conditions change their form:
 ```math
 \begin{split}
 \frac{{\rm d}\hat{Q}}{{\rm d}\hat{z}} &= -\frac32\,\frac{z_0}{Q_0}\,\omega_{\rm K} \alpha P_{\rm tot} - \varepsilon\frac{z_0}{Q_0} \qquad\qquad \hat{Q}(0) = 1 + \frac{Q_{\rm irr}}{Q_0}; \\
@@ -442,8 +442,8 @@ In case of external irradiation $T_{\rm vis}\equiv T_{\rm eff}$. Irradiation can
 \end{split}
 ```
    where $\varepsilon, Q_{\rm irr}$ are additional heating rate and surface flux (see [Mescheryakov et al. 2011](https://ui.adsabs.harvard.edu/abs/2011AstL...37..311M})).
-   
-Due to unknown amtosphere model in case of irradiation the boundary condition $P'$ is found from the algebraic equation:
+
+However the atmosphere model is unspecified, so $P'$ is given my the following algebraic equation:
 ```math
 P_{\rm gas}(z_0) + P_{\rm rad}(z_0) = P' + P_{\rm rad}(z_0) = \frac23\,\frac{\omega_{\rm K}^2 z_0}{\varkappa_{\rm R}(P', T(z_0))}.
 ```
@@ -454,7 +454,7 @@ Equation of state (EoS) and opacity law:
 ```math
     \rho = \rho(P, T), \quad \varkappa_{\rm R} = \varkappa_{\rm R}(\rho, T)
 ```
-can be set both analytically or as tabular values. For analytical description, the ideal gas equation is adopted:
+can be set both analytically or by tabular values. For analytical description, the ideal gas equation is adopted:
 ```math
     \rho = \frac{\mu\,P}{\mathcal{R}\,T}\,
 ```
@@ -479,7 +479,7 @@ list of available isotopes in the MESA source code. Also, you can use `'solar'` 
 
 
 ### Calculation
-System has one free parameter $z_0$ - the semi-thickness of the disc, which is found using so-called shooting method. 
+System has a single free parameter $z_0$ - the semi-thickness of the disc, which is found using so-called shooting method. 
 Code integrates system over $\hat{z}$ from 0 to 1 with initial approximation of free parameter $z_0$, then changes 
 its value and integrates the system in order to fulfill the additional condition for flux $\hat{Q}(1)$ at the symmetry 
 plane of the disc. 
@@ -501,7 +501,7 @@ conditions. Namely, code minimises function:
 Code was tested for disc $T_{\rm eff}\sim (10^3-10^6) \rm K$. However, there can be some convergence problems, especially when $P_{\rm rad}/P_{\rm gas}\gg0.1$.
 
 ### Without irradiation
-Calculation can be failed, if during the fitting process $P_{\rm gas}$ become less than zero, the corresponding `PgasPradNotConvergeError` is raised. In this case one recommend to set manually the estimation of 'z0r' free parameter (usually smaller estimation). Also you can get additional information about the value of free parameter during the fitting process through `verbose` parameter:
+If during the fitting process $P_{\rm gas}$ becomes negative then `PgasPradNotConvergeError` exception is raised failing the calculation. In this case we recommend to set manually the estimation of 'z0r' free parameter (usually smaller one). Also you can get additional information about the value of the free parameter during the fitting process through `verbose` parameter:
 ``` python3
 verstr = ...  # definition of the structure class
 # let us set the free parameter estimation
@@ -511,9 +511,9 @@ z0r, result = vertstr.fit(z0r_estimation=0.05, verbose=True)
 Note, that the higher $P_{\rm rad}/P_{\rm gas}$ value the more sensitive calculation convergence to `z0r` estimation.
 
 ### With irradiation scheme (i)
-Calculation can be failed, if during the fitting process $P_{\rm gas}$ become less than zero, the corresponding `PgasPradNotConvergeError` is raised. In this case again try to set manually the estimation of 'z0r' free parameter.
+If during the fitting process $P_{\rm gas}$ become less than zero then `PgasPradNotConvergeError` exception is raised. In this case we also recommend setting 'z0r' free parameter initial guess manually.
 
-Another reason of calculation failure concerns the calculation of $P'$ pressure initial condition. In contrast to the 'no-irradiation' case, value of $P'$ is found as the root of algebraic equation. If the default initial estimation of this root is poor, the root finding can be failed (usually it means that during the root finding the $P_{\rm gas}$ become less than zero), the corresponding `PphNotConvergeError` is raised. Then you can try to set that estimation manually (usually higher) through `P_ph_0` parameter:
+Another reason of calculation failure concerns the calculation of $P'$ pressure initial condition. In contrast to the 'no-irradiation' case, value of $P'$ is found as a root of the algebraic equation. If the default initial estimation of this root is poor then the root finding can fail (usually it means that during the root finding the $P_{\rm gas}$ becomes negative), and `PphNotConvergeError` exception is raised. We recommend to set `P_ph_0` parameter initial guess manually (usually higher):
 ``` python3
 verstr = ...  # definition of the structure class
 # let us set the free parameter estimation
@@ -523,9 +523,9 @@ result = vertstr.fit(z0r_estimation=0.05, verbose=True, P_ph_0=1e5)
 ```
 
 ### With irradiation scheme (ii)
-This case if similar to one for scheme (i), and the ways to solve the convergence problem are almost the same. The main difference is the presence of second free parameter of system - `Sigma0_par`, the surface density $\Sigma_0$ of the disc. The additional convergence problem may occur during the finding for $Q_{\rm irr}$ and $\varepsilon$ irradiation terms. In this case the corresponding `IrrNotConvergeError` is raised. One recommends to change the estimations of free parameters (usually smaller `z0r` and higher `Sigma0_par`) and, perhaps, the `P_ph_0` parameter. 
+This case is similar to one for scheme (i), and the ways solving the convergence problem are almost the same. The main difference is the presence of the second free parameter of system `Sigma0_par`, the surface density $\Sigma_0$ of the disc. The additional convergence problem may occur during the finding for $Q_{\rm irr}$ and $\varepsilon$ irradiation terms. In this case `IrrNotConvergeError` exception is raised. We recommend to set initial guesses for the free parameters manually (usually smaller `z0r` and higher `Sigma0_par`) as well as the `P_ph_0` parameter. 
 
-One specific case is unstable disc region, where code in principle may converge to both hot and cold disc state. Here, even for right `z0r` and `Sigma0_par` values, the wrong $P'$ root can be found due to wrong root estimation, which leads to code non-convergence. Then one recommends to set another `P_ph_0` estimation (much higher or smaller).
+One specific case is unstable disc region, where the code may converge in both hot and cold disc state. Here, even for right `z0r` and `Sigma0_par` values, the wrong $P'$ root can be found due to wrong root estimation, which leads to code non-convergence. Then one recommends to set another `P_ph_0` estimation (much higher or smaller).
 ``` python3
 verstr = ...  # definition of the structure class
 # let us set the free parameters estimations
@@ -537,6 +537,6 @@ result = vertstr.fit(z0r_estimation=0.07, Sigma0_estimation=5000, verbose=True, 
 ### Radial profile and S-curves
 Radial profile calculates from `r_start` to `r_end`, and `r_start` should be less than `r_end`. Similarly, S-curve calculates from `Par_max` to `Par_min` (obviously, `Par_max` > `Par_min`). The estimations of all necessary parameters at the next point are taken from the previous points. Additionally, estimations of the parameters at the first point can be set manually. Usually this works well, but regions of small radii (big effective temperature, or accretion rate etc. for S-curve) may not converge due to high $P_{\rm rad}/P_{\rm gas}$. These points of corresponding profiles will be missed and marked as 'Non-converged_fits' in the code output (in output tables there wll be only the number of such 'Non-converged_fits'). 
 
-In this case one can to calculate such 'bad' regions again, but vise versa from higher radius (effective temperature etc.), where code has converged, to smaller one. Then the estimations of free parameters may become more suitable for convergence. Such vise versa calculation is easy to do, just swap `r_start` and `r_end` (`Par_max` and `Par_min`) so that `r_start` > `r_end` (`Par_max` < `Par_min`).
+In this case we recommend calculating such 'bad' regions again, but vise versa from higher radius (effective temperature etc.), where code has converged, to smaller radius. Then the initial guesses of the free parameters would become more suitable for convergence. Such vise versa calculation is easy to do, just swap `r_start` and `r_end` (`Par_max` and `Par_min`) so that `r_start` > `r_end` (`Par_max` < `Par_min`).
 
-In case of calculation the profile and S-curve of disc with irradiation scheme (ii) there can be a discontinuity (gap) in the instability region, i.e. no smooth transition between 'hot' and 'cold' stable disc regions. This manifests itself in the fact that after the 'hot' stable disc region the code stops converging, and all corresponding points will be marked as 'Non-converged_fits'. Then just calculate the 'cold' region with another `z0r` and `Sigma0_par` (and, perhaps, `P_ph_0`) start estimations. 
+When calculating the profile and S-curve of a disc with irradiation scheme (ii), a discontinuity (gap) in the instability region may occur, resulting in a lack of smooth transition between the 'hot' and 'cold' stable disc regions. This can be identified by code convergence failure after the 'hot' stable disc region, leading to all corresponding points being labeled as 'Non-converged_fits'. To address this, simply calculate the 'cold' region using different z0r and Sigma0_par (and potentially P_ph_0) starting estimates.
