@@ -498,7 +498,7 @@ conditions. Namely, code minimises function:
 
 
 ## Calculation tips and tricks
-Code was tested for disc $T_{\rm eff}\sim (10^3-10^6) \rm K$. However, there can be some convergence problems, especially when $P_{\rm rad}/P_{\rm gas}\gg0.1$.
+Code was tested for disc $T_{\rm eff}\sim (10^3-10^6) \rm K$. However, there can be some convergence problems, especially when $P_{\rm rad}\geq P_{\rm gas}$.
 
 ### Without irradiation
 If during the fitting process $P_{\rm gas}$ becomes negative then `PgasPradNotConvergeError` exception is raised failing the calculation. In this case we recommend to set manually the estimation of 'z0r' free parameter (usually smaller one). Also you can get additional information about the value of the free parameter during the fitting process through `verbose` parameter:
