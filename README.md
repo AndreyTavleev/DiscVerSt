@@ -443,7 +443,7 @@ $T_{\rm vis}\equiv T_{\rm eff}$ in case of irradiation falling on the disc surfa
 ```
    where $\varepsilon, Q_{\rm irr}$ are additional heating rate and surface flux (see [Mescheryakov et al. 2011](https://ui.adsabs.harvard.edu/abs/2011AstL...37..311M})).
 
-However the atmosphere model is unspecified, so $P'$ is given my the following algebraic equation:
+However the atmosphere model is unspecified, so $P'$ is given by the following algebraic equation:
 ```math
 P_{\rm gas}(z_0) + P_{\rm rad}(z_0) = P' + P_{\rm rad}(z_0) = \frac23\,\frac{\omega_{\rm K}^2 z_0}{\varkappa_{\rm R}(P', T(z_0))}.
 ```
@@ -508,7 +508,7 @@ verstr = ...  # definition of the structure class
 # and print value of z0r parameter at each fitting iteration
 z0r, result = vertstr.fit(z0r_estimation=0.05, verbose=True)
 ```
-Note, that the higher $P_{\rm rad}/P_{\rm gas}$ value the more sensitive calculation convergence to `z0r` estimation.
+Note, that the higher $P_{\rm rad}/P_{\rm gas}$ value the more sensitive calculation convergence to 'z0r' estimation.
 
 ### With irradiation scheme (i)
 If during the fitting process $P_{\rm gas}$ become less than zero then `PgasPradNotConvergeError` exception is raised. In this case we also recommend setting 'z0r' free parameter initial guess manually.
@@ -539,4 +539,4 @@ Radial profile calculates from `r_start` to `r_end`, and `r_start` should be les
 
 In this case we recommend calculating such 'bad' regions again, but vise versa from higher radius (effective temperature etc.), where code has converged, to smaller radius. Then the initial guesses of the free parameters would become more suitable for convergence. Such vise versa calculation is easy to do, just swap `r_start` and `r_end` (`Par_max` and `Par_min`) so that `r_start` > `r_end` (`Par_max` < `Par_min`).
 
-When calculating the profile and S-curve of a disc with irradiation scheme (ii), a discontinuity (gap) in the instability region may occur, resulting in a lack of smooth transition between the 'hot' and 'cold' stable disc regions. This can be identified by code convergence failure after the 'hot' stable disc region, leading to all corresponding points being labeled as 'Non-converged_fits'. To address this, simply calculate the 'cold' region using different z0r and Sigma0_par (and potentially P_ph_0) initial guesses.
+When calculating the profile and S-curve of a disc with irradiation scheme (ii), a discontinuity (gap) in the instability region may occur, resulting in a lack of smooth transition between the 'hot' and 'cold' stable disc regions. This can be identified by code convergence failure after the 'hot' stable disc region, leading to all corresponding points being labeled as 'Non-converged_fits'. To address this, simply calculate the 'cold' region using different 'z0r' and 'Sigma0_par' (and potentially 'P_ph_0') initial guesses.
