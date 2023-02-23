@@ -415,7 +415,7 @@ P_{\rm tot} &= P_0\hat{P} + aT_0^4\hat{T}^4/3 \qquad\qquad\qquad\qquad\qquad \ha
 
 The initial boundary condition for gas pressure $P'$ is defined by the integral:
 ```math
-P_{\rm gas}(z_0) + P_{\rm rad}(z_0) = P' + P_{\rm rad}(z_0) = \int_0^{2/3} \frac{\omega_{\rm K}^2 z_0}{\varkappa_{\rm R}(P_{\rm gas}, T(\tau))}\, {\rm d}\tau.
+P_{\rm gas}(z_0) + \frac12 P_{\rm rad}(z_0) = P' + \frac12 P_{\rm rad}(z_0) = \int_0^{2/3} \frac{\omega_{\rm K}^2 z_0}{\varkappa_{\rm R}(P_{\rm gas}, T(\tau))}\, {\rm d}\tau.
 ```
 
 Characteristic values of pressure, temperature and mass coordinate are as follows:
@@ -447,7 +447,7 @@ $T_{\rm vis}\equiv T_{\rm eff}$ in case of irradiation falling on the disc surfa
 
 However the atmosphere model is unspecified, so $P'$ is given by the following algebraic equation:
 ```math
-P_{\rm gas}(z_0) + \frac12 P_{\rm rad}(z_0) = P' + \frac12 P_{\rm rad}(z_0) = \frac23\,\frac{\omega_{\rm K}^2 z_0}{\varkappa_{\rm R}(P', T(z_0))}.
+P_{\rm gas}(z_0) + P_{\rm rad}(z_0) = P' + P_{\rm rad}(z_0) = \frac23\,\frac{\omega_{\rm K}^2 z_0}{\varkappa_{\rm R}(P', T(z_0))}.
 ```
 
 
