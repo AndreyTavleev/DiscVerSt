@@ -396,10 +396,48 @@ boundary conditions at the disc surface and one additional boundary condition at
 \end{split}
 ```
 Here $P = P_{\rm tot} = P_{\rm gas} + P_{\rm rad} = P_{\rm gas} + aT^4/3, \Sigma, T$ and $Q$ are total pressure, 
-column density, temperature and energy flux in the disc, $\nabla\equiv\frac{{\rm d}\ln T}{{\rm d}\ln P}$ is the temperature 
-gradient (radiative or convective, according to Schwarzschild criterion), and $\alpha$ is Shakura-Sunyaev turbulent 
+column density, temperature and energy flux in the disc and $\alpha$ is Shakura-Sunyaev turbulent 
 parameter ([Shakura & Sunyaev
 1973](https://ui.adsabs.harvard.edu/abs/1973A&A....24..337S)). By default the inner viscous torque $F_{\rm in}=0$ (this case corresponds to a black hole as an accretor). 
+
+The temperature gradient $\nabla\equiv\frac{{\rm d}\ln T}{{\rm d}\ln P}$ is defined according to the Schwarzschild criterion:
+
+```math
+\begin{equation}
+\frac{{\rm d}\ln T}{{\rm d}\ln P} \equiv \nabla = 
+\begin{cases}
+\nabla_{\rm rad}, \, \nabla_{\rm rad}<\nabla_{\rm ad}, \\
+\nabla_{\rm conv}, \, \nabla_{\rm rad}>\nabla_{\rm ad},
+\end{cases}
+\end{equation} 
+```
+where radiation gradient
+```math
+\begin{equation}
+\nabla_{\rm rad} \equiv \frac{3\varkappa_R}{16\,\sigma_{\rm SB}\,\omega^2_{K} z}\, \frac{P}{T^4}\, Q.
+\end{equation}
+```
+
+Temperature gradient in the presense of convection is calculated according to the mixing length theory (see [Kippenhahn et al. 2012](https://ui.adsabs.harvard.edu/abs/2012sse..book.....K)):
+```math
+\begin{equation}
+\nabla_{\rm conv} \equiv \nabla_{\rm ad} + (\nabla_{\rm rad} - \nabla_{\rm ad})Y(Y+V),
+\end{equation}
+```
+where $Y$ is the solution of qubic equation
+```math
+\begin{equation}
+\frac94\frac{\tau_{\rm ml}^2}{3+\tau_{\rm ml}^2}Y^3 + VY^2 + V^2Y - V = 0. 
+\end{equation}
+```
+
+Here $\tau_{\rm ml} = \varkappa\rho H_{\rm ml}$ is the optical depth of convective vortex, $H_{\rm ml} = \alpha_{\rm ml}H_P$ is the mixing length, $H_P = P / (\rho\omega^2_{\rm K}z + \omega_K\sqrt{P\rho})$ is the pressure scale height, coefficient $\alpha_{\rm ml}$ is a free parameter, we set $\alpha_{\rm ml} = 1.5$. Coefficient $V$ is defined as
+```math
+\begin{equation}
+V^{-2} = -\left(\frac{3+\tau_{\rm ml}^2}{3\tau_{\rm ml}}\right)^2\frac{C_P^2H_{\rm ml}^2\rho^2\omega^2_{\rm K}z}{512\sigma_{\rm SB}^2T^6H_P} (\nabla_{\rm rad} - \nabla_{\rm ad}) \left(\frac{\partial \ln\rho}{\partial \ln T}\right)_P,
+\end{equation}
+```
+where $C_P$ is the specific heat at constant pressure. Values of $\nabla_{\rm ad}, C_P,\left(\frac{\partial \ln\rho}{\partial \ln T}\right)_P$ are obtained from the `eos` module of the MESA code.
 
 After the normalizing $P_{\rm gas}, Q, T, \Sigma$ on their characteristic values $P_0, Q_0, T_0, \Sigma_{00}$, 
 and replacing $z$ on $\hat{z} = 1 - z/z_0$ (in code it is the `t` variable), one has:
