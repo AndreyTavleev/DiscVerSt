@@ -664,7 +664,10 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
     Sigma_plus_index = 0
     Sigma_minus_key = True
     Sigma_plus_key = True
-    delta_Sigma_plus = -1
+    if Par_max > Par_min:
+        delta_Sigma_plus = -1
+    else:
+        delta_Sigma_plus = +1
     z0r_estimation = z0r_start_estimation
     sigma_par_estimation = Sigma0_start_estimation
 
@@ -773,12 +776,20 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
             delta_Sigma_plus = Sigma0 - sigma_temp
             sigma_temp = Sigma0
 
-        if delta_Sigma_plus > 0.0 and Sigma_plus_key:
-            Sigma_plus_index = i - 1 - Non_converged_fits
-            Sigma_plus_key = False
-        if delta_Sigma_plus < 0.0 and not Sigma_plus_key and Sigma_minus_key:
-            Sigma_minus_index = i - 1 - Non_converged_fits
-            Sigma_minus_key = False
+        if Par_max > Par_min:
+            if delta_Sigma_plus > 0.0 and Sigma_plus_key:
+                Sigma_plus_index = i - 1 - Non_converged_fits
+                Sigma_plus_key = False
+            if delta_Sigma_plus < 0.0 and not Sigma_plus_key and Sigma_minus_key:
+                Sigma_minus_index = i - 1 - Non_converged_fits
+                Sigma_minus_key = False
+        else:
+            if delta_Sigma_plus < 0.0 and Sigma_minus_key:
+                Sigma_minus_index = i - 1 - Non_converged_fits
+                Sigma_minus_key = False
+            if delta_Sigma_plus > 0.0 and not Sigma_minus_key and Sigma_plus_key:
+                Sigma_plus_index = i - 1 - Non_converged_fits
+                Sigma_plus_key = False
 
         output_string = np.array(output_string)
         with open(path_dots, 'a') as file:
@@ -787,7 +798,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
     with open(path_dots, 'a') as file:
         file.write(f'# Sigma_plus_index = {Sigma_plus_index:d}  Sigma_minus_index = {Sigma_minus_index:d}')
         file.write(f'\n# Non-converged_fits = {Non_converged_fits}')
-    return
+    return Sigma_minus_index, Sigma_plus_index
 
 
 def Radial_Profile(M, alpha, r_start, r_end, Par, input, structure, mu=0.6, abundance='solar', F_in=0,
