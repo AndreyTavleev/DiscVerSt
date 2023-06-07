@@ -335,6 +335,7 @@ from disc_verst import profiles
 
 help(profiles.StructureChoice)
 ```
+where, in pacticular, you can find the available structure types (`structure` parameter).
 
 
 ## Vertical and radial profile calculation, S-curves
