@@ -13,6 +13,7 @@ This code calculates vertical structure of accretion discs around neutron stars 
    * [Vertical and radial profile calculation, S-curves](#Vertical-and-radial-profile-calculation-S-curves)
    * [Physical background](#Physical-background)
    * [Calculation tips and tricks](#Calculation-tips-and-tricks)
+   * [BibTeX][#BibTeX]
 
 ## Installation
 
@@ -581,3 +582,25 @@ Radial profile calculates from `r_start` to `r_end`, and `r_start` should be les
 In this case we recommend calculating such 'bad' regions again, but vise versa from higher radius (smaller effective temperature etc.), where code has converged, to smaller radius (higher effective temperature etc.). Then the initial guesses of the free parameters would become more suitable for convergence. Such vise versa calculation is easy to do, just swap `r_start` and `r_end` (`Par_max` and `Par_min`) so that `r_start` > `r_end` (`Par_max` < `Par_min`).
 
 When calculating the profile and S-curve of a disc with irradiation scheme (ii), a discontinuity (gap) in the instability region may occur, resulting in a lack of smooth transition between the 'hot' and 'cold' stable disc regions. This can be identified by code convergence failure after the 'hot' stable disc region, leading to all corresponding points being labeled as 'Non-converged_fits'. To address this, simply calculate the 'cold' region using different 'z0r' and 'Sigma0_par' (and potentially 'P_ph_0') initial guesses.
+
+
+## BibTeX
+```bibtex
+@ARTICLE{2023MNRAS.524.3647T,
+       author = {{Tavleev}, A.~S. and {Lipunova}, G.~V. and {Malanchev}, K.~L.},
+        title = "{Analysis of accretion disc structure and stability using open code for vertical structure}",
+      journal = {\mnras},
+     keywords = {accretion, accretion discs, instabilities, X-rays: binaries, Astrophysics - High Energy Astrophysical Phenomena},
+         year = 2023,
+        month = sep,
+       volume = {524},
+       number = {3},
+        pages = {3647-3661},
+          doi = {10.1093/mnras/stad1881},
+archivePrefix = {arXiv},
+       eprint = {2303.02184},
+ primaryClass = {astro-ph.HE},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2023MNRAS.524.3647T},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+```
