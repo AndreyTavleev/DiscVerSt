@@ -4,16 +4,16 @@ This code calculates vertical structure of accretion discs around neutron stars 
 
 ## Contents
 
-   * [Installation](#Installation)
-      * [Analytical opacities and EoS](#Analytical-opacities-and-EoS)
-      * [Tabular opacities and EoS](#Tabular-opacities-and-EoS)
-   * [Calculate structure](#Calculate-structure)
-   * [Irradiated discs](#Irradiated-discs)
-   * [Structure Choice](#Structure-Choice)
-   * [Vertical and radial profile calculation, S-curves](#Vertical-and-radial-profile-calculation-S-curves)
-   * [Physical background](#Physical-background)
-   * [Calculation tips and tricks](#Calculation-tips-and-tricks)
-   * [BibTeX](#BibTeX)
+   * [Installation](#installation)
+      * [Analytical opacities and EoS](#analytical-opacities-and-eos)
+      * [Tabular opacities and EoS](#tabular-opacities-and-eos)
+   * [Calculate structure](#calculate-structure)
+   * [Irradiated discs](#irradiated-discs)
+   * [Structure Choice](#structure-choice)
+   * [Vertical and radial profile calculation, S-curves](#vertical-and-radial-profile-calculation-s-curves)
+   * [Physical background](#physical-background)
+   * [Calculation tips and tricks](#calculation-tips-and-tricks)
+   * [BibTeX](#bibtex)
 
 ## Installation
 
