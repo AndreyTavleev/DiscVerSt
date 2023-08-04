@@ -13,7 +13,7 @@ This code calculates vertical structure of accretion discs around neutron stars 
    * [Vertical and radial profile calculation, S-curves](#Vertical-and-radial-profile-calculation-S-curves)
    * [Physical background](#Physical-background)
    * [Calculation tips and tricks](#Calculation-tips-and-tricks)
-   * [BibTeX][#BibTeX]
+   * [BibTeX](#BibTeX)
 
 ## Installation
 
