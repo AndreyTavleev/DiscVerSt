@@ -1,6 +1,6 @@
-# AlphaDiSC — Alpha Disc Structure Calculation
+# AlphaDiSC — Alpha-Disc Structure Calculation
 
-This code calculates the vertical and radial structure of accretion discs around neutron stars and black holes.
+This code calculates the vertical and radial structure of accretion $\alpha$-discs around neutron stars and black holes.
 It allows the construction of profiles and stability S-curves for both non-irradiated and irradiated discs, utilising
 the analytical and tabular MESA equations of state (EoS) and opacities.
 
@@ -36,7 +36,7 @@ $ source ~/.venv/vs/bin/activate
 $ pip3 install -U pip setuptools
 ```
 
-3. Install 'disc_verst' package
+3. Install 'alpha_disc' package
 
 ``` shell
 $ pip3 install git+https://github.com/AndreyTavleev/AlphaDiSC.git
@@ -45,7 +45,7 @@ $ pip3 install git+https://github.com/AndreyTavleev/AlphaDiSC.git
 4. Run Python script to calculate a simple structure:
 
 ``` shell
-$ python3 -m disc_verst.vs
+$ python3 -m alpha_disc.vs
 ```
 
 	Finding Pi parameters of structure and making a structure plot. 
@@ -79,13 +79,13 @@ Or build the Docker image by yourself:
 ``` shell
 $ git clone https://github.com/AndreyTavleev/AlphaDiSC.git
 $ cd AlphaDiSC
-$ docker build -t discverst .
+$ docker build -t alphadisc .
 ```
 
-Then run 'discverst' image as a container and try `mesa_vs.main()`
+Then run 'alphadisc' image as a container and try `mesa_vs.main()`
 
 ``` shell
-$ docker run -v$(pwd)/fig:/app/fig --rm -ti discverst python3 -m disc_verst.mesa_vs
+$ docker run -v$(pwd)/fig:/app/fig --rm -ti alphadisc python3 -m alpha_disc.mesa_vs
 ```
 
 	Calculating structure and making a structure plot.
@@ -116,14 +116,15 @@ the vertical structure for tabular opacities, EoS, and convective energy transpo
 Both `vs` and `mesa_vs` modules have Python docstrings with description of available structure classes,
 use Python's build-in `help` function to read them:
 ``` python3
-help(disc_verst.vs)
-help(disc_verst.mesa_vs)
+from alpha_disc import vs, mesa_vs
+help(vs)
+help(mesa_vs)
 ```
 
 ### Example of analytical opacities and EoS calculation:
 
 ``` python3
-from disc_verst import vs
+from alpha_disc import vs
 
 # Input parameters:
 M = 2e33  # Mass of central object in grams
@@ -148,11 +149,11 @@ print(vertstr.tau())  # optical thickness of disc
 ### Example of tabular opacities and EoS calculation:
 
 ``` shell
-$ docker run --rm -ti discverst python3
+$ docker run --rm -ti alphadisc python3
 ```
 
 ``` python3
-from disc_verst import mesa_vs
+from alpha_disc import mesa_vs
 
 # Input parameters:
 M = 2e33  # Mass of central object in grams
@@ -176,8 +177,15 @@ print(vertstr.tau())  # optical thickness of disc
 You can run your own files inside Docker
 
 ``` shell
-$ docker run -v/path_to/your_file/file.py:/app/file.py --rm -ti discverst python3 file.py
+$ docker run -v/path/to/fig:/app/fig \
+-v/path_to/your_file/file.py:/app/file.py \
+--rm -ti alphadisc python3 file.py
 ```
+
+In this example, the files produce with the code should be saved
+in the folder `fig` (`/app/fig/` inside the Docker working 
+directory), which is also mounted using the `-v` Docker flag, see
+details in the Docker documentation.
 
 ## Irradiated discs
 
@@ -185,7 +193,8 @@ Module `mesa_vs` also contains classes that represent
 the vertical structure of self-irradiated discs. Description of structure classes 
 with irradiation is available in `mesa_vs` help.
 ``` python3
-help(disc_verst.mesa_vs)
+from alpha_disc import mesa_vs
+help(mesa_vs)
 ```
 
 Irradiation can be taken into account in two ways:
@@ -222,7 +231,7 @@ F^{\nu}_{\rm irr} = \frac{L_{\rm X}}{4\pi r^2} \, S(\nu).
 ### Example of a simple irradiation calculation:
 
 ``` python3
-from disc_verst import mesa_vs
+from alpha_disc import mesa_vs
 
 # Input parameters:
 M = 2e33  # Mass of central object in grams
@@ -263,7 +272,7 @@ def power_law_exp_spectrum(E, n, scale):
 Then calculate structure with this spectrum:
 
 ``` python3
-from disc_verst import mesa_vs
+from alpha_disc import mesa_vs
 import numpy as np
 
 # Input parameters:
@@ -315,7 +324,7 @@ where $r_{\rm in} = 3r_{\rm g}=6GM/c^2$. The default value of viscous torque at 
 
 Usage:
 ``` python3
-from disc_verst.profiles import StructureChoice
+from alpha_disc.profiles import StructureChoice
 
 # Input parameters:
 M = 2e33  # Mass of central object in grams
@@ -334,11 +343,11 @@ z0r, result = vertstr.fit()  # calculate the structure
 ```
 The `StructureChoice` function has the detailed documentation
 ``` python3
-from disc_verst import profiles
+from alpha_disc import profiles
 
 help(profiles.StructureChoice)
 ```
-where, in pacticular, you can find the available structure types (`structure` parameter).
+where, in particular, you can find the available structure types (`structure` parameter).
 
 
 ## Vertical and radial profile calculation, S-curves
@@ -347,7 +356,7 @@ Module `profiles` contains functions, that calculate vertical and radial disc pr
 with disc parameters. With `profiles.main()` the vertical structure, S-curve and radial structure 
 can be calculated for default parameters, stored as tables and plots:
 ``` shell
-$ python3 -m disc_verst.profiles
+$ python3 -m alpha_disc.profiles
 ```
 
 `profiles` contains three functions: `Vertical_Profile`, `S_curve` and `Radial_Profile`.
@@ -358,7 +367,7 @@ $ python3 -m disc_verst.profiles
 
 ### Usage:
 ``` python3
-from disc_verst import profiles
+from alpha_disc import profiles
 
 # Input parameters:
 M = 5 * 2e33  # 5 * M_sun
@@ -378,7 +387,7 @@ profiles.Radial_Profile(M, alpha, r_start, r_end, Par=1, input='Mdot_Mdot_edd', 
 ```
 Both `profiles` module and functions in it have help
 ``` python3
-from disc_verst import profiles
+from alpha_disc import profiles
 
 help(profiles)
 help(profiles.Vertical_Profile)
@@ -402,7 +411,7 @@ boundary conditions at the disc surface and one additional boundary condition at
 Here $P = P_{\rm tot} = P_{\rm gas} + P_{\rm rad} = P_{\rm gas} + aT^4/3, \Sigma, T$ and $Q$ are total pressure, 
 column density, temperature and energy flux in the disc and $\alpha$ is Shakura-Sunyaev turbulent 
 parameter ([Shakura & Sunyaev
-1973](https://ui.adsabs.harvard.edu/abs/1973A&A....24..337S)). By default the inner viscous torque $F_{\rm in}=0$ (this case corresponds to a black hole as an accretor). 
+1973](https://ui.adsabs.harvard.edu/abs/1973A&A....24..337S)). By default, the inner viscous torque $F_{\rm in}=0$ (this case corresponds to a black hole as an accretor). 
 
 The temperature gradient $\nabla\equiv\frac{{\rm d}\ln T}{{\rm d}\ln P}$ is defined according to the Schwarzschild criterion:
 
@@ -422,7 +431,7 @@ where radiation gradient
 \end{equation}
 ```
 
-Temperature gradient in the presense of convection is calculated according to the mixing length theory (see [Kippenhahn et al. 2012](https://ui.adsabs.harvard.edu/abs/2012sse..book.....K)):
+Temperature gradient in the presence of convection is calculated according to the mixing length theory (see [Kippenhahn et al. 2012](https://ui.adsabs.harvard.edu/abs/2012sse..book.....K)):
 ```math
 \begin{equation}
 \nabla_{\rm conv} \equiv \nabla_{\rm ad} + (\nabla_{\rm rad} - \nabla_{\rm ad})Y(Y+V),
@@ -487,7 +496,7 @@ $T_{\rm vis}\equiv T_{\rm eff}$ in case of irradiation falling on the disc surfa
 ```
    where $\varepsilon, Q_{\rm irr}$ are additional heating rate and surface flux (see [Mescheryakov et al. 2011](https://ui.adsabs.harvard.edu/abs/2011AstL...37..311M})).
 
-However the atmosphere model is unspecified, so $P'$ is given by the following algebraic equation:
+However, the atmosphere model is unspecified, so $P'$ is given by the following algebraic equation:
 ```math
 P_{\rm gas}(z_0) + P_{\rm rad}(z_0) = P' + P_{\rm rad}(z_0) = \frac23\,\frac{\omega_{\rm K}^2 z_0}{\varkappa_{\rm R}(P', T(z_0))}.
 ```
@@ -545,7 +554,7 @@ conditions. Namely, code minimises function:
 Code was tested for disc $T_{\rm eff}\sim (10^3-10^6) \rm K$. However, there can be some convergence problems, especially when $P_{\rm rad}\gtrsim P_{\rm gas}$.
 
 ### Without irradiation
-If during the fitting process $P_{\rm gas}$ becomes negative then `PgasPradNotConvergeError` exception is raised failing the calculation. In this case we recommend to set manually the estimation of 'z0r' free parameter (usually smaller one). Also you can get additional information about the value of the free parameter during the fitting process through `verbose` parameter:
+If during the fitting process $P_{\rm gas}$ becomes negative then `PgasPradNotConvergeError` exception is raised failing the calculation. In this case we recommend to set manually the estimation of 'z0r' free parameter (usually smaller one). Also, you can get additional information about the value of the free parameter during the fitting process through `verbose` parameter:
 ``` python3
 verstr = ...  # definition of the structure class
 # let us set the free parameter estimation

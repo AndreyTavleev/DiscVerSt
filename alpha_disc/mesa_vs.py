@@ -35,7 +35,7 @@ from astropy import units
 from scipy.integrate import simpson
 from scipy.optimize import root, least_squares, brentq
 
-from disc_verst.vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient, PgasPradNotConvergeError
+from alpha_disc.vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient, PgasPradNotConvergeError
 
 sigmaSB = const.sigma_sb.cgs.value
 sigmaT = const.sigma_T.cgs.value

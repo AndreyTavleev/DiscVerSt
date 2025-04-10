@@ -23,10 +23,10 @@ from astropy import constants as const
 from scipy.integrate import simpson
 from scipy.interpolate import InterpolatedUnivariateSpline
 
-import disc_verst.vs as vert
+import alpha_disc.vs as vert
 
 try:
-    import disc_verst.mesa_vs as mesa_vs
+    import alpha_disc.mesa_vs as mesa_vs
 except ImportError:
     mesa_vs = np.nan
 
@@ -671,7 +671,7 @@ def S_curve(Par_min, Par_max, M, alpha, r, input, structure, mu=0.6, abundance='
     z0r_estimation = z0r_start_estimation
     sigma_par_estimation = Sigma0_start_estimation
 
-    sigma_temp = np.infty
+    sigma_temp = np.inf
     Non_converged_fits = 0
     if structure in ['MesaIrr', 'MesaRadAdIrr', 'MesaRadConvIrr',
                      'MesaIrrZero', 'MesaRadAdIrrZero', 'MesaRadConvIrrZero']:

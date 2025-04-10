@@ -1,11 +1,11 @@
 [project]
-name = "disc-verst"
+name = "alpha-disc"
 version = "1.0"
 authors = [
   {email = "tavleev.as15@physics.msu.ru"},
   {name = "Andrey Tavleev"}
 ]
-description = "Vertical structure of accretion discs calculation"
+description = "Vertical and radial structure of accretion alpha-discs calculation"
 readme = "README.md"
 license = {file = "LICENSE.md"}
 keywords = ["science", "astrophysics"]
@@ -28,7 +28,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["disc_verst"]
+packages = ["alpha_disc"]
 
 [project.urls]
-repository = "https://github.com/AndreyTavleev/DiscVerSt"
+repository = "https://github.com/AndreyTavleev/AlphaDiSC"
