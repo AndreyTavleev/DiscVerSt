@@ -1,4 +1,4 @@
-# DiscVerSt — accretion disc vertical structure calculation
+# AlphaDiSC — Alpha Disc Structure Calculation
 
 This code calculates the vertical and radial structure of accretion discs around neutron stars and black holes.
 It allows the construction of profiles and stability S-curves for both non-irradiated and irradiated discs, utilising
@@ -39,7 +39,7 @@ $ pip3 install -U pip setuptools
 3. Install 'disc_verst' package
 
 ``` shell
-$ pip3 install git+https://github.com/AndreyTavleev/DiscVerSt.git
+$ pip3 install git+https://github.com/AndreyTavleev/AlphaDiSC.git
 ```
 
 4. Run Python script to calculate a simple structure:
@@ -77,8 +77,8 @@ $ docker tag ghcr.io/andreytavleev/discverst discverst
 Or build the Docker image by yourself:
 
 ``` shell
-$ git clone https://github.com/AndreyTavleev/DiscVerSt.git
-$ cd DiscVerSt
+$ git clone https://github.com/AndreyTavleev/AlphaDiSC.git
+$ cd AlphaDiSC
 $ docker build -t discverst .
 ```
 
