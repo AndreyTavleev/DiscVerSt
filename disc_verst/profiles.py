@@ -20,7 +20,7 @@ Radial_Profile -- Calculates radial structure of disc. Return table, which conta
 """
 import numpy as np
 from astropy import constants as const
-from scipy.integrate import simps
+from scipy.integrate import simpson
 from scipy.interpolate import InterpolatedUnivariateSpline
 
 import disc_verst.vs as vert
@@ -305,9 +305,9 @@ def Convective_parameter(vs):
     except AttributeError:
         raise Exception('Incorrect vertical structure for convective parameter calculation. '
                         'Use vertical structure with MESA EoS.') from None
-    conv_param_sigma = simps(2 * rho * (grad_plot(np.log(P_full)) > eos.grad_ad), t * vs.z0) / (
+    conv_param_sigma = simpson(2 * rho * (grad_plot(np.log(P_full)) > eos.grad_ad), t * vs.z0) / (
             S[-1] * vs.sigma_norm)
-    conv_param_z = simps(grad_plot(np.log(P_full)) > eos.grad_ad, t * vs.z0) / vs.z0
+    conv_param_z = simpson(grad_plot(np.log(P_full)) > eos.grad_ad, t * vs.z0) / vs.z0
     return conv_param_z, conv_param_sigma
 
 
@@ -475,7 +475,7 @@ def Vertical_Profile(M, alpha, r, Par, input, structure, mu=0.6, abundance='sola
     grad_plot = InterpolatedUnivariateSpline(np.log(P_full), np.log(T)).derivative()
     rho, eos = vs.law_of_rho(P * vs.P_norm, T * vs.T_norm, True)
     varkappa = vs.law_of_opacity(rho, T * vs.T_norm, lnfree_e=eos.lnfree_e)
-    tau_arr = np.array([simps(rho[:i] * varkappa[:i], t[:i] * z0r * r) for i in range(2, n + 1)]) + 2 / 3
+    tau_arr = np.array([simpson(rho[:i] * varkappa[:i], t[:i] * z0r * r) for i in range(2, n + 1)]) + 2 / 3
     tau_arr = np.r_[2 / 3, tau_arr]
     dots_arr = np.c_[t, S, P, abs(Q), T, rho, varkappa, tau_arr, grad_plot(np.log(P_full))]
     header_input_irr = ''
