@@ -70,8 +70,8 @@ The image includes MESA SDK, pre-compiled static C-library binding `eos` and `ka
 Download and create an alias of the Docker image:
 
 ``` shell
-$ docker pull ghcr.io/andreytavleev/discverst:latest
-$ docker tag ghcr.io/andreytavleev/discverst discverst
+$ docker pull ghcr.io/andreytavleev/alphadisc:latest
+$ docker tag ghcr.io/andreytavleev/alphadisc alphadisc
 ```
 
 Or build the Docker image by yourself:
