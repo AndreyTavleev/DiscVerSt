@@ -32,7 +32,7 @@ from types import FunctionType
 import numpy as np
 from astropy import constants as const
 from astropy import units
-from scipy.integrate import simps
+from scipy.integrate import simpson
 from scipy.optimize import root, least_squares, brentq
 
 from disc_verst.vs import BaseVerticalStructure, Vars, IdealGasMixin, RadiativeTempGradient, PgasPradNotConvergeError
@@ -106,11 +106,11 @@ class BaseExternalIrradiation(BaseMesaVerticalStructure):
         if isinstance(spectrum_irr, FunctionType):
             if spectrum_irr_par == 'nu':
                 self.nu_irr = nu_irr
-                spectrum_irr = spectrum_irr(self.nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr) / simps(
+                spectrum_irr = spectrum_irr(self.nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr) / simpson(
                     spectrum_irr(self.nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr), self.nu_irr)
             elif spectrum_irr_par == 'E_in_keV':
                 self.nu_irr = (nu_irr * units.keV).to('Hz', equivalencies=units.spectral()).value
-                spectrum_irr = spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr) / simps(
+                spectrum_irr = spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr) / simpson(
                     spectrum_irr(nu_irr, *args_spectrum_irr, **kwargs_spectrum_irr), nu_irr) * \
                                units.Hz.to('keV', equivalencies=units.spectral())
             else:
@@ -418,7 +418,7 @@ class ExternalIrradiation:
         sigma_sc = 0.34  # not exactly sigma_sc in case of not fully ionized gas
         k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
         tau_Xray = (sigma_sc + k_d_nu) * (self.Sigma0_par + 2 * self.Sigma_ph)
-        epsilon = 4 * np.pi * rho * simps(k_d_nu * self.J_tot(self.F_nu_irr, y, tau_Xray, t), self.nu_irr)
+        epsilon = 4 * np.pi * rho * simpson(k_d_nu * self.J_tot(self.F_nu_irr, y, tau_Xray, t), self.nu_irr)
         return epsilon
 
     def Q_irr_ph(self, Pph):
@@ -426,7 +426,7 @@ class ExternalIrradiation:
         sigma_sc = 0.34  # not exactly sigma_sc in case of not fully ionized gas
         k_d_nu = np.array([self.sigma_d_nu(nu) for nu in self.nu_irr]) / proton_mass  # cross-section per proton mass
         tau_Xray = (sigma_sc + k_d_nu) * (self.Sigma0_par + 2 * Pph / (self.z0 * self.omegaK ** 2))
-        Qirr = simps(self.H_tot(self.F_nu_irr, tau_Xray, Pph), self.nu_irr)
+        Qirr = simpson(self.H_tot(self.F_nu_irr, tau_Xray, Pph), self.nu_irr)
         return Qirr
 
     def photospheric_pressure_equation_irr(self, tau, P, Pph):
@@ -498,7 +498,7 @@ class ExternalIrradiation:
         self.Sigma_ph = P_ph / (self.z0 * self.omegaK ** 2)
         Q_initial = self.Q_initial(Pph=P_ph)
         Qirr = (Q_initial - 1) * self.Q_norm
-        self.C_irr = Qirr / simps(self.F_nu_irr, self.nu_irr)
+        self.C_irr = Qirr / simpson(self.F_nu_irr, self.nu_irr)
         self.T_irr = (Qirr / sigmaSB) ** (1 / 4)
         self.Q_irr = Qirr
         P_gas_ph = P_ph - 4 * sigmaSB / (3 * c) * (self.Teff ** 4 + self.T_irr ** 4)
