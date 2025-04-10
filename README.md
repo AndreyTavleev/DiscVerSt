@@ -1,6 +1,8 @@
 # DiscVerSt — accretion disc vertical structure calculation
 
-This code calculates vertical structure of accretion discs around neutron stars and black holes.
+This code calculates the vertical and radial structure of accretion discs around neutron stars and black holes.
+It allows the construction of profiles and stability S-curves for both non-irradiated and irradiated discs, utilising
+the analytical and tabular MESA equations of state (EoS) and opacities.
 
 ## Contents
 
