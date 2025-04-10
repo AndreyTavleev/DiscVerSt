@@ -13,7 +13,7 @@ from enum import IntEnum
 
 import numpy as np
 from astropy import constants as const
-from scipy.integrate import solve_ivp, simps
+from scipy.integrate import solve_ivp, simpson
 from scipy.optimize import brentq
 
 sigmaSB = const.sigma_sb.cgs.value
@@ -284,7 +284,7 @@ class BaseVerticalStructure:
         y = self.integrate(t)[0]
         rho, eos = self.rho(y, full_output=True)
         varkappa = self.opacity(y, lnfree_e=eos.lnfree_e)
-        tau_norm = simps(varkappa * rho, t)
+        tau_norm = simpson(varkappa * rho, t)
         return self.z0 * tau_norm + 2 / 3
 
     def y_c(self):
